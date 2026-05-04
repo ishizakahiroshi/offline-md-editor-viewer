@@ -1,4 +1,3 @@
-https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 # offline-md-editor-viewer
 
 [![GitHub](https://img.shields.io/badge/GitHub-repository-black?logo=github)](https://github.com/ishizakahiroshi/offline-md-editor-viewer)
@@ -18,10 +17,6 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 An offline-first Markdown editor/viewer that runs in your browser or as a Windows desktop app.
 
 Open a `.md` file, edit on the left, see the rendered result on the right, and save back to the same file. That's the whole loop — no account, no sync, no network calls.
-
-## Demo
-
-https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 
 **Works fully offline.** `marked`, `DOMPurify`, and `encoding-japanese` are bundled inline, and the SVG icons from `Feather Icons` are also embedded in the HTML, so loading the app makes no CDN or third-party requests. External links open only when you enable the External links setting and click an `http` / `https` link.
 

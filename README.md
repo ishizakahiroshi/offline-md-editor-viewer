@@ -5,6 +5,11 @@
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<p>
+  <img src="./docs/assets/screenshot-browser-en.png" alt="Browser edition screenshot" width="49%">
+  <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows desktop edition screenshot" width="49%">
+</p>
+
 An offline-first Markdown editor/viewer that runs in your browser or as a Windows desktop app.
 
 Open a `.md` file, edit on the left, see the rendered result on the right, and save back to the same file. That's the whole loop — no account, no sync, no network calls.

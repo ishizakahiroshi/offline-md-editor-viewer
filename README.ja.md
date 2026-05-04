@@ -5,6 +5,11 @@
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<p>
+  <img src="./docs/assets/screenshot-browser-en.png" alt="ブラウザ版スクリーンショット" width="49%">
+  <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows デスクトップ版スクリーンショット" width="49%">
+</p>
+
 手元の Markdown をブラウザまたは Windows デスクトップアプリで編集・プレビューするための、オフラインファーストなツールです。
 
 `.md` を開いて左側で編集、右側でプレビュー、そのまま元のファイルに上書き保存。アカウント登録も同期もなく、起動から終了までネットワークに触れずに完結します。

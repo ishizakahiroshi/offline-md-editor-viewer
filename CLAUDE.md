@@ -103,7 +103,7 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 | `README_EN`（HTML内定数） | `README.md` ／ 構造変更なら `README.ja.md` と `README_JA` も |
 | `README_JA`（HTML内定数） | `README.ja.md` ／ 構造変更なら `README.md` と `README_EN` も |
 
-なお、HTML内定数ではバッジ画像（shields.io）・相互言語リンク行・mermaid図・外部リンク URL は除外している（オフライン表示のため）。それ以外の本文・セクション順序は4箇所すべてで同期を保つこと。
+なお、HTML内定数ではバッジ画像（shields.io）・GitHub README 用スクリーンショット（`docs/assets/`）・相互言語リンク行・mermaid図・外部リンク URL は除外している（オフライン表示のため）。それ以外の本文・セクション順序は4箇所すべてで同期を保つこと。
 
 ## リリース運用
 

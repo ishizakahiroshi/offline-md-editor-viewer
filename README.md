@@ -20,6 +20,17 @@ Open a `.md` file, edit on the left, see the rendered result on the right, and s
 
 > **Start with the browser edition.** If it feels limiting or you find yourself wanting a desktop-only feature, that's the right time to try the desktop app.
 
+## Quick Download
+
+Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
+
+| Want to... | Download |
+| --- | --- |
+| Try it quickly in Chrome | `offline-md-editor-viewer.html` |
+| Run it as a Windows app | `offline-md-editor-viewer.exe` |
+| Archive or redistribute the browser edition | `offline-md-editor-viewer-browser-vX.X.X.zip` |
+| Archive or redistribute the Windows edition | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
 ## Why you might like it
 
 - **No build, no install.** The browser edition is a single HTML file you open directly. The Windows desktop edition is a portable `.exe` you can drop on a USB stick.

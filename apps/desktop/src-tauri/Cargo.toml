@@ -1,0 +1,26 @@
+[package]
+name = "offline-md-editor-viewer"
+version = "0.1.0"
+description = "Windows desktop wrapper for offline-md-editor-viewer"
+authors = ["Hiroshi Ishizaka (ishizakahiroshi)"]
+license = "MIT"
+repository = "https://github.com/ishizakahiroshi/offline-md-editor-viewer"
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "offline_md_editor_viewer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.6", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.10.3", features = [] }
+tauri-plugin-log = "2"
+rfd = "0.17.2"

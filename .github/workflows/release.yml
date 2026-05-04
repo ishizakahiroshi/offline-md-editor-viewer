@@ -1,0 +1,224 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-browser:
+    name: Build browser package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and package single HTML
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          ./scripts/release/build-browser-single-html.ps1 -Clean -Verify -Package -Version "$tag"
+
+      - name: Upload browser ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-package
+          path: dist/offline-md-editor-viewer-browser-${{ github.ref_name }}.zip
+          if-no-files-found: error
+
+      - name: Upload browser single HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-single-html
+          path: dist/browser/offline-md-editor-viewer.html
+          if-no-files-found: error
+
+  build-desktop-windows:
+    name: Build Windows desktop portable exe
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install desktop dependencies
+        run: npm ci
+        working-directory: apps/desktop
+
+      - name: Build single HTML for desktop frontend
+        shell: pwsh
+        run: |
+          ./scripts/release/build-browser-single-html.ps1 -Clean -Verify
+
+      - name: Stage desktop frontend (single HTML)
+        shell: pwsh
+        run: |
+          ./scripts/release/stage-desktop-frontend.ps1
+
+      - name: Build desktop portable exe (release single HTML frontend)
+        run: npx tauri build --config src-tauri/tauri.release.conf.json
+        working-directory: apps/desktop
+
+      - name: Package portable exe as ZIP
+        shell: pwsh
+        run: |
+          $tag = "${env:GITHUB_REF_NAME}"
+          $packageName = "offline-md-editor-viewer-desktop-$tag-win-x64-portable"
+          $stage = "dist/$packageName"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path "apps/desktop/src-tauri/target/release/offline-md-editor-viewer.exe" -Destination $stage
+          Copy-Item -Path "README.md","README.ja.md","CHANGELOG.md","CHANGELOG.ja.md","LICENSE","THIRD_PARTY_NOTICES.md" -Destination $stage
+          Copy-Item -Path "LICENSES" -Destination $stage -Recurse
+          Compress-Archive -Path $stage -DestinationPath "dist/$packageName.zip" -Force
+
+      - name: Upload desktop ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-portable
+          path: dist/offline-md-editor-viewer-desktop-${{ github.ref_name }}-win-x64-portable.zip
+          if-no-files-found: error
+
+      - name: Upload desktop single exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-desktop-exe
+          path: apps/desktop/src-tauri/target/release/offline-md-editor-viewer.exe
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - build-browser
+      - build-desktop-windows
+
+    steps:
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/release-assets
+          merge-multiple: true
+
+      - name: Verify ZIP-internal artifacts match standalone assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/release-assets
+          tag="${GITHUB_REF_NAME}"
+
+          browser_zip="offline-md-editor-viewer-browser-${tag}.zip"
+          desktop_zip="offline-md-editor-viewer-desktop-${tag}-win-x64-portable.zip"
+          single_html="offline-md-editor-viewer.html"
+          single_exe="offline-md-editor-viewer.exe"
+
+          for f in "$browser_zip" "$desktop_zip" "$single_html" "$single_exe"; do
+            if [ ! -f "$f" ]; then
+              echo "Missing release asset: $f" >&2
+              exit 1
+            fi
+          done
+
+          unzip -p "$browser_zip" "offline-md-editor-viewer-browser-${tag}/offline-md-editor-viewer.html" > .zip-html.bin
+          zip_html_hash=$(sha256sum .zip-html.bin | cut -d' ' -f1)
+          single_html_hash=$(sha256sum "$single_html" | cut -d' ' -f1)
+          if [ "$zip_html_hash" != "$single_html_hash" ]; then
+            echo "MISMATCH: browser ZIP HTML ($zip_html_hash) differs from standalone HTML ($single_html_hash)" >&2
+            exit 1
+          fi
+          echo "OK: browser ZIP HTML matches standalone HTML ($single_html_hash)"
+
+          unzip -p "$desktop_zip" "offline-md-editor-viewer-desktop-${tag}-win-x64-portable/offline-md-editor-viewer.exe" > .zip-exe.bin
+          zip_exe_hash=$(sha256sum .zip-exe.bin | cut -d' ' -f1)
+          single_exe_hash=$(sha256sum "$single_exe" | cut -d' ' -f1)
+          if [ "$zip_exe_hash" != "$single_exe_hash" ]; then
+            echo "MISMATCH: desktop ZIP exe ($zip_exe_hash) differs from standalone exe ($single_exe_hash)" >&2
+            exit 1
+          fi
+          echo "OK: desktop ZIP exe matches standalone exe ($single_exe_hash)"
+
+          rm -f .zip-html.bin .zip-exe.bin
+
+      - name: Compute SHA-256 checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/release-assets
+          tag="${GITHUB_REF_NAME}"
+          sha256sum \
+            "offline-md-editor-viewer.html" \
+            "offline-md-editor-viewer.exe" \
+            "offline-md-editor-viewer-browser-${tag}.zip" \
+            "offline-md-editor-viewer-desktop-${tag}-win-x64-portable.zip" \
+            > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          mapfile -d "" assets < <(find dist/release-assets -type f -print0)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets were downloaded." >&2
+            exit 1
+          fi
+          checksum_section=$'---\n\n## SHA-256 Checksums\n\n```\n'"$(cat dist/release-assets/SHA256SUMS.txt)"$'\n```'
+
+          update_release_notes() {
+            existing_notes="$(gh release view "${tag}" --json body --jq '.body')"
+            notes_file="$(mktemp)"
+            EXISTING_NOTES="${existing_notes}" CHECKSUM_SECTION="${checksum_section}" python3 - <<'PY' > "${notes_file}"
+          import os
+
+          body = os.environ["EXISTING_NOTES"].rstrip()
+          checksum = os.environ["CHECKSUM_SECTION"].rstrip()
+          marker = "## SHA-256 Checksums"
+
+          idx = body.find(marker)
+          if idx != -1:
+              sep_idx = body.rfind("\n---", 0, idx)
+              if sep_idx == -1:
+                  sep_idx = idx
+              body = body[:sep_idx].rstrip()
+
+          if body:
+              print(body)
+              print()
+              print(checksum)
+          else:
+              print(checksum)
+          PY
+            gh release edit "${tag}" --notes-file "${notes_file}"
+            rm -f "${notes_file}"
+          }
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" "${assets[@]}" --clobber
+            update_release_notes
+          else
+            # Create with auto-generated notes first, then append checksum section
+            gh release create "${tag}" "${assets[@]}" --title "${tag}" --generate-notes
+            update_release_notes
+          fi

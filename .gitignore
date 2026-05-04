@@ -1,0 +1,21 @@
+.claude/
+.vscode/
+CLAUDE.local.md
+GEMINI.md
+
+# Local/private docs and scripts
+docs/local/
+scripts/local/
+
+# Build artifacts
+dist/
+apps/desktop/node_modules/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/target-codex-*/
+apps/desktop/src-tauri/gen/schemas/
+apps/desktop/src-tauri/desktop-frontend-dist/
+
+# Logs and OS/editor noise
+*.log
+.DS_Store
+Thumbs.db

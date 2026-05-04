@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img">
+  <title>offline-md-editor-viewer app icon</title>
+  <desc>Classic M-arrow-down Markdown mark on dark navy rounded square, matching the editor's color theme.</desc>
+
+  <!-- Background: dark navy rounded square -->
+  <rect width="1024" height="1024" rx="225" fill="#0b1020"/>
+
+  <!-- Outer border (--line) -->
+  <rect x="5" y="5" width="1014" height="1014" rx="220" fill="none" stroke="#2a355f" stroke-width="10"/>
+
+  <!-- Inner subtle frame (--accent-soft) -->
+  <rect x="72" y="72" width="880" height="880" rx="164" fill="none" stroke="#1d4f7c" stroke-width="5" opacity="0.55"/>
+
+  <!-- M (--accent #59b2ff) -->
+  <path d="M 230 742 L 230 333 L 410 538 L 589 333 L 589 742"
+        fill="none" stroke="#59b2ff" stroke-width="92"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Down arrow (--quote #84c3ff) -->
+  <path d="M 758 333 L 758 707 M 655 604 L 758 707 L 860 604"
+        fill="none" stroke="#84c3ff" stroke-width="92"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

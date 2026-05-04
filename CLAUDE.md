@@ -110,10 +110,22 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 `v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
 詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual_release.md` を参照すること。
 
+タグ push は、必ず release commit と `.github/workflows/release.yml` が `origin/main` に反映された後に行う。タグを先に push すると、GitHub 側に workflow が存在せず Release が作成されないことがある。
+
 ```bash
+git push origin main
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+タグ push 後は Actions 起動と Release 作成を確認する。
+
+```bash
+gh run list --repo ishizakahiroshi/offline-md-editor-viewer --workflow Release --limit 5
+gh release view v0.1.0 --repo ishizakahiroshi/offline-md-editor-viewer
+```
+
+タグだけ push 済みで Release が作成されなかった場合は、workflow が `origin/main` に存在することを確認してから remote tag を削除し、同じタグを push し直す。
 
 ### リリース前のローカル確認（ブラウザ単一HTML）
 

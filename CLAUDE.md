@@ -110,6 +110,8 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 `v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
 詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual_release.md` を参照すること。
 
+Release notes には、アプリ概要、Downloads、GitHub 自動生成ノート、SHA-256 Checksums が自動で入る。既存 Release へ再実行する場合も assets は `--clobber` で更新し、SHA-256 Checksums セクションは差し替える。
+
 タグ push は、必ず release commit と `.github/workflows/release.yml` が `origin/main` に反映された後に行う。タグを先に push すると、GitHub 側に workflow が存在せず Release が作成されないことがある。
 
 ```bash

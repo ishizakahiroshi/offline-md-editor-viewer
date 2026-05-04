@@ -20,6 +20,17 @@
 
 > **まずはブラウザ版がおすすめです。** 使ってみて、ちょっと使いにくいと感じたり、デスクトップ版の機能が必要と感じたときにデスクトップ版をお試しください。
 
+## すぐ使う
+
+最新版は [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードできます。
+
+| やりたいこと | ダウンロード |
+| --- | --- |
+| Chrome ですぐ試す | `offline-md-editor-viewer.html` |
+| Windows アプリとして使う | `offline-md-editor-viewer.exe` |
+| ブラウザ版を保管・再配布する | `offline-md-editor-viewer-browser-vX.X.X.zip` |
+| Windows 版を保管・再配布する | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
 ## こんな人に向いています
 
 - **ビルドもインストールも不要。** ブラウザ版は単一 HTML ファイルを開くだけで動作し、Windows デスクトップ版は USB に置けるポータブル `.exe` です。

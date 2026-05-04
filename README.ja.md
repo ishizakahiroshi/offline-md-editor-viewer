@@ -10,6 +10,10 @@
   <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows デスクトップ版スクリーンショット" width="49%">
 </p>
 
+## デモ
+
+https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
+
 手元の Markdown をブラウザまたは Windows デスクトップアプリで編集・プレビューするための、オフラインファーストなツールです。
 
 `.md` を開いて左側で編集、右側でプレビュー、そのまま元のファイルに上書き保存。アカウント登録も同期もなく、起動から終了までネットワークに触れずに完結します。

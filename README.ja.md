@@ -5,6 +5,15 @@
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<p>
+  <img src="./docs/assets/screenshot-browser-en.png" alt="ブラウザ版スクリーンショット" width="49%">
+  <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows デスクトップ版スクリーンショット" width="49%">
+</p>
+
+## デモ
+
+https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
+
 手元の Markdown をブラウザまたは Windows デスクトップアプリで編集・プレビューするための、オフラインファーストなツールです。
 
 `.md` を開いて左側で編集、右側でプレビュー、そのまま元のファイルに上書き保存。アカウント登録も同期もなく、起動から終了までネットワークに触れずに完結します。
@@ -15,6 +24,17 @@
 
 > **まずはブラウザ版がおすすめです。** 使ってみて、ちょっと使いにくいと感じたり、デスクトップ版の機能が必要と感じたときにデスクトップ版をお試しください。
 
+## すぐ使う
+
+最新版は [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードできます。
+
+| やりたいこと | ダウンロード |
+| --- | --- |
+| Chrome ですぐ試す | `offline-md-editor-viewer.html` |
+| Windows アプリとして使う | `offline-md-editor-viewer.exe` |
+| ブラウザ版を保管・再配布する | `offline-md-editor-viewer-browser-vX.X.X.zip` |
+| Windows 版を保管・再配布する | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
 ## こんな人に向いています
 
 - **ビルドもインストールも不要。** ブラウザ版は単一 HTML ファイルを開くだけで動作し、Windows デスクトップ版は USB に置けるポータブル `.exe` です。
@@ -23,6 +43,13 @@
 - **フォルダ単位で扱えます。** 一度フォルダを指定すれば、左側のツリーから `.md` を選んで開けます。ノート集やドキュメントツリーの確認に。
 - **読みやすいデフォルト。** 見出し・表・引用・コードブロックに調整したダーク/ライトテーマ、文字サイズ変更にも対応。
 - **UI は 13 言語。** English / 日本語 / 简体中文 / 繁體中文 / Español / Deutsch / 한국어 / Português (Brasil) / Русский / Tiếng Việt / Français / Italiano / Bahasa Indonesia
+
+## セキュリティ / プライバシー
+
+- **ファイルをアップロードしません。** Markdown ファイルはブラウザまたはデスクトップ WebView 内でローカルに読み込み・描画します。
+- **CDN を使いません。** 実行時ライブラリとアイコンはアプリに同梱しています。
+- **アプリから外部通信しません。** リリース版は Content Security Policy の `connect-src 'none'` を使います。
+- **外部リンクは任意です。** `http` / `https` リンクは、設定で「外部リンク」を有効にしてクリックした場合だけ開きます。
 
 ## 使い方の流れ
 

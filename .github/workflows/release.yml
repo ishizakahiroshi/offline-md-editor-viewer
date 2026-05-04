@@ -192,11 +192,32 @@ jobs:
           update_release_notes() {
             existing_notes="$(gh release view "${tag}" --json body --jq '.body')"
             notes_file="$(mktemp)"
-            EXISTING_NOTES="${existing_notes}" CHECKSUM_SECTION="${checksum_section}" python3 - <<'PY' > "${notes_file}"
+            TAG="${tag}" EXISTING_NOTES="${existing_notes}" CHECKSUM_SECTION="${checksum_section}" python3 - <<'PY' > "${notes_file}"
           import os
 
+          tag = os.environ["TAG"]
           body = os.environ["EXISTING_NOTES"].rstrip()
           checksum = os.environ["CHECKSUM_SECTION"].rstrip()
+          intro = f"""## Offline Markdown Editor Viewer {tag}
+
+A local-first Markdown editor/viewer that runs in your browser or as a Windows desktop app.
+
+- Browser edition: single HTML file, no install required
+- Windows edition: portable `.exe`
+- No CDN or external network calls
+- Edit local `.md` files and preview side-by-side
+- Folder tree, synced scrolling, encoding support
+- UI in 13 languages
+
+Start with the browser edition unless you need desktop-only features.
+
+## Downloads
+
+- `offline-md-editor-viewer.html` - browser edition, single HTML
+- `offline-md-editor-viewer-browser-{tag}.zip` - browser edition package with docs/licenses
+- `offline-md-editor-viewer.exe` - Windows portable app
+- `offline-md-editor-viewer-desktop-{tag}-win-x64-portable.zip` - Windows portable package"""
+          intro_marker = "## Offline Markdown Editor Viewer "
           marker = "## SHA-256 Checksums"
 
           idx = body.find(marker)
@@ -207,10 +228,14 @@ jobs:
               body = body[:sep_idx].rstrip()
 
           if body:
+              if not body.startswith(intro_marker):
+                  body = intro + "\n\n" + body
               print(body)
               print()
               print(checksum)
           else:
+              print(intro)
+              print()
               print(checksum)
           PY
             gh release edit "${tag}" --notes-file "${notes_file}"

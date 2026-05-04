@@ -6,6 +6,15 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+<p>
+  <img src="./docs/assets/screenshot-browser-en.png" alt="Browser edition screenshot" width="49%">
+  <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows desktop edition screenshot" width="49%">
+</p>
+
+## Demo
+
+https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
+
 An offline-first Markdown editor/viewer that runs in your browser or as a Windows desktop app.
 
 Open a `.md` file, edit on the left, see the rendered result on the right, and save back to the same file. That's the whole loop — no account, no sync, no network calls.
@@ -20,6 +29,17 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 
 > **Start with the browser edition.** If it feels limiting or you find yourself wanting a desktop-only feature, that's the right time to try the desktop app.
 
+## Quick Download
+
+Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
+
+| Want to... | Download |
+| --- | --- |
+| Try it quickly in Chrome | `offline-md-editor-viewer.html` |
+| Run it as a Windows app | `offline-md-editor-viewer.exe` |
+| Archive or redistribute the browser edition | `offline-md-editor-viewer-browser-vX.X.X.zip` |
+| Archive or redistribute the Windows edition | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
 ## Why you might like it
 
 - **No build, no install.** The browser edition is a single HTML file you open directly. The Windows desktop edition is a portable `.exe` you can drop on a USB stick.
@@ -28,6 +48,13 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
 - **Readable defaults.** Dark/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
+
+## Security / Privacy
+
+- **No file uploads.** Markdown files are read and rendered locally in your browser or desktop WebView.
+- **No CDN.** Runtime libraries and icons are bundled with the app.
+- **No app network calls.** Release builds use `connect-src 'none'` in the Content Security Policy.
+- **External links are opt-in.** `http` / `https` links open only when you enable the External links setting and click a link.
 
 ## How It Works
 

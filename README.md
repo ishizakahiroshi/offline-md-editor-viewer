@@ -10,6 +10,10 @@
   <img src="./docs/assets/screenshot-desktop-ja.png" alt="Windows desktop edition screenshot" width="49%">
 </p>
 
+## Demo
+
+https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
+
 An offline-first Markdown editor/viewer that runs in your browser or as a Windows desktop app.
 
 Open a `.md` file, edit on the left, see the rendered result on the right, and save back to the same file. That's the whole loop — no account, no sync, no network calls.

@@ -8,6 +8,78 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3Crect width='1024' height='1024' rx='225' fill='%230b1020'/%3E%3Crect x='5' y='5' width='1014' height='1014' rx='220' fill='none' stroke='%232a355f' stroke-width='10'/%3E%3Crect x='72' y='72' width='880' height='880' rx='164' fill='none' stroke='%231d4f7c' stroke-width='5' opacity='.55'/%3E%3Cpath d='M 230 742 L 230 333 L 410 538 L 589 333 L 589 742' fill='none' stroke='%2359b2ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M 758 333 L 758 707 M 655 604 L 758 707 L 860 604' fill='none' stroke='%2384c3ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <style>
     :root {
+      color-scheme: dark;
+      --bg: #181a1c;
+      --bg-elev: #202326;
+      --panel: #24282c;
+      --line: #3a3f45;
+      --text: #f0f2f4;
+      --muted: #a9b0b6;
+      --accent: #8fb7d9;
+      --accent-soft: #2f4658;
+      --code-bg: #121416;
+      --quote: #bdd3e5;
+      --danger: #ff6b81;
+      --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      --control-height: 42px;
+      --app-font-scale: 1;
+      --toolbar-bg: rgba(32, 35, 38, 0.88);
+      --body-grad1: #2a2f34;
+      --body-grad2: #1d2429;
+      /* component-level tokens */
+      --btn-bg: linear-gradient(180deg, #2a2f34, #1e2226);
+      --pill-bg: rgba(31, 34, 37, 0.88);
+      --toggle-off-bg: #30353a;
+      --toggle-off-border: #4b5158;
+      --toggle-on-bg: #4d6e87;
+      --toggle-on-border: #6f91aa;
+      --toggle-knob: #eef3f7;
+      --panel-bg: linear-gradient(180deg, rgba(39, 43, 47, 0.96), rgba(32, 35, 38, 0.96));
+      --badge-border: #59626b;
+      --badge-bg: rgba(143, 183, 217, 0.16);
+      --badge-text: #e2edf5;
+      --tooltip-bg: rgba(35, 39, 43, 0.94);
+      --tooltip-text: #d4d9de;
+      --blockquote-bg: rgba(143, 183, 217, 0.13);
+      --blockquote-text: #dceaf4;
+      --inline-code-bg: rgba(143, 183, 217, 0.18);
+      --inline-code-text: #c7e0f2;
+      --pre-border: #363c42;
+      --pre-code-text: #dfe7ed;
+      --table-border: #464d54;
+      --table-bg: rgba(24, 26, 28, 0.86);
+      --table-cell-border: #3d444b;
+      --th-bg: rgba(58, 63, 69, 0.62);
+      --th-text: #f2f5f7;
+      --hr-color: #3d444b;
+      --h-text: #f7f9fb;
+      --h1-border: #4b535b;
+      --h2-border: #424950;
+      --editable-bg: rgba(18, 22, 25, 0.98);
+      --source-selection-text: rgba(247, 251, 255, 0.96);
+      --selection-sync-bg: rgba(143, 183, 217, 0.42);
+      --selection-sync-ring: rgba(189, 211, 229, 0.65);
+      --md-src-text: #e1e6ea;
+      --md-src-marker: #9ba4ad;
+      --md-src-heading: #f5f7f8;
+      --md-src-strong: #ffd166;
+      --md-src-em: #ffc9dd;
+      --md-src-code: #9fe6c8;
+      --md-src-link: #a9cce8;
+      --md-src-url: #c1d9ea;
+      --md-src-quote: #bdd3e5;
+      --md-src-list: #ffcf8a;
+      --md-src-table: #aeb9c4;
+      --ui-font: "BIZ UDGothic", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
+      --mono-font: "Cascadia Mono", "Cascadia Code", "Consolas", "BIZ UDGothic", "MS Gothic", "Noto Sans Mono CJK JP", monospace;
+    }
+
+    [data-density="compact"] {
+      --control-height: 36px;
+    }
+
+    [data-theme="blue"] {
+      color-scheme: dark;
       --bg: #0b1020;
       --bg-elev: #111833;
       --panel: #151d39;
@@ -20,12 +92,9 @@
       --quote: #84c3ff;
       --danger: #ff6b81;
       --shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-      --control-height: 42px;
-      --app-font-scale: 1;
       --toolbar-bg: rgba(17, 24, 51, 0.85);
       --body-grad1: #17264b;
       --body-grad2: #10224e;
-      /* component-level tokens */
       --btn-bg: linear-gradient(180deg, #1a264a, #121a36);
       --pill-bg: rgba(18, 27, 56, 0.85);
       --toggle-off-bg: #29355c;
@@ -69,15 +138,10 @@
       --md-src-quote: #9ad7ff;
       --md-src-list: #ffcf8a;
       --md-src-table: #86a8e7;
-      --ui-font: "BIZ UDGothic", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
-      --mono-font: "Cascadia Mono", "Cascadia Code", "Consolas", "BIZ UDGothic", "MS Gothic", "Noto Sans Mono CJK JP", monospace;
-    }
-
-    [data-density="compact"] {
-      --control-height: 36px;
     }
 
     [data-theme="light"] {
+      color-scheme: light;
       --bg: #d8cfbe;
       --bg-elev: #d0c6b3;
       --panel: #dbd2c1;
@@ -136,69 +200,6 @@
       --md-src-quote: #315f78;
       --md-src-list: #7a4200;
       --md-src-table: #4c5f74;
-    }
-
-    @media (prefers-color-scheme: light) {
-      :root:not([data-theme="dark"]) {
-        --bg: #d8cfbe;
-        --bg-elev: #d0c6b3;
-        --panel: #dbd2c1;
-        --line: #ad9f87;
-        --text: #2a2018;
-        --muted: #6a5a48;
-        --accent: #6b4f28;
-        --accent-soft: #b0a088;
-        --code-bg: #cec3ae;
-        --quote: #7a5a2c;
-        --danger: #cc2233;
-        --shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-        --toolbar-bg: rgba(208, 198, 179, 0.92);
-        --body-grad1: #c4bba6;
-        --body-grad2: #bcb19a;
-        --btn-bg: linear-gradient(180deg, #d3cab7, #c5bba6);
-        --pill-bg: rgba(206, 196, 178, 0.92);
-        --toggle-off-bg: #a89c86;
-        --toggle-off-border: #887c66;
-        --toggle-on-bg: #6b4f28;
-        --toggle-on-border: #4f371a;
-        --toggle-knob: #f5ecdc;
-        --panel-bg: linear-gradient(180deg, rgba(218, 208, 190, 0.97), rgba(208, 198, 179, 0.97));
-        --badge-border: #988874;
-        --badge-bg: rgba(140, 120, 90, 0.18);
-        --badge-text: #3a2810;
-        --tooltip-bg: rgba(206, 196, 178, 0.97);
-        --tooltip-text: #2a2018;
-        --blockquote-bg: rgba(120, 90, 50, 0.10);
-        --blockquote-text: #3a2810;
-        --inline-code-bg: rgba(120, 90, 50, 0.16);
-        --inline-code-text: #5a3c18;
-        --pre-border: #a89c86;
-        --pre-code-text: #3a2810;
-        --table-border: #a89c86;
-        --table-bg: rgba(216, 206, 188, 0.9);
-        --table-cell-border: #ad9f87;
-        --th-bg: rgba(168, 156, 134, 0.45);
-        --th-text: #2a2018;
-        --hr-color: #ad9f87;
-        --h-text: #1e1610;
-        --h1-border: #9c8c78;
-        --h2-border: #a89c86;
-        --editable-bg: rgba(255, 255, 242, 0.98);
-        --source-selection-text: rgba(30, 22, 16, 0.96);
-        --selection-sync-bg: rgba(68, 132, 190, 0.30);
-        --selection-sync-ring: rgba(36, 89, 138, 0.42);
-        --md-src-text: #241a11;
-        --md-src-marker: #6b5b47;
-        --md-src-heading: #130e09;
-        --md-src-strong: #6d3f00;
-        --md-src-em: #7a2448;
-        --md-src-code: #205a35;
-        --md-src-link: #005a9e;
-        --md-src-url: #225f85;
-        --md-src-quote: #315f78;
-        --md-src-list: #7a4200;
-        --md-src-table: #4c5f74;
-      }
     }
 
     * {
@@ -2745,7 +2746,8 @@
     }
 
     .source-scroll-shell.is-editing {
-      background: transparent;
+      background: var(--editable-bg);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
     }
 
     .source-scroll-shell.is-editing .source-highlight {
@@ -2994,21 +2996,6 @@
       padding: 3px 7px;
     }
 
-    .theme-icon {
-      width: 16px;
-      height: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      user-select: none;
-    }
-
-    .theme-icon svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
     .theme-switch {
       position: relative;
       display: inline-block;
@@ -3079,6 +3066,7 @@
       background: var(--pill-bg);
     }
 
+    .theme-select,
     .font-size-select,
     .density-select {
       appearance: none;
@@ -3100,16 +3088,56 @@
       color-scheme: dark;
     }
 
+    .theme-select {
+      min-width: 92px;
+    }
+
+    .theme-select[data-selected-theme="dark"] {
+      background-color: #181a1c;
+      color: #f0f2f4;
+      border-color: #3a3f45;
+    }
+
+    .theme-select[data-selected-theme="blue"] {
+      background-color: #111833;
+      color: #e5eefc;
+      border-color: #2a355f;
+    }
+
+    .theme-select[data-selected-theme="light"] {
+      background-color: #d8cfbe;
+      color: #2a2018;
+      border-color: #ad9f87;
+    }
+
+    .theme-select option[value="dark"] {
+      background-color: #181a1c;
+      color: #f0f2f4;
+    }
+
+    .theme-select option[value="blue"] {
+      background-color: #111833;
+      color: #e5eefc;
+    }
+
+    .theme-select option[value="light"] {
+      background-color: #d8cfbe;
+      color: #2a2018;
+    }
+
+    [data-theme="light"] .theme-select,
     [data-theme="light"] .font-size-select,
     [data-theme="light"] .density-select {
       color-scheme: light;
     }
 
+    .theme-select:hover,
     .font-size-select:hover,
     .density-select:hover {
       border-color: var(--accent);
     }
 
+    .theme-select:focus,
     .font-size-select:focus,
     .density-select:focus {
       border-color: var(--accent);
@@ -3545,13 +3573,12 @@
         </div>
         <div class="app-menu-row">
           <span id="themeLabel" class="app-menu-label"></span>
-          <div class="lang-wrap">
-            <span class="theme-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
-            <label class="theme-switch">
-              <input id="themeToggle" type="checkbox" aria-label="Theme toggle">
-              <span class="theme-slider"></span>
-            </label>
-            <span class="theme-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
+          <div class="theme-wrap">
+            <select id="themeSelect" class="theme-select" aria-label="Theme">
+              <option value="dark">Dark</option>
+              <option value="blue">Blue</option>
+              <option value="light">Light</option>
+            </select>
           </div>
         </div>
         <div class="app-menu-row">
@@ -3682,7 +3709,7 @@
               </li>
               <li>
                 <a id="aboutTauriLink" class="about-license-link" href="https://github.com/tauri-apps/tauri" target="_blank" rel="noopener noreferrer">
-                  <span class="about-license-name">Tauri 2.10.3</span>
+                  <span class="about-license-name">Tauri 2.11.0</span>
                   <span id="aboutTauriLicense" class="about-license-detail"></span>
                 </a>
               </li>
@@ -4007,7 +4034,7 @@
       const languageLabel = document.getElementById("languageLabel");
       const themeLabel = document.getElementById("themeLabel");
       const langSelect = document.getElementById("langSelect");
-      const themeToggle = document.getElementById("themeToggle");
+      const themeSelect = document.getElementById("themeSelect");
       const fileTreeFilterLabel = document.getElementById("fileTreeFilterLabel");
       const fileTreeFilterHelp = document.getElementById("fileTreeFilterHelp");
       const fileTreeShowAllToggle = document.getElementById("fileTreeShowAllToggle");
@@ -4180,7 +4207,7 @@ Open a \`.md\` file, edit on the left, see the rendered result on the right, and
 - **Your files stay yours.** File content is never uploaded anywhere. Save writes back to the original file on your disk.
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
-- **Readable defaults.** Dark/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
+- **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
 ## Security / Privacy
@@ -4327,7 +4354,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 The app remembers some preferences in your browser's local storage so you don't have to set them every time. Saved items include:
 
 - UI language (initially detected from your system/browser language, then overridden by your selection)
-- Theme (dark/light) and font size
+- Theme (dark/blue/light) and font size
 - File list sort order and tool-row visibility
 - Card (file list / source / preview) visibility and width
 - Last opened folder handle (stored in IndexedDB; permission may still be re-prompted on next use)
@@ -4378,7 +4405,7 @@ The author and contributors are not liable for any damages resulting from its us
 - **書いたものは手元に残ります。** ファイル内容をどこかへ送信する処理はなく、保存は元ファイルへの上書きだけです。
 - **書きながら結果が見えます。** タイプに合わせてプレビューが更新され、左右パネルはスクロール同期します。
 - **フォルダ単位で扱えます。** 一度フォルダを指定すれば、左側のツリーから \`.md\` を選んで開けます。ノート集やドキュメントツリーの確認に。
-- **読みやすいデフォルト。** 見出し・表・引用・コードブロックに調整したダーク/ライトテーマ、文字サイズ変更にも対応。
+- **読みやすいデフォルト。** 見出し・表・引用・コードブロックに調整したダーク/ブルー/ライトテーマ、文字サイズ変更にも対応。
 - **UI は 13 言語。** English / 日本語 / 简体中文 / 繁體中文 / Español / Deutsch / 한국어 / Português (Brasil) / Русский / Tiếng Việt / Français / Italiano / Bahasa Indonesia
 
 ## セキュリティ / プライバシー
@@ -4519,7 +4546,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 毎回設定し直さなくて済むように、一部の設定はブラウザのローカル保存領域に記憶します。記憶される項目は以下の通りです。
 
 - UI 言語（初回はシステム/ブラウザ言語から自動判定、ユーザーが選択するとそれ以降は選択値を優先）
-- テーマ（ダーク/ライト）と文字サイズ
+- テーマ（ダーク/ブルー/ライト）と文字サイズ
 - ファイル一覧の並び順、ツール行の表示/非表示
 - カード（ファイル一覧 / ソース / プレビュー）の表示/非表示と幅
 - 直近に開いたフォルダのハンドル（IndexedDB に保存。次回利用時に再度アクセス許可を求められる場合があります）
@@ -4560,6 +4587,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const STORAGE_KEY_PREFIX = "offline_md_editor_viewer_";
       const STORAGE_LANG_KEY = "offline_md_editor_viewer_lang";
       const STORAGE_THEME_KEY = "offline_md_editor_viewer_theme";
+      const STORAGE_THEME_SCHEMA_KEY = "offline_md_editor_viewer_theme_schema";
       const STORAGE_FONT_SCALE_KEY = "offline_md_editor_viewer_font_scale";
       const STORAGE_DENSITY_KEY = "offline_md_editor_viewer_density";
       const FONT_SCALE_OPTIONS = [
@@ -4814,6 +4842,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.fontSizeLabel": ["Font", "文字", "字型", "字号", "Fuente", "Schrift", "글꼴", "Fonte", "Шрифт", "Phông", "Police", "Carattere", "Fon"],
         "ui.densityLabel": ["Density", "密度", "密度", "密度", "Densidad", "Dichte", "밀도", "Densidade", "Плотность", "Mật độ", "Densité", "Densita", "Kepadatan"],
         "ui.themeLabel": ["Theme", "テーマ", "佈景主題", "主题", "Tema", "Design", "테마", "Tema", "Тема", "Giao diện", "Thème", "Tema", "Tema"],
+        "ui.themeDark": ["Dark", "ダーク", "深色", "深色", "Oscuro", "Dunkel", "다크", "Escuro", "Тёмная", "Tối", "Sombre", "Scuro", "Gelap"],
+        "ui.themeBlue": ["Blue", "ブルー", "藍色", "蓝色", "Azul", "Blau", "블루", "Azul", "Синяя", "Xanh", "Bleu", "Blu", "Biru"],
+        "ui.themeLight": ["Light", "ライト", "淺色", "浅色", "Claro", "Hell", "라이트", "Claro", "Светлая", "Sáng", "Clair", "Chiaro", "Terang"],
         "ui.fileTreeFilterLabel": ["File tree", "ツリー表示", "檔案樹", "文件树", "Árbol de archivos", "Dateibaum", "파일 트리", "Arvore de arquivos", "Дерево файлов", "Cây tệp", "Arborescence", "Albero file", "Pohon file"],
         "ui.fileTreeShowAllTitle": ["Show all file formats in the tree", "ツリーにすべての形式を表示", "在檔案樹顯示所有檔案格式", "在文件树中显示所有格式", "Mostrar todos los formatos en el árbol", "Alle Dateiformate im Baum anzeigen", "트리에 모든 파일 형식 표시", "Mostrar todos os formatos na arvore", "Показывать все форматы файлов в дереве", "Hien thi moi dinh dang trong cay tep", "Afficher tous les formats dans l'arborescence", "Mostra tutti i formati nell'albero", "Tampilkan semua format di pohon"],
         "ui.fileTreeFilterHelp": ["OFF: only .md/.markdown files are shown. Folders always stay visible.", "OFF: .md/.markdownのみ表示。フォルダは常に表示します。", "OFF：僅顯示 .md/.markdown。資料夾一律顯示。", "OFF：仅显示 .md/.markdown。文件夹始终显示。", "OFF: solo se muestran .md/.markdown. Las carpetas siempre se muestran.", "AUS: Nur .md/.markdown-Dateien werden angezeigt. Ordner bleiben immer sichtbar.", "OFF: .md/.markdown 파일만 표시합니다. 폴더는 항상 표시됩니다.", "OFF: somente .md/.markdown sao exibidos. Pastas sempre ficam visiveis.", "Выкл.: показываются только .md/.markdown. Папки всегда видны.", "OFF: chi hien thi .md/.markdown. Thu muc luon hien thi.", "OFF : seuls les fichiers .md/.markdown sont affiches. Les dossiers restent toujours visibles.", "OFF: mostra solo .md/.markdown. Le cartelle restano sempre visibili.", "OFF: hanya .md/.markdown yang ditampilkan. Folder selalu terlihat."],
@@ -5689,7 +5720,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         aboutEncodingJapaneseLink.setAttribute("aria-label", `encoding-japanese 2.2.0 — ${licenseLinkTooltip}`);
         aboutTauriLicense.textContent = t("about", "tauriLicense");
         setUiTooltip(aboutTauriLink, licenseLinkTooltip, { aria: false });
-        aboutTauriLink.setAttribute("aria-label", `Tauri 2.10.3 — ${licenseLinkTooltip}`);
+        aboutTauriLink.setAttribute("aria-label", `Tauri 2.11.0 — ${licenseLinkTooltip}`);
         aboutNoticesText.textContent = t("about", "noticesText");
         aboutIconsHeading.textContent = t("about", "iconsHeading");
         aboutFeatherIconsLicense.textContent = t("about", "featherIconsLicense");
@@ -5975,6 +6006,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setUiTooltip(appMenuBtn, t("ui", "appMenuButtonTitle"));
         languageLabel.textContent = t("ui", "languageLabel");
         themeLabel.textContent = t("ui", "themeLabel");
+        themeSelect.setAttribute("aria-label", t("ui", "themeLabel"));
+        themeSelect.querySelector('option[value="dark"]').textContent = t("ui", "themeDark");
+        themeSelect.querySelector('option[value="blue"]').textContent = t("ui", "themeBlue");
+        themeSelect.querySelector('option[value="light"]').textContent = t("ui", "themeLight");
         fileTreeFilterLabel.textContent = t("ui", "fileTreeFilterLabel");
         fileTreeFilterHelp.textContent = t("ui", "fileTreeFilterHelp");
         fileTreeShowAllToggle.setAttribute("aria-label", t("ui", "fileTreeFilterLabel"));
@@ -11466,23 +11501,25 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function detectInitialTheme() {
         const saved = localStorage.getItem(STORAGE_THEME_KEY);
-        if (saved === "light" || saved === "dark") return saved;
-        return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        const themeSchema = localStorage.getItem(STORAGE_THEME_SCHEMA_KEY);
+        if (themeSchema === null) {
+          safeLocalStorageSet(STORAGE_THEME_SCHEMA_KEY, "three-theme");
+          if (saved === "dark") return "blue";
+        }
+        if (saved === "dark" || saved === "blue" || saved === "light") return saved;
+        return "dark";
       }
 
       function applyTheme(theme) {
-        if (theme === "light") {
-          document.documentElement.setAttribute("data-theme", "light");
-          themeToggle.checked = true;
-        } else {
-          document.documentElement.setAttribute("data-theme", "dark");
-          themeToggle.checked = false;
-        }
-        safeLocalStorageSet(STORAGE_THEME_KEY, theme);
+        const nextTheme = theme === "dark" || theme === "blue" || theme === "light" ? theme : "dark";
+        document.documentElement.setAttribute("data-theme", nextTheme);
+        themeSelect.value = nextTheme;
+        themeSelect.dataset.selectedTheme = nextTheme;
+        safeLocalStorageSet(STORAGE_THEME_KEY, nextTheme);
       }
 
-      themeToggle.addEventListener("change", () => {
-        applyTheme(themeToggle.checked ? "light" : "dark");
+      themeSelect.addEventListener("change", () => {
+        applyTheme(themeSelect.value);
       });
 
       function applyExternalLinksEnabled(enabled) {
@@ -11976,4 +12013,3 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
   </script>
 </body>
 </html>
-

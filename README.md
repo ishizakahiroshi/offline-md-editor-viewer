@@ -41,7 +41,7 @@ Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/o
 - **Your files stay yours.** File content is never uploaded anywhere. Save writes back to the original file on your disk.
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
-- **Readable defaults.** Dark/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
+- **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
 ## Security / Privacy
@@ -196,7 +196,7 @@ Get-FileHash .\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Alg
 The app remembers some preferences in your browser's local storage so you don't have to set them every time. Saved items include:
 
 - UI language (initially detected from your system/browser language, then overridden by your selection)
-- Theme (dark/light) and font size
+- Theme (dark/blue/light) and font size
 - File list sort order and tool-row visibility
 - Card (file list / source / preview) visibility and width
 - Last opened folder handle (stored in IndexedDB; permission may still be re-prompted on next use)

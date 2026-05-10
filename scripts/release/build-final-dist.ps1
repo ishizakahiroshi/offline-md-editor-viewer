@@ -168,7 +168,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [System.IO.Compression.ZipFile]::OpenRead($desktopZip)
 try {
   $entryPath = "$desktopPackage/offline-md-editor-viewer.exe"
-  $entry = $zip.Entries | Where-Object { $_.FullName -eq $entryPath } | Select-Object -First 1
+  $entry = $zip.Entries | Where-Object { $_.FullName.Replace('\','/') -eq $entryPath } | Select-Object -First 1
   if (-not $entry) {
     throw "desktop ZIP does not contain offline-md-editor-viewer.exe at the expected path."
   }

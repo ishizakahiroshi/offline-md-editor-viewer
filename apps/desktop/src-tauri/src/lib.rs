@@ -99,7 +99,7 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
                 modified: 0,
             });
             let _ = collect_markdown_files(&path, files);
-        } else if metadata.is_file() && is_markdown_file(&path) {
+        } else if metadata.is_file() {
             let name = path
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -232,7 +232,7 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
                 "kind": "dir",
                 "path": path
             }));
-        } else if entry.path().is_file() && is_markdown_file(&entry.path()) {
+        } else if entry.path().is_file() {
             entries.push(serde_json::json!({
                 "name": name,
                 "kind": "file",

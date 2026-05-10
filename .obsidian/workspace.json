@@ -1,0 +1,198 @@
+{
+  "main": {
+    "id": "82218f8e1214260e",
+    "type": "split",
+    "children": [
+      {
+        "id": "92b228ebacdd7c25",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9785de41c05b3bca",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "apps/browser/docs/syntax-sample.ja.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "syntax-sample.ja"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "9a106e9d1e79d3c5",
+    "type": "split",
+    "children": [
+      {
+        "id": "98dfe5cd3c976181",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a862b019adedd2aa",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "ファイルエクスプローラ"
+            }
+          },
+          {
+            "id": "4ff70b83f4ac26fb",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "検索"
+            }
+          },
+          {
+            "id": "0bc356b5dd8d46ed",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "ブックマーク"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "1f48d3186287aa60",
+    "type": "split",
+    "children": [
+      {
+        "id": "d57c9ab21f3526d5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "34de2702bb24f93e",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "apps/browser/docs/syntax-sample.ja.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "syntax-sample.jaへのバックリンク"
+            }
+          },
+          {
+            "id": "4dc9501081994796",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "apps/browser/docs/syntax-sample.ja.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "syntax-sample.jaからのアウトゴーイングリンク"
+            }
+          },
+          {
+            "id": "b169bcb305ed928e",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "タグ"
+            }
+          },
+          {
+            "id": "2f319cc7b7328b13",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "すべてのプロパティ"
+            }
+          },
+          {
+            "id": "516e729b7f55952b",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "apps/browser/docs/syntax-sample.ja.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "syntax-sample.jaのアウトライン"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:クイックスイッチャーを開く": false,
+      "graph:グラフビューを開く": false,
+      "canvas:新規キャンバスを作成": false,
+      "daily-notes:今日のデイリーノートを開く": false,
+      "templates:テンプレートを挿入": false,
+      "command-palette:コマンドパレットを開く": false,
+      "bases:新規ベースを作成": false
+    }
+  },
+  "active": "9785de41c05b3bca",
+  "lastOpenFiles": [
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/Default/e0432535-edfd-4eb7-bdec-6c879d87260c.tmp",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/Default/DIPS-wal",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/Default/blob_storage/5f25b3a2-9a47-4882-92ba-a8c49f66dae7",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/lockfile",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/BrowserMetrics/BrowserMetrics-69FE0786-5520.pma",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/BrowserMetrics",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/Default/blob_storage/fb719422-a3b9-4f7f-8853-26ee8704b1a7",
+    "apps/desktop/src-tauri/target/release/offline-md-editor-viewer-userdata/EBWebView/BrowserMetrics/BrowserMetrics-69FE0770-3638.pma",
+    "apps/browser/docs/syntax-sample.md"
+  ]
+}

@@ -9798,14 +9798,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       async function renameDirectoryEntry(entry) {
         if (entry && entry.tauriPath) {
-          const isFile = entry.kind !== "dir";
-          const { base: defaultBase, ext: originalExt } = isFile ? splitFileNameExtension(entry.name) : { base: entry.name, ext: "" };
-          const newName = await openTextPrompt(t("status", "renamePrompt"), defaultBase, t("ui", "renameFile"));
+          const newName = await openTextPrompt(t("status", "renamePrompt"), entry.name, t("ui", "renameFile"));
           if (newName === null) return;
-          let trimmedName = newName.trim();
-          if (isFile && trimmedName && originalExt && !getFileExtension(trimmedName)) {
-            trimmedName += "." + originalExt;
-          }
+          const trimmedName = newName.trim();
           if (trimmedName === entry.name) return;
           if (!isValidRenameTarget(trimmedName)) {
             setStatus(t("status", "renameInvalid"), true);
@@ -9844,13 +9839,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
 
-        const { base: defaultBase, ext: originalExt } = splitFileNameExtension(entry.name);
-        const newName = await openTextPrompt(t("status", "renamePrompt"), defaultBase, t("ui", "renameFile"));
+        const newName = await openTextPrompt(t("status", "renamePrompt"), entry.name, t("ui", "renameFile"));
         if (newName === null) return;
-        let trimmedName = newName.trim();
-        if (trimmedName && originalExt && !getFileExtension(trimmedName)) {
-          trimmedName += "." + originalExt;
-        }
+        const trimmedName = newName.trim();
         if (trimmedName === entry.name) return;
         if (!isValidRenameTarget(trimmedName)) {
           setStatus(t("status", "renameInvalid"), true);

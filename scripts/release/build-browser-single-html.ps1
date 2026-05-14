@@ -1,5 +1,5 @@
 # build-browser-single-html.ps1
-# Generates a single-file browser HTML by inlining lib/*.js into the source HTML.
+# Generates a single-file browser HTML by inlining lib/*.js and lib/*.css into the source HTML.
 # Options: -Clean  -Verify  -Package -Version <vX.X.X>
 
 param(
@@ -32,12 +32,18 @@ if (-not (Test-Path $SrcHtml)) {
   exit 1
 }
 
-foreach ($lib in @('marked.min.js', 'purify.min.js', 'encoding.min.js')) {
+foreach ($lib in @('marked.min.js', 'purify.min.js', 'encoding.min.js', 'highlight.min.js')) {
   $p = Join-Path $LibDir $lib
   if (-not (Test-Path $p)) {
     Write-Error "Library not found: $p"
     exit 1
   }
+}
+
+$hljsCss = Join-Path $LibDir 'hljs-github-dark.min.css'
+if (-not (Test-Path $hljsCss)) {
+  Write-Error "CSS not found: $hljsCss"
+  exit 1
 }
 
 # --- clean ---
@@ -59,6 +65,7 @@ $srcContent = [System.IO.File]::ReadAllText($SrcHtml, [System.Text.Encoding]::UT
 $replacements = [ordered]@{
   '<script src="lib/marked.min.js"></script>'    = 'marked.min.js'
   '<script src="lib/purify.min.js"></script>'    = 'purify.min.js'
+  '<script src="lib/highlight.min.js"></script>' = 'highlight.min.js'
   '<script src="./lib/encoding.min.js"></script>' = 'encoding.min.js'
 }
 
@@ -73,8 +80,19 @@ foreach ($srcAttr in $replacements.Keys) {
   $result = $result.Replace($srcAttr, $inlineTag)
 }
 
+# Inline CSS: <link rel="stylesheet" href="lib/hljs-github-dark.min.css"> -> <style>...</style>
+$cssLinkTag = '<link rel="stylesheet" href="lib/hljs-github-dark.min.css">'
+$cssContent = [System.IO.File]::ReadAllText($hljsCss, [System.Text.Encoding]::UTF8)
+$cssContent = $cssContent -replace '</style>', '<\/style>'
+$inlineCssTag = "<style>`n$cssContent`n</style>"
+if (-not $result.Contains($cssLinkTag)) {
+  Write-Error "CSS link tag not found in source HTML: $cssLinkTag"
+  exit 1
+}
+$result = $result.Replace($cssLinkTag, $inlineCssTag)
+
 # --- inject notice comment after <!DOCTYPE html> ---
-$noticeComment = '<!-- Bundled libraries: marked (MIT), DOMPurify (Apache-2.0 / MPL-2.0), encoding-japanese (MIT). See THIRD_PARTY_NOTICES.md and LICENSES/ in the release bundle. -->'
+$noticeComment = '<!-- Bundled libraries: marked (MIT), DOMPurify (Apache-2.0 / MPL-2.0), encoding-japanese (MIT), highlight.js (BSD-3-Clause). See THIRD_PARTY_NOTICES.md and LICENSES/ in the release bundle. -->'
 $result = $result -replace '(<!DOCTYPE html>)', "`$1`n$noticeComment"
 
 # --- inline license texts into placeholders (rendered inside <pre> in About dialog) ---
@@ -83,6 +101,7 @@ $licensePlaceholders = [ordered]@{
   '<!-- MARKED_LICENSE_PLACEHOLDER -->'            = 'LICENSES/marked-LICENSE.md'
   '<!-- DOMPURIFY_LICENSE_PLACEHOLDER -->'         = 'LICENSES/DOMPurify-LICENSE.txt'
   '<!-- ENCODING_JAPANESE_LICENSE_PLACEHOLDER -->' = 'LICENSES/encoding-japanese-LICENSE.txt'
+  '<!-- HIGHLIGHTJS_LICENSE_PLACEHOLDER -->'       = 'LICENSES/highlight.js-LICENSE.txt'
   '<!-- FEATHER_LICENSE_PLACEHOLDER -->'           = 'LICENSES/feather-LICENSE.txt'
   '<!-- DESKTOP_LICENSES_PLACEHOLDER -->'          = 'LICENSES/desktop-third-party.txt'
 }
@@ -175,6 +194,12 @@ if ($Verify) {
   if ($html -match 'lib/encoding\.min\.js') {
     $errors += 'FAIL: lib/encoding.min.js reference still present'
   }
+  if ($html -match 'lib/highlight\.min\.js') {
+    $errors += 'FAIL: lib/highlight.min.js reference still present'
+  }
+  if ($html -match 'lib/hljs-github-dark\.min\.css') {
+    $errors += 'FAIL: lib/hljs-github-dark.min.css reference still present'
+  }
   if ($html -notmatch '\bmarked\b') {
     $errors += 'FAIL: "marked" not found in output'
   }
@@ -184,6 +209,9 @@ if ($Verify) {
   if ($html -notmatch '\bEncoding\b') {
     $errors += 'FAIL: "Encoding" not found in output'
   }
+  if ($html -notmatch '\bhljs\b') {
+    $errors += 'FAIL: "hljs" not found in output'
+  }
   if ($html -notmatch [regex]::Escape('Bundled libraries:')) {
     $errors += 'FAIL: third-party notice comment not found'
   }
@@ -192,6 +220,7 @@ if ($Verify) {
     '<!-- MARKED_LICENSE_PLACEHOLDER -->',
     '<!-- DOMPURIFY_LICENSE_PLACEHOLDER -->',
     '<!-- ENCODING_JAPANESE_LICENSE_PLACEHOLDER -->',
+    '<!-- HIGHLIGHTJS_LICENSE_PLACEHOLDER -->',
     '<!-- FEATHER_LICENSE_PLACEHOLDER -->',
     '<!-- DESKTOP_LICENSES_PLACEHOLDER -->'
   )) {
@@ -205,6 +234,9 @@ if ($Verify) {
   }
   if ($html -notmatch 'Apache License') {
     $errors += 'FAIL: Apache License phrase not found in inlined output'
+  }
+  if ($html -notmatch 'BSD 3-Clause License') {
+    $errors += 'FAIL: BSD 3-Clause license phrase not found in inlined output'
   }
 
   if ($Package) {

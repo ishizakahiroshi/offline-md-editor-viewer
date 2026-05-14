@@ -43,6 +43,16 @@ and release single HTML expose the same texts from the About dialog.
 - Browser release: inlined into `offline-md-editor-viewer.html` (browser release ZIP)
 - License text: `LICENSES/encoding-japanese-LICENSE.txt`
 
+## highlight.js
+
+- Project: https://github.com/highlightjs/highlight.js
+- Version: 11.10.0
+- License: BSD 3-Clause License
+- Usage: Per-language syntax coloring for code blocks in Markdown preview
+- Source bundle: `apps/browser/lib/highlight.min.js`, `apps/browser/lib/hljs-github-dark.min.css`
+- Browser release: inlined into `offline-md-editor-viewer.html` (browser release ZIP)
+- License text: `LICENSES/highlight.js-LICENSE.txt`
+
 The license headers in the bundled library files are retained.
 
 ## Feather Icons

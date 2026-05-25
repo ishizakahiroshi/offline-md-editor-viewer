@@ -255,7 +255,7 @@ fn desktop_rename_file(path: String, new_name: String) -> Result<String, String>
         .ok_or_else(|| "File has no parent directory".to_string())?;
     let new_path = parent.join(new_name.trim());
     if new_path.exists() {
-        return Err("A file with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
     }
     fs::rename(&old_path, &new_path).map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -287,12 +287,12 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
     }
     if canonical_source.is_dir() && canonical_target_dir.starts_with(&canonical_source) {
         return Err(
-            "Cannot move a directory into itself or one of its subdirectories.".to_string(),
+            "MOVE_INVALID: Cannot move a directory into itself or one of its subdirectories.".to_string(),
         );
     }
     let target = target_dir.join(source_name);
     if target.exists() {
-        return Err("An item with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
     }
     fs::rename(&source, &target).map_err(|err| err.to_string())?;
     Ok(path_to_string(&target))
@@ -326,7 +326,7 @@ fn desktop_create_directory(parent_path: String, name: String) -> Result<String,
     }
     let new_path = parent.join(name.trim());
     if new_path.exists() {
-        return Err("A folder with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A folder with that name already exists.".to_string());
     }
     fs::create_dir(&new_path).map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -344,7 +344,7 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
     }
     let new_path = parent.join(name.trim());
     if new_path.exists() {
-        return Err("A file with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
     }
     fs::write(&new_path, "").map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -408,14 +408,28 @@ fn resolve_unique_name(dir: &Path, name: &str) -> String {
     }
 }
 
+const MAX_COPY_DEPTH: usize = 64;
+
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+    copy_dir_recursive_inner(src, dest, 0)
+}
+
+fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
+    if depth > MAX_COPY_DEPTH {
+        return Err("Directory tree is too deep to copy.".to_string());
+    }
     fs::create_dir_all(dest).map_err(|err| err.to_string())?;
     for entry in fs::read_dir(src).map_err(|err| err.to_string())? {
         let entry = entry.map_err(|err| err.to_string())?;
         let src_child = entry.path();
+        // symlink を辿らず種別判定。symlink はコピー対象から除外（ループ・脱出防止）
+        let meta = fs::symlink_metadata(&src_child).map_err(|err| err.to_string())?;
+        if meta.file_type().is_symlink() {
+            continue;
+        }
         let dest_child = dest.join(entry.file_name());
-        if src_child.is_dir() {
-            copy_dir_recursive(&src_child, &dest_child)?;
+        if meta.is_dir() {
+            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;
         } else {
             fs::copy(&src_child, &dest_child).map_err(|err| err.to_string())?;
         }

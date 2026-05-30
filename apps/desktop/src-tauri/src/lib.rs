@@ -287,7 +287,8 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
     }
     if canonical_source.is_dir() && canonical_target_dir.starts_with(&canonical_source) {
         return Err(
-            "MOVE_INVALID: Cannot move a directory into itself or one of its subdirectories.".to_string(),
+            "MOVE_INVALID: Cannot move a directory into itself or one of its subdirectories."
+                .to_string(),
         );
     }
     let target = target_dir.join(source_name);

@@ -80,10 +80,13 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
             Err(_) => continue,
         };
         let path = entry.path();
-        let metadata = match entry.metadata() {
+        let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(_) => continue,
         };
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
         if metadata.is_dir() {
             let name = path
                 .file_name()
@@ -226,13 +229,17 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
         let path = entry.path().to_string_lossy().replace('\\', "/");
-        if entry.path().is_dir() {
+        let metadata = fs::symlink_metadata(entry.path()).map_err(|e| e.to_string())?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
+        if metadata.is_dir() {
             entries.push(serde_json::json!({
                 "name": name,
                 "kind": "dir",
                 "path": path
             }));
-        } else if entry.path().is_file() {
+        } else if metadata.is_file() {
             entries.push(serde_json::json!({
                 "name": name,
                 "kind": "file",
@@ -366,6 +373,16 @@ fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<St
     }
     if !target_dir.is_dir() {
         return Err("Target directory does not exist.".to_string());
+    }
+    if source.is_dir() {
+        let canonical_source = fs::canonicalize(&source).map_err(|err| err.to_string())?;
+        let canonical_target_dir = fs::canonicalize(&target_dir).map_err(|err| err.to_string())?;
+        if canonical_target_dir.starts_with(&canonical_source) {
+            return Err(
+                "COPY_INVALID: Cannot copy a directory into itself or one of its subdirectories."
+                    .to_string(),
+            );
+        }
     }
     let name = source
         .file_name()

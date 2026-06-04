@@ -16,7 +16,7 @@ and release single HTML expose the same texts from the About dialog.
 ## marked
 
 - Project: https://github.com/markedjs/marked
-- Version: 18.0.4
+- Version: 18.0.5
 - License: MIT License
 - Usage: Converts Markdown to HTML
 - Source bundle: `apps/browser/lib/marked.min.js`
@@ -26,7 +26,7 @@ and release single HTML expose the same texts from the About dialog.
 ## DOMPurify
 
 - Project: https://github.com/cure53/DOMPurify
-- Version: 3.4.7
+- Version: 3.4.8
 - License: Apache License 2.0 or Mozilla Public License 2.0
 - Usage: Sanitizes rendered HTML
 - Source bundle: `apps/browser/lib/purify.min.js`

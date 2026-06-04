@@ -1,5 +1,23 @@
 # 変更履歴
 
+## 0.1.1 - 2026-06-05
+
+### Added
+
+- Markdown プレビューのコードブロックを、同梱 GitHub Dark テーマの highlight.js 11.11.1 でシンタックスハイライト表示するようにした。
+- リリース前確認をしやすくするため、デモ動画、スクリーンショット、サンプル Markdown ファイルを追加。
+- Windows デスクトップアプリが起動時に最大化されるようにした。
+
+### Changed
+
+- 同梱 Web 依存を marked 18.0.5、DOMPurify 3.4.8 に更新。
+- Tauri/Rust 依存一式を更新し、デスクトップ第三者ライセンス情報を再生成。
+- スタンドアロン配布物と ZIP 内ファイルのハッシュ一致確認など、リリースアセット生成・検証を強化。
+
+### Fixed
+
+- ドットを含むファイル名のリネーム処理を修正。
+
 ## 0.1.0 - 2026-05-04
 
 ### Added
@@ -17,6 +35,5 @@
 - Windows デスクトップ版は CLI 引数で Markdown ファイルを受け取り可能。エクスプローラーの「プログラムから開く」でアプリに関連付けできる
 - Windows デスクトップ版はフォルダのドラッグ&ドロップに対応。フォルダをウィンドウ上にドロップするとファイルツリーを開き、単一ファイルをドロップするとそのファイルを開く
 - リリースアセットを4ファイル構成で配布。スタンドアロン `offline-md-editor-viewer.html`、スタンドアロン `offline-md-editor-viewer.exe`、ブラウザ版 ZIP、Windows デスクトップポータブル ZIP の4種類。4アセットすべての SHA-256 チェックサムを公開し、ブラウザ ZIP 内の HTML がスタンドアロン HTML と、デスクトップ ZIP 内の exe がスタンドアロン exe とそれぞれ一致することを CI で検証する。
-- About ダイアログに「ライセンス本文を表示」リンクを追加。アプリの MIT ライセンス、同梱 Web 依存ライブラリのライセンス（marked / DOMPurify / encoding-japanese / highlight.js / Feather Icons）、および Windows デスクトップ版では exe に静的リンクされた Tauri/Rust クレートすべてのライセンス全文を確認できる。デスクトップ側のライセンス情報は `cargo-about` で `Cargo.lock` から生成。
-- Markdown プレビューのコードブロックを、同梱 GitHub Dark テーマの highlight.js 11.11.1 でシンタックスハイライト表示するようにした。
+- About ダイアログに「ライセンス本文を表示」リンクを追加。アプリの MIT ライセンス、同梱 Web 依存ライブラリのライセンス（marked / DOMPurify / encoding-japanese / Feather Icons）、および Windows デスクトップ版では exe に静的リンクされた Tauri/Rust クレートすべてのライセンス全文を確認できる。デスクトップ側のライセンス情報は `cargo-about` で `Cargo.lock` から生成。
 - Windows デスクトップのリリースビルドはブラウザ版と同一の単一 HTML を埋め込む（ステージングディレクトリと `apps/desktop/src-tauri/tauri.release.conf.json` を使用）。フロントエンドレイヤーで両版が完全に同一になる。

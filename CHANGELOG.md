@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.1 - 2026-06-05
+
+### Added
+
+- Markdown preview code blocks are syntax-highlighted with highlight.js 11.11.1 using the bundled GitHub Dark theme.
+- Demo video, screenshots, and sample Markdown files were added to make browser and desktop behavior easier to verify before release.
+- Windows desktop app now starts maximized.
+
+### Changed
+
+- Updated bundled web dependencies: marked 18.0.5 and DOMPurify 3.4.8.
+- Updated Tauri/Rust dependency set and regenerated desktop third-party license data.
+- Strengthened release asset generation and verification, including standalone/ZIP hash consistency checks.
+
+### Fixed
+
+- Fixed rename handling for filenames that contain dots.
+
 ## 0.1.0 - 2026-05-04
 
 ### Added
@@ -17,6 +35,5 @@
 - Windows desktop edition can open a Markdown file passed as a CLI argument, enabling Explorer's "Open with" menu to launch the app with a specific file
 - Windows desktop edition supports folder drag & drop: dropping a folder onto the app window opens its file tree, and dropping a single file opens that file
 - Release assets are distributed as four files: standalone `offline-md-editor-viewer.html`, standalone `offline-md-editor-viewer.exe`, browser ZIP, and Windows desktop portable ZIP. SHA-256 checksums are published for all four assets, and CI verifies that the HTML inside the browser ZIP matches the standalone HTML and that the exe inside the desktop ZIP matches the standalone exe.
-- About dialog exposes a "Show full license texts" link that reveals the application MIT license, the bundled web dependency licenses (marked, DOMPurify, encoding-japanese, highlight.js, Feather Icons), and — in the Windows desktop edition — every Tauri / Rust crate license statically linked into the exe. Desktop-side license texts are generated from `Cargo.lock` via `cargo-about`.
-- Markdown preview code blocks are syntax-highlighted with highlight.js 11.11.1 using the bundled GitHub Dark theme.
+- About dialog exposes a "Show full license texts" link that reveals the application MIT license, the bundled web dependency licenses (marked, DOMPurify, encoding-japanese, Feather Icons), and — in the Windows desktop edition — every Tauri / Rust crate license statically linked into the exe. Desktop-side license texts are generated from `Cargo.lock` via `cargo-about`.
 - Windows desktop release builds embed the same single HTML used by the browser release (via a staging directory and `apps/desktop/src-tauri/tauri.release.conf.json`), keeping both editions byte-identical at the frontend layer.

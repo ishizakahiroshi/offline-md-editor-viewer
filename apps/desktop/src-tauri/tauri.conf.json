@@ -14,13 +14,14 @@
         "width": 1200,
         "height": 800,
         "resizable": true,
+        "maximized": true,
         "fullscreen": false,
         "dragDropEnabled": true
       }
     ],
     "withGlobalTauri": true,
     "security": {
-      "csp": "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"
+      "csp": "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; frame-ancestors 'none'"
     }
   },
   "bundle": {

@@ -18,7 +18,7 @@ An offline-first Markdown editor/viewer that runs in your browser or as a Window
 
 Open a `.md` file, edit on the left, see the rendered result on the right, and save back to the same file. That's the whole loop — no account, no sync, no network calls.
 
-**Works fully offline.** `marked`, `DOMPurify`, and `encoding-japanese` are bundled inline, and the SVG icons from `Feather Icons` are also embedded in the HTML, so loading the app makes no CDN or third-party requests. External links open only when you enable the External links setting and click an `http` / `https` link.
+**Works fully offline.** `marked`, `DOMPurify`, `encoding-japanese`, and `highlight.js` are bundled inline, and the SVG icons from `Feather Icons` are also embedded in the HTML, so loading the app makes no CDN or third-party requests. External links open only when you enable the External links setting and click an `http` / `https` link.
 
 [日本語版 README](./README.ja.md)
 
@@ -41,7 +41,7 @@ Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/o
 - **Your files stay yours.** File content is never uploaded anywhere. Save writes back to the original file on your disk.
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
-- **Readable defaults.** Dark/light themes tuned for headings, tables, quotes, and code blocks. Adjustable font size.
+- **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
 ## Security / Privacy
@@ -73,7 +73,7 @@ Two options on the [GitHub Releases](https://github.com/ishizakahiroshi/offline-
 1. **`offline-md-editor-viewer.html`** — single file, ideal for a quick try. Download and open it directly in Chrome.
 2. **`offline-md-editor-viewer-browser-vX.X.X.zip`** — includes README, CHANGELOG, LICENSE, and LICENSES/. Recommended for archiving or redistribution.
 
-The standalone HTML is completely self-contained: `marked`, `DOMPurify`, `encoding-japanese`, and the `Feather Icons` SVG set are all bundled inline. No extra folders needed — open the file and it works offline. You can verify the full license texts anytime via the About dialog → **Show full license texts**.
+The standalone HTML is completely self-contained: `marked`, `DOMPurify`, `encoding-japanese`, `highlight.js`, and the `Feather Icons` SVG set are all bundled inline. No extra folders needed — open the file and it works offline. You can verify the full license texts anytime via the About dialog → **Show full license texts**.
 
 1. Download `offline-md-editor-viewer.html` (or extract it from the browser ZIP) and open it in Google Chrome (double-click or drag & drop onto Chrome)
 2. Load a `.md` file (drag & drop or file picker)
@@ -90,7 +90,7 @@ Two options on the [GitHub Releases](https://github.com/ishizakahiroshi/offline-
 1. **`offline-md-editor-viewer.exe`** — single portable file, ideal for a quick try. Download and run it directly — no installation required.
 2. **`offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip`** — includes README, CHANGELOG, LICENSE, and LICENSES/. Recommended for archiving or redistribution.
 
-The exe is portable: no installation required, and it runs from a USB drive. The desktop app loads the same single HTML used by the browser edition inside a Tauri WebView, so both editions share identical frontend code. The About dialog → **Show full license texts** reveals the full license texts for all web dependencies (marked, DOMPurify, encoding-japanese, Feather Icons) as well as every Tauri/Rust crate license statically linked into the exe.
+The exe is portable: no installation required, and it runs from a USB drive. The desktop app loads the same single HTML used by the browser edition inside a Tauri WebView, so both editions share identical frontend code. The About dialog → **Show full license texts** reveals the full license texts for all web dependencies (marked, DOMPurify, encoding-japanese, highlight.js, Feather Icons) as well as every Tauri/Rust crate license statically linked into the exe.
 
 - Double-click `offline-md-editor-viewer.exe` to launch (no installation required)
 - Open a file or folder from the toolbar, then edit and save
@@ -179,7 +179,7 @@ When a non-Markdown file is opened, the right-side preview shows a notice that p
 ## Privacy / Security Notes
 
 - File content is not sent to any external server.
-- `marked`, `DOMPurify`, and `encoding-japanese` are bundled inline, and the SVG icons from `Feather Icons` are embedded in the HTML — no CDN requests are made when the app loads.
+- `marked`, `DOMPurify`, `encoding-japanese`, and `highlight.js` are bundled inline, and the SVG icons from `Feather Icons` are embedded in the HTML — no CDN requests are made when the app loads.
 - Remote image URLs inside Markdown are blocked by the local-only Content Security Policy and will not be loaded automatically.
 - External links open in your browser only when the External links setting is enabled.
 
@@ -196,7 +196,7 @@ Get-FileHash .\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Alg
 The app remembers some preferences in your browser's local storage so you don't have to set them every time. Saved items include:
 
 - UI language (initially detected from your system/browser language, then overridden by your selection)
-- Theme (dark/light) and font size
+- Theme (dark/blue/light) and font size
 - File list sort order and tool-row visibility
 - Card (file list / source / preview) visibility and width
 - Last opened folder handle (stored in IndexedDB; permission may still be re-prompted on next use)

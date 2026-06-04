@@ -80,10 +80,13 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
             Err(_) => continue,
         };
         let path = entry.path();
-        let metadata = match entry.metadata() {
+        let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
             Err(_) => continue,
         };
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
         if metadata.is_dir() {
             let name = path
                 .file_name()
@@ -99,7 +102,7 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
                 modified: 0,
             });
             let _ = collect_markdown_files(&path, files);
-        } else if metadata.is_file() && is_markdown_file(&path) {
+        } else if metadata.is_file() {
             let name = path
                 .file_name()
                 .and_then(|name| name.to_str())
@@ -226,13 +229,17 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
         let path = entry.path().to_string_lossy().replace('\\', "/");
-        if entry.path().is_dir() {
+        let metadata = fs::symlink_metadata(entry.path()).map_err(|e| e.to_string())?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        }
+        if metadata.is_dir() {
             entries.push(serde_json::json!({
                 "name": name,
                 "kind": "dir",
                 "path": path
             }));
-        } else if entry.path().is_file() && is_markdown_file(&entry.path()) {
+        } else if metadata.is_file() {
             entries.push(serde_json::json!({
                 "name": name,
                 "kind": "file",
@@ -255,7 +262,7 @@ fn desktop_rename_file(path: String, new_name: String) -> Result<String, String>
         .ok_or_else(|| "File has no parent directory".to_string())?;
     let new_path = parent.join(new_name.trim());
     if new_path.exists() {
-        return Err("A file with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
     }
     fs::rename(&old_path, &new_path).map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -287,12 +294,13 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
     }
     if canonical_source.is_dir() && canonical_target_dir.starts_with(&canonical_source) {
         return Err(
-            "Cannot move a directory into itself or one of its subdirectories.".to_string(),
+            "MOVE_INVALID: Cannot move a directory into itself or one of its subdirectories."
+                .to_string(),
         );
     }
     let target = target_dir.join(source_name);
     if target.exists() {
-        return Err("An item with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
     }
     fs::rename(&source, &target).map_err(|err| err.to_string())?;
     Ok(path_to_string(&target))
@@ -326,7 +334,7 @@ fn desktop_create_directory(parent_path: String, name: String) -> Result<String,
     }
     let new_path = parent.join(name.trim());
     if new_path.exists() {
-        return Err("A folder with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A folder with that name already exists.".to_string());
     }
     fs::create_dir(&new_path).map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -344,7 +352,7 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
     }
     let new_path = parent.join(name.trim());
     if new_path.exists() {
-        return Err("A file with that name already exists.".to_string());
+        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
     }
     fs::write(&new_path, "").map_err(|err| err.to_string())?;
     Ok(path_to_string(&new_path))
@@ -365,6 +373,16 @@ fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<St
     }
     if !target_dir.is_dir() {
         return Err("Target directory does not exist.".to_string());
+    }
+    if source.is_dir() {
+        let canonical_source = fs::canonicalize(&source).map_err(|err| err.to_string())?;
+        let canonical_target_dir = fs::canonicalize(&target_dir).map_err(|err| err.to_string())?;
+        if canonical_target_dir.starts_with(&canonical_source) {
+            return Err(
+                "COPY_INVALID: Cannot copy a directory into itself or one of its subdirectories."
+                    .to_string(),
+            );
+        }
     }
     let name = source
         .file_name()
@@ -408,14 +426,28 @@ fn resolve_unique_name(dir: &Path, name: &str) -> String {
     }
 }
 
+const MAX_COPY_DEPTH: usize = 64;
+
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+    copy_dir_recursive_inner(src, dest, 0)
+}
+
+fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
+    if depth > MAX_COPY_DEPTH {
+        return Err("Directory tree is too deep to copy.".to_string());
+    }
     fs::create_dir_all(dest).map_err(|err| err.to_string())?;
     for entry in fs::read_dir(src).map_err(|err| err.to_string())? {
         let entry = entry.map_err(|err| err.to_string())?;
         let src_child = entry.path();
+        // symlink を辿らず種別判定。symlink はコピー対象から除外（ループ・脱出防止）
+        let meta = fs::symlink_metadata(&src_child).map_err(|err| err.to_string())?;
+        if meta.file_type().is_symlink() {
+            continue;
+        }
         let dest_child = dest.join(entry.file_name());
-        if src_child.is_dir() {
-            copy_dir_recursive(&src_child, &dest_child)?;
+        if meta.is_dir() {
+            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;
         } else {
             fs::copy(&src_child, &dest_child).map_err(|err| err.to_string())?;
         }

@@ -16,7 +16,7 @@ and release single HTML expose the same texts from the About dialog.
 ## marked
 
 - Project: https://github.com/markedjs/marked
-- Version: 15.0.12
+- Version: 18.0.5
 - License: MIT License
 - Usage: Converts Markdown to HTML
 - Source bundle: `apps/browser/lib/marked.min.js`
@@ -26,7 +26,7 @@ and release single HTML expose the same texts from the About dialog.
 ## DOMPurify
 
 - Project: https://github.com/cure53/DOMPurify
-- Version: 3.4.1
+- Version: 3.4.8
 - License: Apache License 2.0 or Mozilla Public License 2.0
 - Usage: Sanitizes rendered HTML
 - Source bundle: `apps/browser/lib/purify.min.js`
@@ -42,6 +42,16 @@ and release single HTML expose the same texts from the About dialog.
 - Source bundle: `apps/browser/lib/encoding.min.js`
 - Browser release: inlined into `offline-md-editor-viewer.html` (browser release ZIP)
 - License text: `LICENSES/encoding-japanese-LICENSE.txt`
+
+## highlight.js
+
+- Project: https://github.com/highlightjs/highlight.js
+- Version: 11.11.1
+- License: BSD 3-Clause License
+- Usage: Per-language syntax coloring for code blocks in Markdown preview
+- Source bundle: `apps/browser/lib/highlight.min.js`, `apps/browser/lib/hljs-github-dark.min.css`
+- Browser release: inlined into `offline-md-editor-viewer.html` (browser release ZIP)
+- License text: `LICENSES/highlight.js-LICENSE.txt`
 
 The license headers in the bundled library files are retained.
 

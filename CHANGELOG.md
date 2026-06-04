@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.1 - 2026-06-05
+
+### Added
+
+- Markdown preview code blocks are syntax-highlighted with highlight.js 11.11.1 using the bundled GitHub Dark theme.
+- Demo video, screenshots, and sample Markdown files were added to make browser and desktop behavior easier to verify before release.
+- Windows desktop app now starts maximized.
+
+### Changed
+
+- Updated bundled web dependencies: marked 18.0.5 and DOMPurify 3.4.8.
+- Updated Tauri/Rust dependency set and regenerated desktop third-party license data.
+- Strengthened release asset generation and verification, including standalone/ZIP hash consistency checks.
+
+### Fixed
+
+- Fixed rename handling for filenames that contain dots.
+
 ## 0.1.0 - 2026-05-04
 
 ### Added

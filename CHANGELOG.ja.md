@@ -18,5 +18,5 @@
 - Windows デスクトップ版はフォルダのドラッグ&ドロップに対応。フォルダをウィンドウ上にドロップするとファイルツリーを開き、単一ファイルをドロップするとそのファイルを開く
 - リリースアセットを4ファイル構成で配布。スタンドアロン `offline-md-editor-viewer.html`、スタンドアロン `offline-md-editor-viewer.exe`、ブラウザ版 ZIP、Windows デスクトップポータブル ZIP の4種類。4アセットすべての SHA-256 チェックサムを公開し、ブラウザ ZIP 内の HTML がスタンドアロン HTML と、デスクトップ ZIP 内の exe がスタンドアロン exe とそれぞれ一致することを CI で検証する。
 - About ダイアログに「ライセンス本文を表示」リンクを追加。アプリの MIT ライセンス、同梱 Web 依存ライブラリのライセンス（marked / DOMPurify / encoding-japanese / highlight.js / Feather Icons）、および Windows デスクトップ版では exe に静的リンクされた Tauri/Rust クレートすべてのライセンス全文を確認できる。デスクトップ側のライセンス情報は `cargo-about` で `Cargo.lock` から生成。
-- Markdown プレビューのコードブロックを、同梱 GitHub Dark テーマの highlight.js 11.10.0 でシンタックスハイライト表示するようにした。
+- Markdown プレビューのコードブロックを、同梱 GitHub Dark テーマの highlight.js 11.11.1 でシンタックスハイライト表示するようにした。
 - Windows デスクトップのリリースビルドはブラウザ版と同一の単一 HTML を埋め込む（ステージングディレクトリと `apps/desktop/src-tauri/tauri.release.conf.json` を使用）。フロントエンドレイヤーで両版が完全に同一になる。

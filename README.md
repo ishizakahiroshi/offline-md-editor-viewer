@@ -167,11 +167,11 @@ When a non-Markdown file is opened, the right-side preview shows a notice that p
 
 ## Folder List
 
-- Use `Folder` to show folders and supported text files in the left-side tree.
+- Use `Folder` to show folders and files in the left-side tree. The tree shows all file formats by default; binary files are rejected when opened.
 - The browser and Windows desktop editions both show nested folders; click a folder row to expand or collapse it.
 - Drag files or folders inside the tree to move them into another folder, or onto empty tree space to move them to the opened root folder. In Chrome, the browser edition uses the standard File System Access API for writable folders, so moving works after you open a folder with write permission. Read-only legacy folder drops may not support moving.
 - The folder picker starts from the browser/OS default the first time, then opens near the previously selected folder.
-- Dropping a folder also shows its supported text files when the browser supports folder drops.
+- Dropping a folder also shows its files when the browser supports folder drops.
 - In the browser edition, Chrome may block special folders such as Desktop or Documents. If that happens, create and choose a regular subfolder such as `Markdown`.
 - In the Windows desktop edition, folder listing uses native app file access and is not limited by Chrome's protected-folder checks.
 - Dropping a single file opens that file. In the browser edition, the parent folder list may not be available from a single-file open/drop operation; in the Windows desktop edition, the parent folder is shown in the left-side tree.

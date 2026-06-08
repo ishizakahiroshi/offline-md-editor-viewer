@@ -314,12 +314,45 @@ fn desktop_delete_file(path: String) -> Result<(), String> {
 
 fn is_valid_child_name(name: &str) -> bool {
     let trimmed = name.trim();
+    let base_name = trimmed
+        .split('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    let is_windows_reserved = matches!(
+        base_name.as_str(),
+        "CON"
+            | "PRN"
+            | "AUX"
+            | "NUL"
+            | "COM1"
+            | "COM2"
+            | "COM3"
+            | "COM4"
+            | "COM5"
+            | "COM6"
+            | "COM7"
+            | "COM8"
+            | "COM9"
+            | "LPT1"
+            | "LPT2"
+            | "LPT3"
+            | "LPT4"
+            | "LPT5"
+            | "LPT6"
+            | "LPT7"
+            | "LPT8"
+            | "LPT9"
+    );
     !trimmed.is_empty()
         && trimmed != "."
         && trimmed != ".."
-        && !trimmed
-            .chars()
-            .any(|ch| matches!(ch, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+        && !trimmed.ends_with('.')
+        && !trimmed.ends_with(' ')
+        && !is_windows_reserved
+        && !trimmed.chars().any(|ch| {
+            ch.is_control() || matches!(ch, '\\' | '/' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
+        })
 }
 
 #[tauri::command]

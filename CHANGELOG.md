@@ -13,10 +13,12 @@
 - Updated bundled web dependencies: marked 18.0.5 and DOMPurify 3.4.8.
 - Updated Tauri/Rust dependency set and regenerated desktop third-party license data.
 - Strengthened release asset generation and verification, including standalone/ZIP hash consistency checks.
+- Hardened file/folder create and rename validation for control characters, Windows reserved names, and trailing dots/spaces.
 
 ### Fixed
 
 - Fixed rename handling for filenames that contain dots.
+- Fixed multi-select deletion so selected folders are deleted together with files and nested selections are not double-counted.
 
 ## 0.1.0 - 2026-05-04
 

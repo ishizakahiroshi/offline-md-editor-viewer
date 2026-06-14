@@ -64,7 +64,7 @@ flowchart LR
 
 Edits on the left source pane update the right preview pane in real time. `Save (Overwrite)` writes back to the original file. You can also open a single file without choosing a folder.
 
-In edit mode, use `Ctrl/Cmd+F` to open the floating find bar and `Ctrl/Cmd+H` or `Ctrl/Cmd+R` to expand replace controls. `Enter` moves to the next match, `Shift+Enter` moves to the previous match, and `Esc` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search.
+In edit mode, use `Ctrl/Cmd+F` to open the floating find bar and `Ctrl/Cmd+H` or `Ctrl/Cmd+R` to expand replace controls. `Enter` moves to the next match, `Shift+Enter` moves to the previous match, and `Esc` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. `(?<=foo)bar`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 ## Use in the Browser
 

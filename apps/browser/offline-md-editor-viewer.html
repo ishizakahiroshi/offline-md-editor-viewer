@@ -4376,7 +4376,7 @@ Open a \`.md\` file, edit on the left, see the rendered result on the right, and
 
 Edits on the left source pane update the right preview pane in real time. \`Save (Overwrite)\` writes back to the original file. You can also open a single file without choosing a folder.
 
-In edit mode, use \`Ctrl/Cmd+F\` to open the floating find bar and \`Ctrl/Cmd+H\` or \`Ctrl/Cmd+R\` to expand replace controls. \`Enter\` moves to the next match, \`Shift+Enter\` moves to the previous match, and \`Esc\` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search.
+In edit mode, use \`Ctrl/Cmd+F\` to open the floating find bar and \`Ctrl/Cmd+H\` or \`Ctrl/Cmd+R\` to expand replace controls. \`Enter\` moves to the next match, \`Shift+Enter\` moves to the previous match, and \`Esc\` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. \`(?<=foo)bar\`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 ## Use in the Browser
 
@@ -4574,7 +4574,7 @@ The author and contributors are not liable for any damages resulting from its us
 
 左側のソースを編集すると右側のプレビューに即時反映され、\`保存（上書き）\` で元のファイルへ書き戻します。単体ファイルだけを開くこともできます。
 
-編集モードでは \`Ctrl/Cmd+F\` でフローティング検索バーを開き、\`Ctrl/Cmd+H\` または \`Ctrl/Cmd+R\` で置換操作まで展開できます。\`Enter\` で次の一致、\`Shift+Enter\` で前の一致へ移動し、\`Esc\` で閉じます。大小文字区別、単語単位、正規表現検索に対応しています。
+編集モードでは \`Ctrl/Cmd+F\` でフローティング検索バーを開き、\`Ctrl/Cmd+H\` または \`Ctrl/Cmd+R\` で置換操作まで展開できます。\`Enter\` で次の一致、\`Shift+Enter\` で前の一致へ移動し、\`Esc\` で閉じます。大小文字区別、単語単位、正規表現検索に対応しています。なお正規表現置換では、前後の文脈に依存する後読み/先読み（例: \`(?<=foo)bar\`）は、置換が一致した部分文字列ごとに適用される都合上、正しく置換されない場合があります。
 
 ## ブラウザだけで使う
 

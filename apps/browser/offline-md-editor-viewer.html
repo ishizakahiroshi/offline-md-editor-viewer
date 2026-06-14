@@ -8012,28 +8012,32 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function syncScroll(fromEl, toEl) {
         if (syncingScroll) return;
         syncingScroll = true;
-        if (fromEl === source && toEl === preview) {
-          const previewTop = getHeadingLockedScrollTop(source, preview, "sourceTop", "previewTop");
-          if (previewTop === null) {
-            setScrollRatio(toEl, getScrollRatio(fromEl));
+        // 同期処理中に例外が起きても syncingScroll が true のまま固着しないよう finally で解除予約する
+        try {
+          if (fromEl === source && toEl === preview) {
+            const previewTop = getHeadingLockedScrollTop(source, preview, "sourceTop", "previewTop");
+            if (previewTop === null) {
+              setScrollRatio(toEl, getScrollRatio(fromEl));
+            } else {
+              preview.scrollTop = previewTop;
+            }
+          } else if (fromEl === preview && toEl === source) {
+            const sourceTop = getHeadingLockedScrollTop(preview, source, "previewTop", "sourceTop");
+            if (sourceTop === null) {
+              setScrollRatio(toEl, getScrollRatio(fromEl));
+            } else {
+              source.scrollTop = sourceTop;
+              updateSourceScrollChrome();
+              updateEofMarker();
+            }
           } else {
-            preview.scrollTop = previewTop;
-          }
-        } else if (fromEl === preview && toEl === source) {
-          const sourceTop = getHeadingLockedScrollTop(preview, source, "previewTop", "sourceTop");
-          if (sourceTop === null) {
             setScrollRatio(toEl, getScrollRatio(fromEl));
-          } else {
-            source.scrollTop = sourceTop;
-            updateSourceScrollChrome();
-            updateEofMarker();
           }
-        } else {
-          setScrollRatio(toEl, getScrollRatio(fromEl));
+        } finally {
+          requestAnimationFrame(() => {
+            syncingScroll = false;
+          });
         }
-        requestAnimationFrame(() => {
-          syncingScroll = false;
-        });
       }
 
       function getDismissedHints() {
@@ -8918,6 +8922,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           });
           fileState.encoding = encoding;
           fileState.buffer = bytes.buffer;
+          fileState.bom = hasBom;
+          fileState.lineEnding = lineEndingSelect.value;
           setEncodingSelectValue(fileState.encoding);
           setDirtyState(false);
           setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
@@ -8937,6 +8943,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         await writable.close();
         fileState.encoding = encoding;
         fileState.buffer = bytes.buffer;
+        fileState.bom = hasBom;
+        fileState.lineEnding = lineEndingSelect.value;
         setEncodingSelectValue(fileState.encoding);
         setDirtyState(false);
         setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
@@ -10003,7 +10011,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
         }
 
-        const created = await fsCreateDirectory(parentEntry, trimmedName);
+        let created;
+        try {
+          created = await fsCreateDirectory(parentEntry, trimmedName);
+        } catch (err) {
+          const { code } = parseTauriErrorCode(err);
+          if (code === "ALREADY_EXISTS") { setStatus(t("status", "folderNameExists"), true); return; }
+          throw err;
+        }
         const newNode = created.tauriPath
           ? {
             kind: "dir",
@@ -10272,7 +10287,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             t("ui", "deleteFile")
           );
           if (!confirmed) return;
-          await deleteDirectoryEntryQuiet(entry);
+          try {
+            await deleteDirectoryEntryQuiet(entry);
+          } catch (err) {
+            setStatus(t("status", "deleteFailed") + (err && err.message ? err.message : String(err)), true);
+            return;
+          }
           dirState.selectedPaths.clear();
           dirState.lastSelectedPath = "";
           renderFileList();
@@ -10286,7 +10306,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             t("ui", "deleteFile")
           );
           if (!confirmed) return;
-          await deleteDirectoryEntryQuiet(entry);
+          try {
+            await deleteDirectoryEntryQuiet(entry);
+          } catch (err) {
+            setStatus(t("status", "deleteFailed") + (err && err.message ? err.message : String(err)), true);
+            return;
+          }
           dirState.selectedPaths.clear();
           dirState.lastSelectedPath = "";
           renderFileList();
@@ -10303,7 +10328,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           t("ui", "deleteFile")
         );
         if (!confirmed) return;
-        await deleteDirectoryEntryQuiet(entry);
+        try {
+          await deleteDirectoryEntryQuiet(entry);
+        } catch (err) {
+          setStatus(t("status", "deleteFailed") + (err && err.message ? err.message : String(err)), true);
+          return;
+        }
         dirState.selectedPaths.clear();
         dirState.lastSelectedPath = "";
         renderFileList();
@@ -11806,10 +11836,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       });
 
       bomCheckbox.addEventListener("change", () => {
+        // BOM 切替は保存バイト列を変えるため未保存状態として扱う（読込時の代入は change を発火しない）
+        if (fileState.handle) setDirtyState(true);
         updateByteCountStatus();
       });
 
       lineEndingSelect.addEventListener("change", () => {
+        // 改行コード切替も保存バイト列を変えるため未保存状態として扱う
+        if (fileState.handle) setDirtyState(true);
         updateByteCountStatus();
       });
 
@@ -12081,8 +12115,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
         if (e.shiftKey && dirState.lastSelectedPath) {
+          // 表示フィルタ（fileTreeShowAll OFF）で隠れている非対象ファイルを範囲選択に含めない
           const visiblePaths = getVisibleDirectoryNodes()
-            .flatMap((node) => node.kind === "file" ? [node.path] : flattenTreeFiles([node]).map((n) => n.path));
+            .flatMap((node) => node.kind === "file" ? [node] : flattenTreeFiles([node]))
+            .filter((node) => shouldShowFileTreeNode(node))
+            .map((node) => node.path);
           const fromIdx = visiblePaths.indexOf(dirState.lastSelectedPath);
           const toIdx = visiblePaths.indexOf(entry.path);
           if (fromIdx !== -1 && toIdx !== -1) {

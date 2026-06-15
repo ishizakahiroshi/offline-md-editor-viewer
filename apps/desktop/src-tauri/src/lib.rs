@@ -190,9 +190,21 @@ fn desktop_open_directory_dialog() -> Option<String> {
         .map(|path| path_to_string(&path))
 }
 
+// BUG-RS-106: 巨大ファイルの一括メモリ展開で OOM / 長時間応答停止を起こすのを防ぐ。
+// HTML 側は数 MB の Markdown を想定しており、64 MiB を超えるテキストは編集対象外として明示拒否する。
+const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
+
 #[tauri::command]
 fn desktop_read_file_bytes(path: String) -> Result<Vec<u8>, String> {
     reject_nul_in_path(&path)?;
+    if let Ok(meta) = fs::metadata(&path) {
+        if meta.len() > MAX_FILE_BYTES {
+            return Err(format!(
+                "File is too large to open in this editor (limit: {} MiB).",
+                MAX_FILE_BYTES / (1024 * 1024)
+            ));
+        }
+    }
     fs::read(path).map_err(|err| err.to_string())
 }
 
@@ -245,12 +257,25 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
 #[tauri::command]
 fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    // BUG-RS-106: 巨大ペイロードの書き込みは fs::File::create → write_all 経由でメモリ・I/O を圧迫する。
+    if text.len() as u64 > MAX_FILE_BYTES {
+        return Err(format!(
+            "Content is too large to save (limit: {} MiB).",
+            MAX_FILE_BYTES / (1024 * 1024)
+        ));
+    }
     atomic_write(Path::new(&path), text.as_bytes())
 }
 
 #[tauri::command]
 fn desktop_write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    if bytes.len() as u64 > MAX_FILE_BYTES {
+        return Err(format!(
+            "Content is too large to save (limit: {} MiB).",
+            MAX_FILE_BYTES / (1024 * 1024)
+        ));
+    }
     atomic_write(Path::new(&path), &bytes)
 }
 
@@ -268,6 +293,11 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
     let read_dir = fs::read_dir(&dir_path).map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     for entry in read_dir {
+        // BUG-RS-105: collect_markdown_files_inner と同様に上限を設け、
+        // 1 ディレクトリに数百万エントリある pathological ケースで UI 無応答を防ぐ。
+        if entries.len() >= MAX_LIST_ENTRIES {
+            return Err("Too many entries to list. Please open a smaller folder.".to_string());
+        }
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
         let path = path_to_string(&entry.path());
@@ -355,7 +385,16 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
         }
         if source.is_dir() {
             copy_dir_recursive(&source, &target)?;
-            fs::remove_dir_all(&source).map_err(|e| e.to_string())?;
+            // BUG-RS-103: copy 成功後 remove_dir_all がロック等で部分失敗すると、
+            // source が中途半端に欠け target には完全コピーがある状態になる。
+            // ユーザーがデータ復旧経路を判断できるよう、target 位置と原本残存を明示する。
+            if let Err(e) = fs::remove_dir_all(&source) {
+                return Err(format!(
+                    "Copied to {} but failed to remove the original folder: {}. Original folder may be partially deleted; the full copy is at the new location.",
+                    path_to_string(&target),
+                    e
+                ));
+            }
         } else {
             fs::copy(&source, &target).map_err(|e| e.to_string())?;
             fs::remove_file(&source).map_err(|e| e.to_string())?;
@@ -520,7 +559,15 @@ fn resolve_unique_name(dir: &Path, name: &str) -> String {
 const MAX_COPY_DEPTH: usize = 64;
 
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
-    copy_dir_recursive_inner(src, dest, 0)
+    // BUG-RS-104: 途中失敗時に部分コピーされた dest が残るとユーザーが「失敗したのにゴミが残った」状態で混乱し、
+    // 再試行で resolve_unique_name によって " (1)" 付きフォルダが増殖する。Err 時は best-effort で dest を掃除する。
+    match copy_dir_recursive_inner(src, dest, 0) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let _ = fs::remove_dir_all(dest);
+            Err(e)
+        }
+    }
 }
 
 fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
@@ -572,11 +619,20 @@ fn desktop_open_path_in_explorer(path: String) -> Result<(), String> {
         return Err("Path is not a directory.".to_string());
     }
     let canonical_str = canonical.to_string_lossy();
-    let cleaned: String = canonical_str
-        .strip_prefix(r"\\?\")
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| canonical_str.to_string());
-    Command::new("explorer")
+    // BUG-RS-101: UNC verbatim パス \\?\UNC\server\share\... を strip_prefix(r"\\?\") だけで処理すると
+    // "UNC\server\share\..." という壊れた文字列になり Explorer が開けない。UNC を先に検出して \\ プレフィックスへ復元する。
+    let cleaned: String = if let Some(rest) = canonical_str.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{}", rest)
+    } else if let Some(rest) = canonical_str.strip_prefix(r"\\?\") {
+        rest.to_string()
+    } else {
+        canonical_str.to_string()
+    };
+    // SEC-CMD-001: bare "explorer" 名で起動すると PATH 解決に依存し PATH 先取り攻撃に弱い。
+    // %SystemRoot% から絶対パスを組み立てて起動する（取得できない場合のみ bare 名にフォールバック）。
+    let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| String::from(r"C:\Windows"));
+    let explorer_path = format!(r"{}\explorer.exe", system_root.trim_end_matches('\\'));
+    Command::new(explorer_path)
         .arg(&cleaned)
         .spawn()
         .map(|_| ())
@@ -592,7 +648,10 @@ fn desktop_open_external_url(url: String) -> Result<(), String> {
     if url.contains('\0') || url.chars().any(|ch| ch.is_control()) {
         return Err("Invalid URL.".to_string());
     }
-    Command::new("rundll32")
+    // SEC-CMD-001: bare "rundll32" 名で起動すると PATH 解決に依存。System32 配下を明示する。
+    let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| String::from(r"C:\Windows"));
+    let rundll32_path = format!(r"{}\System32\rundll32.exe", system_root.trim_end_matches('\\'));
+    Command::new(rundll32_path)
         .arg("url.dll,FileProtocolHandler")
         .arg(url)
         .spawn()
@@ -683,32 +742,42 @@ pub fn run() {
             desktop_list_shallow_entries
         ])
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, position }) = event {
-                // Convert physical pixel position to logical (CSS) coordinates.
-                let scale = window.scale_factor().unwrap_or(1.0);
-                let lx = position.x / scale;
-                let ly = position.y / scale;
+            match event {
+                tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, position }) => {
+                    // Convert physical pixel position to logical (CSS) coordinates.
+                    let scale = window.scale_factor().unwrap_or(1.0);
+                    let lx = position.x / scale;
+                    let ly = position.y / scale;
 
-                // Collect all valid paths with kind.
-                let entries: Vec<serde_json::Value> = paths.iter()
-                    .filter(|p| p.exists())
-                    .filter_map(|p| {
-                        let kind = if p.is_dir() { "dir" } else if p.is_file() { "file" } else { return None; };
-                        Some(serde_json::json!({ "path": path_to_string(p), "kind": kind }))
-                    })
-                    .collect();
+                    // Collect all valid paths with kind.
+                    let entries: Vec<serde_json::Value> = paths.iter()
+                        .filter(|p| p.exists())
+                        .filter_map(|p| {
+                            let kind = if p.is_dir() { "dir" } else if p.is_file() { "file" } else { return None; };
+                            Some(serde_json::json!({ "path": path_to_string(p), "kind": kind }))
+                        })
+                        .collect();
 
-                if entries.is_empty() { return; }
+                    if entries.is_empty() { return; }
 
-                // For backward-compatibility keep "path" / "kind" pointing at the first entry.
-                let first = &entries[0];
-                let payload = serde_json::json!({
-                    "path": first["path"],
-                    "kind": first["kind"],
-                    "paths": entries,
-                    "position": { "x": lx, "y": ly }
-                });
-                let _ = window.emit("desktop-drag-drop", payload);
+                    // For backward-compatibility keep "path" / "kind" pointing at the first entry.
+                    let first = &entries[0];
+                    let payload = serde_json::json!({
+                        "path": first["path"],
+                        "kind": first["kind"],
+                        "paths": entries,
+                        "position": { "x": lx, "y": ly }
+                    });
+                    let _ = window.emit("desktop-drag-drop", payload);
+                }
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    // BUG-TAURI-CLOSEGUARD-001: Tauri 2 では JS の appWindow.listen('tauri://close-requested')
+                    // は通知のみで close をブロックしない。Rust 側で prevent_close() を呼んで close を保留し、
+                    // JS の async confirm が解決した後に desktop_force_close_window で window.destroy() を呼ぶ。
+                    // この変更により未保存破棄ダイアログが実際に機能する。
+                    api.prevent_close();
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!());

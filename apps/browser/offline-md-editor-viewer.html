@@ -4770,6 +4770,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const LAST_DIRECTORY_KEY = "lastDirectory";
       const STORAGE_LAST_DIRECTORY_TAURI_KEY = STORAGE_KEY_PREFIX + "last_directory_tauri_path";
       const LEGACY_STORAGE_LAST_DIRECTORY_TAURI_KEY = "lastDirectory_tauri_path";
+      let __localStorageErrorNotified = false;
+      function notifyLocalStorageFailureOnce() {
+        if (__localStorageErrorNotified) return;
+        __localStorageErrorNotified = true;
+        try {
+          if (typeof setStatus === "function" && typeof t === "function") {
+            setStatus(t("status", "localStorageSaveFailed") || "Failed to save local settings (check browser storage).", true);
+          }
+        } catch (_e) { /* setStatus may not be ready during early init */ }
+      }
       function safeLocalStorageSet(key, value) {
         try {
           localStorage.setItem(key, value);
@@ -4778,6 +4788,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (typeof console !== "undefined" && console.warn) {
             console.warn("localStorage.setItem failed", key, err);
           }
+          notifyLocalStorageFailureOnce();
           return false;
         }
       }
@@ -4859,13 +4870,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         tauriDropPendingTimer: 0,           // 旧: tauriDropPendingTimer
         contextMenuEntry: null,             // 旧: contextMenuEntry
         clipboardEntry: null,               // 旧: clipboardEntry
-        refreshTimer: null,                 // 旧: directoryRefreshTimer
         sortMode: null,                     // 旧: directorySortMode（getInitialFileSortMode は後続行で定義のため後で設定）
       };
       // favoriteDirs の localStorage 復元（順序維持）
       try {
         const savedFavorites = localStorage.getItem(STORAGE_FAVORITES_KEY);
-        if (savedFavorites) dirState.favoriteDirs = new Set(JSON.parse(savedFavorites));
+        if (savedFavorites) {
+          const parsed = JSON.parse(savedFavorites);
+          const arr = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+          dirState.favoriteDirs = new Set(arr);
+        }
       } catch (_err) { console.warn("favoriteDirs: failed to restore from localStorage", _err); }
       let cardVisibility = getInitialCardVisibility();
       saveBtn.disabled = true;
@@ -6501,6 +6515,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const markerRect = markerProbe.getBoundingClientRect();
         const left = padLeft + (markerRect.left - probeRect.left) - source.scrollLeft;
         const top = padTop + (markerRect.top - probeRect.top) - source.scrollTop - 1;
+        probe.remove();
         sourceEofMarker.textContent = "[EOF]";
         sourceEofMarker.style.display = "block";
         sourceEofMarker.style.transform = `translate(${left}px, ${top}px)`;
@@ -6539,7 +6554,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (encoding === "utf-16le" || encoding === "utf-16be") {
             return text.length * 2 + (bomCheckbox.checked ? 2 : 0);
           }
-          if (fileState.buffer && !fileState.unsaved) return fileState.buffer.byteLength;
+          if (
+            fileState.buffer &&
+            !fileState.unsaved &&
+            encodingSelect.value === fileState.encoding &&
+            bomCheckbox.checked === fileState.bom &&
+            lineEndingSelect.value === fileState.lineEnding
+          ) {
+            return fileState.buffer.byteLength;
+          }
         }
         try {
           return encodeFileContent(text, encoding, bomCheckbox.checked).length;
@@ -6573,6 +6596,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           heights.push(Math.max(baseHeight, measured));
         }
         probe.textContent = "";
+        probe.remove();
         return heights;
       }
 
@@ -6827,7 +6851,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             count++;
             fromIndex = index + Math.max(needle.length, 1);
           }
-          return count;
+          if (count > 0) return count;
         }
         return 0;
       }
@@ -6975,12 +6999,37 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const range = selection.getRangeAt(0);
         if (!preview.contains(range.commonAncestorContainer)) return "";
         const previewText = getPreviewTextNodes();
-        const startIndex = previewText.nodes.find((entry) => entry.node === range.startContainer);
+        let absoluteOffset = 0;
+        const startEntry = previewText.nodes.find((entry) => entry.node === range.startContainer);
+        if (startEntry) {
+          absoluteOffset = startEntry.start + range.startOffset;
+        } else {
+          // startContainer is an Element. Find first text node at/after the start position.
+          let target = null;
+          if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
+            const children = range.startContainer.childNodes;
+            const childIdx = Math.min(range.startOffset, children.length);
+            for (let i = childIdx; i < children.length; i++) {
+              const walker = document.createTreeWalker(children[i], NodeFilter.SHOW_TEXT);
+              const found = children[i].nodeType === Node.TEXT_NODE ? children[i] : walker.nextNode();
+              if (found) { target = found; break; }
+            }
+            if (!target) {
+              const walker = document.createTreeWalker(range.startContainer, NodeFilter.SHOW_TEXT);
+              target = walker.nextNode();
+            }
+          }
+          const fallbackEntry = target ? previewText.nodes.find((entry) => entry.node === target) : null;
+          if (fallbackEntry) {
+            absoluteOffset = fallbackEntry.start;
+          }
+        }
         return {
           text: selection.toString(),
-          occurrenceIndex: startIndex
-            ? countNormalizedMatchesBefore(previewText.text.slice(0, startIndex.start + range.startOffset), getSelectionCandidates(selection.toString()))
-            : 0
+          occurrenceIndex: countNormalizedMatchesBefore(
+            previewText.text.slice(0, absoluteOffset),
+            getSelectionCandidates(selection.toString())
+          )
         };
       }
 
@@ -7096,13 +7145,25 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function highlightMarkdownSource(text) {
         let inCodeFence = false;
+        let fenceChar = "";
         return (text || "")
           .split(/(\r\n|\r|\n)/)
           .map((part) => {
             if (/\r\n|\r|\n/.test(part)) return escapeHtml(part);
-            const isFenceLine = /^\s{0,3}(```+|~~~+)/.test(part);
-            if (isFenceLine) {
-              inCodeFence = !inCodeFence;
+            const fenceMatch = part.match(/^\s{0,3}(```+|~~~+)/);
+            if (fenceMatch) {
+              const markerChar = fenceMatch[1][0];
+              if (!inCodeFence) {
+                inCodeFence = true;
+                fenceChar = markerChar;
+                return mdSourceSpan("md-src-code", part);
+              }
+              if (markerChar === fenceChar) {
+                inCodeFence = false;
+                fenceChar = "";
+                return mdSourceSpan("md-src-code", part);
+              }
+              // Different fence char inside an open fence: treat as code content.
               return mdSourceSpan("md-src-code", part);
             }
             if (inCodeFence) return mdSourceSpan("md-src-code", part);
@@ -7273,7 +7334,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const matches = [];
         if (!regex) return matches;
         let match;
+        let iterations = 0;
+        const ITERATION_LIMIT = FIND_MATCH_RENDER_LIMIT * 1000;
         while ((match = regex.exec(text)) !== null) {
+          if (++iterations > ITERATION_LIMIT) {
+            findState.capped = true;
+            break;
+          }
           const value = match[0];
           const start = match.index;
           const end = start + value.length;
@@ -9168,7 +9235,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         rescanDirBtn.hidden = !directoryHandle;
         const fileCount = flattenTreeFiles(dirState.files).length;
         setStatus(t("status", "folderLoaded"));
-        scheduleTauriDirectoryRefresh(typeof directoryHandle === "string" ? directoryHandle : "");
       }
 
       function hideFileContextMenu() {
@@ -10007,6 +10073,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             setStatus(t("status", "folderNameExists"), true);
             return;
           } catch (err) {
+            if (err && err.name === "TypeMismatchError") {
+              setStatus(t("status", "folderNameExists"), true);
+              return;
+            }
             if (!err || err.name !== "NotFoundError") throw err;
           }
         }
@@ -10082,6 +10152,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             setStatus(t("status", "fileNameExists"), true);
             return;
           } catch (err) {
+            if (err && err.name === "TypeMismatchError") {
+              setStatus(t("status", "fileNameExists"), true);
+              return;
+            }
             if (!err || err.name !== "NotFoundError") throw err;
           }
         }
@@ -10152,6 +10226,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             setStatus(t("status", "renameExists"), true);
             return;
           } catch (err) {
+            if (err && err.name === "TypeMismatchError") {
+              setStatus(t("status", "renameExists"), true);
+              return;
+            }
+            if (!err || err.name !== "NotFoundError") throw err;
+          }
+          try {
+            await entry.parentDirectoryHandle.getDirectoryHandle(trimmedName, { create: false });
+            setStatus(t("status", "renameExists"), true);
+            return;
+          } catch (err) {
+            if (err && err.name === "TypeMismatchError") {
+              setStatus(t("status", "renameExists"), true);
+              return;
+            }
             if (!err || err.name !== "NotFoundError") throw err;
           }
         }
@@ -10162,16 +10251,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const result = await fsRenameEntry(entry, trimmedName);
 
         if (result.tauriPath) {
-          entry.name = trimmedName;
-          entry.path = getTauriDisplayPath(result.tauriPath, dirState.handle);
-          entry.tauriPath = result.tauriPath;
-          entry.tauriParentPath = getPathDirectoryName(result.tauriPath);
-          entry.modified = Date.now();
-          sortDirectoryFiles();
-          if ((fileState.handle && fileState.handle.tauriPath === oldTauriPath) || dirState.entryPath === oldDisplayPath) {
-            fileState.handle = getTauriFileHandle(result.tauriPath);
-            dirState.entryPath = entry.path;
-            setAppDocumentTitle(trimmedName);
+          if (entry.kind === "dir") {
+            entry.name = trimmedName;
+            updateTauriMovedNode(entry, oldTauriPath, result.tauriPath);
+            sortDirectoryFiles();
+            // Propagate to active file/dir state if it lived inside the renamed directory.
+            updateActiveMovedEntry(oldDisplayPath, entry.path, oldTauriPath, result.tauriPath);
+            if (dirState.entryPath === entry.path) {
+              setAppDocumentTitle(entry.name);
+            }
+          } else {
+            entry.name = trimmedName;
+            entry.path = getTauriDisplayPath(result.tauriPath, dirState.handle);
+            entry.tauriPath = result.tauriPath;
+            entry.tauriParentPath = getPathDirectoryName(result.tauriPath);
+            entry.modified = Date.now();
+            sortDirectoryFiles();
+            if ((fileState.handle && fileState.handle.tauriPath === oldTauriPath) || dirState.entryPath === oldDisplayPath) {
+              fileState.handle = getTauriFileHandle(result.tauriPath);
+              dirState.entryPath = entry.path;
+              setAppDocumentTitle(trimmedName);
+            }
           }
         } else {
           const basePath = oldDisplayPath.includes("/") ? oldDisplayPath.slice(0, oldDisplayPath.lastIndexOf("/") + 1) : "";
@@ -10355,11 +10455,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return nodes;
       }
 
-      async function collectTauriDirectoryFiles(directoryPath) {
-        const entries = await invokeTauri("desktop_list_markdown_files", { directoryPath });
-        return buildTreeFromFlat(entries, directoryPath);
-      }
-
       async function collectTauriShallowFiles(dirPath, rootPath) {
         const root = rootPath !== undefined ? rootPath : dirState.handle;
         const entries = await invokeTauri("desktop_list_shallow_entries", { dirPath });
@@ -10410,14 +10505,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
 
         return root;
-      }
-
-      function scheduleTauriDirectoryRefresh(directoryPath) {
-        if (dirState.refreshTimer) {
-          clearInterval(dirState.refreshTimer);
-          dirState.refreshTimer = null;
-        }
-        // shallow 方式では定期リフレッシュを行わない（全再帰で上書きすると children: null の展開状態が失われるため）
       }
 
       async function rescanCurrentDirectory() {
@@ -11757,10 +11844,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         source.focus();
       });
 
-      modeToggle.addEventListener("change", () => {
+      modeToggle.addEventListener("change", async () => {
         const toEdit = modeToggle.checked;
         if (!toEdit && fileState.unsaved) {
-          if (!window.confirm(t("status", "dropModeReadOnlyConfirm"))) {
+          const ok = await openConfirmDialog("", t("status", "dropModeReadOnlyConfirm"));
+          if (!ok) {
             modeToggle.checked = true;
             updateModeToggleLabels();
             return;
@@ -11802,10 +11890,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           updateEditorMetrics();
           return;
         }
-        if (fileState.unsaved && !window.confirm(t("status", "encodingChangeConfirm"))) {
-          setEncodingSelectValue(fileState.encoding);
-          updateEditorMetrics();
-          return;
+        if (fileState.unsaved) {
+          const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
+          if (!ok) {
+            setEncodingSelectValue(fileState.encoding);
+            updateEditorMetrics();
+            return;
+          }
         }
         encodingSelect.disabled = true;
         setStatus(t("status", "encodingChanging"), "loading");
@@ -12358,11 +12449,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
               const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: path });
               if (filesInDir && filesInDir.length > 0) {
-                const dirPath = path.substring(0, Math.max(
-                  path.lastIndexOf("/"),
-                  path.lastIndexOf("\\")
-                ));
-                showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
+                const sepIdx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+                const dirPath = sepIdx >= 0 ? path.substring(0, sepIdx) : "";
+                if (dirPath) {
+                  showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
+                }
               }
             } catch (err) {
               setStatus(t("status", "launchFileOpenFailed") + (err && err.message ? err.message : String(err)), true);
@@ -12506,11 +12597,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
                 const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: filePath });
                 if (filesInDir && filesInDir.length > 0) {
-                  const dirPath = filePath.substring(0, Math.max(
-                    filePath.lastIndexOf("/"),
-                    filePath.lastIndexOf("\\")
-                  ));
-                  showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
+                  const sepIdx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+                  const dirPath = sepIdx >= 0 ? filePath.substring(0, sepIdx) : "";
+                  if (dirPath) {
+                    showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
+                  }
                 }
               }
             } catch (err) {

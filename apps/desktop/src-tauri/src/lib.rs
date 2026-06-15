@@ -16,7 +16,9 @@ struct DesktopFileEntry {
 }
 
 fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().into_owned()
+    // 全コマンドで一貫した '/' 区切り表現を返す（HTML 側のキー比較を破綻させないため）。
+    // Windows のバックスラッシュは '/' に正規化する。MAINT-002。
+    path.to_string_lossy().replace('\\', "/")
 }
 
 fn reject_nul_in_path(path: &str) -> Result<(), String> {
@@ -72,9 +74,26 @@ fn modified_millis(path: &Path) -> u128 {
         .unwrap_or(0)
 }
 
+const MAX_LIST_DEPTH: usize = 32;
+const MAX_LIST_ENTRIES: usize = 50_000;
+
 fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Result<(), String> {
+    collect_markdown_files_inner(dir, files, 0)
+}
+
+fn collect_markdown_files_inner(
+    dir: &Path,
+    files: &mut Vec<DesktopFileEntry>,
+    depth: usize,
+) -> Result<(), String> {
+    if depth > MAX_LIST_DEPTH {
+        return Err("Directory tree is too deep to list.".to_string());
+    }
     let entries = fs::read_dir(dir).map_err(|err| err.to_string())?;
     for entry in entries {
+        if files.len() >= MAX_LIST_ENTRIES {
+            return Err("Too many entries to list. Please open a smaller folder.".to_string());
+        }
         let entry = match entry {
             Ok(entry) => entry,
             Err(_) => continue,
@@ -86,6 +105,16 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
         };
         if metadata.file_type().is_symlink() {
             continue;
+        }
+        // Windows のジャンクション/マウントポイント（REPARSE_POINT）も除外し、再帰ループや
+        // 想定外ボリュームへの侵入を防ぐ。BUG-RS-004。
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+            if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                continue;
+            }
         }
         if metadata.is_dir() {
             let name = path
@@ -101,7 +130,7 @@ fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Resu
                 parent_path,
                 modified: 0,
             });
-            let _ = collect_markdown_files(&path, files);
+            let _ = collect_markdown_files_inner(&path, files, depth + 1);
         } else if metadata.is_file() {
             let name = path
                 .file_name()
@@ -190,7 +219,20 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
         file.flush().map_err(|err| err.to_string())?;
         file.sync_all().map_err(|err| err.to_string())?;
         drop(file);
-        fs::rename(&tmp_path, path).map_err(|err| err.to_string())?;
+        fs::rename(&tmp_path, path).map_err(|err| {
+            // Windows で対象ファイルが他プロセスにロックされていると ACCESS_DENIED で失敗する。
+            // 原本は保持されるため、ユーザーが状況を把握しやすい文脈付きメッセージへ整形する。
+            // BUG-RS-010。
+            let raw = err.raw_os_error();
+            if raw == Some(5) || raw == Some(32) || raw == Some(33) {
+                format!(
+                    "保存に失敗しました。対象ファイルが他のアプリで開かれていないか確認してください（原本は保持されています）: {}",
+                    err
+                )
+            } else {
+                err.to_string()
+            }
+        })?;
         Ok(())
     })();
 
@@ -228,7 +270,7 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
     for entry in read_dir {
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
-        let path = entry.path().to_string_lossy().replace('\\', "/");
+        let path = path_to_string(&entry.path());
         let metadata = fs::symlink_metadata(entry.path()).map_err(|e| e.to_string())?;
         if metadata.file_type().is_symlink() {
             continue;
@@ -302,7 +344,23 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
     if target.exists() {
         return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
     }
-    fs::rename(&source, &target).map_err(|err| err.to_string())?;
+    // Windows ではボリューム跨ぎの rename が ERROR_NOT_SAME_DEVICE (raw_os_error 17) で
+    // 失敗するため、copy + remove フォールバックを試みる。BUG-RS-006。
+    if let Err(err) = fs::rename(&source, &target) {
+        // Windows: ERROR_NOT_SAME_DEVICE = 17。Linux: EXDEV = 18。
+        let is_cross_device =
+            err.raw_os_error() == Some(17) || err.raw_os_error() == Some(18);
+        if !is_cross_device {
+            return Err(err.to_string());
+        }
+        if source.is_dir() {
+            copy_dir_recursive(&source, &target)?;
+            fs::remove_dir_all(&source).map_err(|e| e.to_string())?;
+        } else {
+            fs::copy(&source, &target).map_err(|e| e.to_string())?;
+            fs::remove_file(&source).map_err(|e| e.to_string())?;
+        }
+    }
     Ok(path_to_string(&target))
 }
 
@@ -590,7 +648,7 @@ fn configure_portable_userdata() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     configure_portable_userdata();
-    tauri::Builder::default()
+    let run_result = tauri::Builder::default()
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -636,7 +694,7 @@ pub fn run() {
                     .filter(|p| p.exists())
                     .filter_map(|p| {
                         let kind = if p.is_dir() { "dir" } else if p.is_file() { "file" } else { return None; };
-                        Some(serde_json::json!({ "path": p.to_string_lossy().into_owned(), "kind": kind }))
+                        Some(serde_json::json!({ "path": path_to_string(p), "kind": kind }))
                     })
                     .collect();
 
@@ -653,6 +711,17 @@ pub fn run() {
                 let _ = window.emit("desktop-drag-drop", payload);
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .run(tauri::generate_context!());
+    if let Err(err) = run_result {
+        // windows_subsystem = "windows" 下では panic してもユーザーに無言クラッシュとして
+        // 見えるため、stderr へ詳細を出してから明示的に異常終了する。WebView2 Runtime 不在
+        // などの可能性をログに残す。BUG-RS-002。
+        eprintln!(
+            "Failed to start offline-md-editor-viewer: {}. \
+             WebView2 Runtime が未導入の可能性があります。\
+             https://developer.microsoft.com/microsoft-edge/webview2/ から導入してください。",
+            err
+        );
+        std::process::exit(1);
+    }
 }

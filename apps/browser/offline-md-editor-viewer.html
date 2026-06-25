@@ -7860,12 +7860,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         source.value = text;
         source.scrollTop = 0;
         source.scrollLeft = 0;
+        // FINDING-HTML2-NEW-003: updateEditorMetrics は updateByteCountStatus 経由で
+        // fileState.encoding を参照するため、新ファイルの encoding を先に確定させる
+        // （前ファイルの encoding で 1 フレーム分の推定バイト数が表示されるのを防ぐ）。
+        fileState.encoding = encoding;
         // BUG-MD-001: 新ファイルの lineRanges を先に確定してから renderMarkdown を呼ぶ。
         // updateScrollSyncAnchors が前ファイルの lineRanges を読まないように順序を入れ替える。
         updateEditorMetrics();
         renderContent(text);
         preview.scrollTop = 0;
-        fileState.encoding = encoding;
         setEncodingSelectValue(encoding);
         encodingSelect.disabled = !fileState.buffer;
         bomCheckbox.disabled = !fileState.buffer;

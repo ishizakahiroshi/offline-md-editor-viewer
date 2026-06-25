@@ -197,13 +197,15 @@ const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 #[tauri::command]
 fn desktop_read_file_bytes(path: String) -> Result<Vec<u8>, String> {
     reject_nul_in_path(&path)?;
-    if let Ok(meta) = fs::metadata(&path) {
-        if meta.len() > MAX_FILE_BYTES {
-            return Err(format!(
-                "File is too large to open in this editor (limit: {} MiB).",
-                MAX_FILE_BYTES / (1024 * 1024)
-            ));
-        }
+    // BUG-RS-NEW-203: metadata 失敗時にサイズチェックをスキップすると、
+    // 64 MiB 上限ガード (BUG-RS-106) が fail-open になり巨大ファイルが読まれる可能性が残る。
+    // metadata 取得失敗は即エラーにし、fail-closed にする。
+    let meta = fs::metadata(&path).map_err(|err| err.to_string())?;
+    if meta.len() > MAX_FILE_BYTES {
+        return Err(format!(
+            "File is too large to open in this editor (limit: {} MiB).",
+            MAX_FILE_BYTES / (1024 * 1024)
+        ));
     }
     fs::read(path).map_err(|err| err.to_string())
 }
@@ -305,6 +307,16 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
         if metadata.file_type().is_symlink() {
             continue;
         }
+        // BUG-RS-NEW-204: collect_markdown_files_inner と同じく、Windows のジャンクション
+        // /マウントポイント (REPARSE_POINT) を浅い列挙でも除外して、深い列挙との整合を取る。
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+            if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                continue;
+            }
+        }
         if metadata.is_dir() {
             entries.push(serde_json::json!({
                 "name": name,
@@ -397,7 +409,15 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
             }
         } else {
             fs::copy(&source, &target).map_err(|e| e.to_string())?;
-            fs::remove_file(&source).map_err(|e| e.to_string())?;
+            // BUG-RS-NEW-202: ファイル分岐もディレクトリ分岐 (BUG-RS-103) と整合させ、
+            // remove_file 失敗時に「target にコピー完了 + source 残存」の状況を明示する。
+            if let Err(e) = fs::remove_file(&source) {
+                return Err(format!(
+                    "Copied to {} but failed to remove the original file: {}. The copy at the new location is complete; the original may still exist.",
+                    path_to_string(&target),
+                    e
+                ));
+            }
         }
     }
     Ok(path_to_string(&target))
@@ -481,11 +501,20 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
         return Err("Parent directory does not exist.".to_string());
     }
     let new_path = parent.join(name.trim());
-    if new_path.exists() {
-        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
+    // BUG-RS-NEW-201: 事前 `exists()` チェックと `fs::write` の間に同名ファイルが作られると、
+    // fs::write は既存ファイルを truncate して空にする（サイレントなデータ消失）。
+    // create_new(true) で OS レベルの原子的な「無ければ作る／あれば失敗」に置き換える。
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&new_path)
+    {
+        Ok(_) => Ok(path_to_string(&new_path)),
+        Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => {
+            Err("ALREADY_EXISTS: A file with that name already exists.".to_string())
+        }
+        Err(err) => Err(err.to_string()),
     }
-    fs::write(&new_path, "").map_err(|err| err.to_string())?;
-    Ok(path_to_string(&new_path))
 }
 
 /// Copy a single file or directory tree from `source_path` into `target_dir_path`.

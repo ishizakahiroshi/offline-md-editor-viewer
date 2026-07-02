@@ -282,14 +282,6 @@ fn desktop_write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> 
 }
 
 #[tauri::command]
-fn desktop_list_markdown_files(directory_path: String) -> Result<Vec<DesktopFileEntry>, String> {
-    reject_nul_in_path(&directory_path)?;
-    let mut files = Vec::new();
-    collect_markdown_files(Path::new(&directory_path), &mut files)?;
-    Ok(files)
-}
-
-#[tauri::command]
 fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Value>, String> {
     reject_nul_in_path(&dir_path)?;
     let read_dir = fs::read_dir(&dir_path).map_err(|e| e.to_string())?;
@@ -300,10 +292,18 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
         if entries.len() >= MAX_LIST_ENTRIES {
             return Err("Too many entries to list. Please open a smaller folder.".to_string());
         }
-        let entry = entry.map_err(|e| e.to_string())?;
+        // FBL-002 (2026-07-03): エントリ単位の取得失敗（列挙中の削除競合・ACL 拒否等）で
+        // 列挙全体を Err にせず skip する。deep 列挙 collect_markdown_files_inner と同方針。
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(_) => continue,
+        };
         let name = entry.file_name().to_string_lossy().to_string();
         let path = path_to_string(&entry.path());
-        let metadata = fs::symlink_metadata(entry.path()).map_err(|e| e.to_string())?;
+        let metadata = match fs::symlink_metadata(entry.path()) {
+            Ok(metadata) => metadata,
+            Err(_) => continue,
+        };
         if metadata.file_type().is_symlink() {
             continue;
         }
@@ -755,7 +755,6 @@ pub fn run() {
             desktop_read_file_bytes,
             desktop_write_file_text,
             desktop_write_file_bytes,
-            desktop_list_markdown_files,
             desktop_rename_file,
             desktop_move_entry,
             desktop_copy_entry,

@@ -2,9 +2,20 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-03
+
 ### Added
 
 - npm distribution of the browser edition: `npx offline-md-editor-viewer` (or `npm i -g offline-md-editor-viewer`, Node.js 18+) opens the bundled single-HTML browser edition in the default browser. The npm package is a launcher only; GitHub Releases remains the canonical distribution.
+
+### Fixed
+
+- Robustness fixes from the June 2026 security/quality audits: atomic file creation on the desktop edition (no longer truncates a same-named file created concurrently), fail-closed large-file guard, consistent junction/reparse-point exclusion between deep and shallow folder listings, clearer error reporting for cross-volume moves, and search/replace and encoding-status edge cases in the browser edition.
+- Folder tree expansion on the desktop edition no longer fails entirely when a single entry in the folder is inaccessible; the affected entry is skipped instead.
+
+### Changed
+
+- Removed an unused internal desktop command (dead code) to reduce the exposed command surface.
 
 ## 0.1.1 - 2026-06-05
 

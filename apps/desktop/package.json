@@ -1,6 +1,6 @@
 {
   "name": "offline-md-editor-viewer-desktop",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "description": "Windows desktop wrapper for offline-md-editor-viewer",

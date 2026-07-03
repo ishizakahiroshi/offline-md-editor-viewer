@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- npm distribution of the browser edition: `npx offline-md-editor-viewer` (or `npm i -g offline-md-editor-viewer`, Node.js 18+) opens the bundled single-HTML browser edition in the default browser. The npm package is a launcher only; GitHub Releases remains the canonical distribution.
+
 ## 0.1.1 - 2026-06-05
 
 ### Added

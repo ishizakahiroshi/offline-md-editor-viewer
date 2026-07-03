@@ -1,5 +1,11 @@
 # 変更履歴
 
+## Unreleased
+
+### Added
+
+- ブラウザ版の npm 配布を追加: `npx offline-md-editor-viewer`（常用は `npm i -g offline-md-editor-viewer`、Node.js 18+）で、同梱の単一 HTML ブラウザ版を既定のブラウザで開ける。npm パッケージはランチャーのみで、配布の正本は引き続き GitHub Releases。
+
 ## 0.1.1 - 2026-06-05
 
 ### Added

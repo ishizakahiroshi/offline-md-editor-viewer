@@ -35,6 +35,21 @@ Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/o
 | Archive or redistribute the browser edition | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Archive or redistribute the Windows edition | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
 
+## Try with npm (Node.js 18+)
+
+If you have Node.js 18 or later, one command opens the browser edition (the single HTML file) in your default browser:
+
+```bash
+# Try it once
+npx offline-md-editor-viewer
+
+# Install globally for regular use
+npm i -g offline-md-editor-viewer
+offline-md-editor-viewer
+```
+
+The npm package is a small launcher that bundles the browser edition only. The Windows desktop `.exe` is not distributed via npm — download it from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
+
 ## Why you might like it
 
 - **No build, no install.** The browser edition is a single HTML file you open directly. The Windows desktop edition is a portable `.exe` you can drop on a USB stick.

@@ -1,0 +1,34 @@
+{
+  "name": "offline-md-editor-viewer",
+  "version": "0.0.0-dev",
+  "description": "Launcher for Offline MD Editor & Viewer: opens the bundled single-file HTML app in your default browser. Fully offline Markdown editor/viewer.",
+  "license": "MIT",
+  "author": "Hiroshi Ishizaka (ishizakahiroshi) <ishizakahiroshi.dev@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ishizakahiroshi/offline-md-editor-viewer.git"
+  },
+  "homepage": "https://github.com/ishizakahiroshi/offline-md-editor-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/ishizakahiroshi/offline-md-editor-viewer/issues"
+  },
+  "keywords": [
+    "markdown",
+    "editor",
+    "viewer",
+    "offline",
+    "preview",
+    "single-file"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "offline-md-editor-viewer": "bin/offline-md-editor-viewer.js"
+  },
+  "files": [
+    "bin/",
+    "offline-md-editor-viewer.html",
+    "README.md"
+  ]
+}

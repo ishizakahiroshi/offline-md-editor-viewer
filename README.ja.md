@@ -35,6 +35,21 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 | ブラウザ版を保管・再配布する | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Windows 版を保管・再配布する | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
 
+## npm で試す（Node.js 18+）
+
+Node.js 18 以降があれば、コマンド 1 つでブラウザ版（単一 HTML ファイル）を既定のブラウザで開けます。
+
+```bash
+# まず試す
+npx offline-md-editor-viewer
+
+# 常用するならグローバルインストール
+npm i -g offline-md-editor-viewer
+offline-md-editor-viewer
+```
+
+npm パッケージはブラウザ版だけを同梱した小さなランチャーです。Windows デスクトップ版の `.exe` は npm では配布していません。[GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードしてください。
+
 ## こんな人に向いています
 
 - **ビルドもインストールも不要。** ブラウザ版は単一 HTML ファイルを開くだけで動作し、Windows デスクトップ版は USB に置けるポータブル `.exe` です。

@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - "v*.*.*"
+  # npm チャネル単独の再実行口（P6）。既存 GitHub Release の正本 ZIP から再取得して publish し直す。
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)publish to npm (e.g. v0.1.2). Runs the npm channel only."
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +22,8 @@ jobs:
   build-browser:
     name: Build browser package
     runs-on: ubuntu-latest
+    # workflow_dispatch（npm-only 再実行）ではビルド系 job を走らせない
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout
@@ -43,6 +52,8 @@ jobs:
   build-desktop-windows:
     name: Build Windows desktop portable exe
     runs-on: windows-latest
+    # workflow_dispatch（npm-only 再実行）ではビルド系 job を走らせない
+    if: github.event_name == 'push'
 
     steps:
       - name: Checkout
@@ -253,3 +264,112 @@ jobs:
             gh release create "${tag}" "${assets[@]}" --title "${tag}" --generate-notes
             update_release_notes
           fi
+
+  publish-npm:
+    name: Publish npm launcher package
+    runs-on: ubuntu-latest
+    needs:
+      - publish-release
+    # 正本先行（P3）: タグ push 時は GitHub Release 完了後にのみ実行。
+    # workflow_dispatch 時は needs が skip されても単独で実行する（npm-only 再実行・P6）。
+    if: >-
+      always() &&
+      (
+        (github.event_name == 'push' && needs.publish-release.result == 'success') ||
+        github.event_name == 'workflow_dispatch'
+      )
+    permissions:
+      contents: read
+      # npm trusted publishing（OIDC）用。認証の正本はこれ 1 本（P8・長寿命トークン排除）。
+      # OIDC が使えない場合の代替は NPM_TOKEN（Granular・Bypass 2FA）を GitHub Secrets に置き
+      # setup-node の registry-url + NODE_AUTH_TOKEN で渡す方式だが、ドリフト排除のため本 workflow には組み込まない。
+      id-token: write
+
+    env:
+      # バージョンはタグのみを単一ソースとする（P8）
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      # trusted publishing には npm >= 11.5.1 が必要
+      - name: Update npm for trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - name: Download release assets (single source of truth)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/npm-stage
+          gh release download "${RELEASE_TAG}" \
+            --pattern "offline-md-editor-viewer-browser-${RELEASE_TAG}.zip" \
+            --pattern "SHA256SUMS.txt" \
+            --dir dist/npm-stage
+
+      - name: Verify checksum and extract HTML from release ZIP
+        run: |
+          set -euo pipefail
+          cd dist/npm-stage
+          zip_name="offline-md-editor-viewer-browser-${RELEASE_TAG}.zip"
+          # 正本 ZIP を SHA256SUMS.txt と照合（P9）
+          grep "  ${zip_name}\$" SHA256SUMS.txt | sha256sum -c -
+          # ZIP から単一 HTML を抽出して npm パッケージへ同梱（repackager: 別ビルドはしない。P1/P2）
+          unzip -p "${zip_name}" \
+            "offline-md-editor-viewer-browser-${RELEASE_TAG}/offline-md-editor-viewer.html" \
+            > "${GITHUB_WORKSPACE}/apps/npm/offline-md-editor-viewer.html"
+          test -s "${GITHUB_WORKSPACE}/apps/npm/offline-md-editor-viewer.html"
+
+      - name: Sync package version to tag
+        working-directory: apps/npm
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          npm version "${version}" --no-git-tag-version
+
+      - name: Publish to npm (idempotent, OIDC trusted publishing)
+        working-directory: apps/npm
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          pkg="offline-md-editor-viewer"
+
+          # idempotent: 既に同版が存在すれば成功扱いでスキップ（P5）
+          if npm view "${pkg}@${version}" version >/dev/null 2>&1; then
+            echo "${pkg}@${version} is already published. Skipping (idempotent)."
+            exit 0
+          fi
+
+          # E429（rate limit）等の一時失敗は指数バックオフで最大 3 回（P5）
+          max_attempts=3
+          for attempt in $(seq 1 "${max_attempts}"); do
+            if output=$(npm publish --access public --provenance 2>&1); then
+              echo "${output}"
+              echo "Published ${pkg}@${version}."
+              exit 0
+            fi
+            echo "${output}"
+            # レース（並行 publish 済み）も成功扱い
+            if npm view "${pkg}@${version}" version >/dev/null 2>&1; then
+              echo "${pkg}@${version} appeared on the registry. Treating as success."
+              exit 0
+            fi
+            if [ "${attempt}" -lt "${max_attempts}" ] && echo "${output}" | grep -qiE "E429|429 Too Many Requests|ETIMEDOUT|ECONNRESET|EAI_AGAIN"; then
+              delay=$((30 * attempt * attempt))
+              echo "Transient failure (attempt ${attempt}/${max_attempts}). Retrying in ${delay}s..."
+              sleep "${delay}"
+              continue
+            fi
+            echo "npm publish failed (attempt ${attempt}/${max_attempts})." >&2
+            exit 1
+          done

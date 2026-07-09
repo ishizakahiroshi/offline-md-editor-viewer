@@ -1,4 +1,4 @@
-# CLAUDE.md comit
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 本アプリはオフライン動作を主思想とするが、リリース ZIP に含まれる単一 HTML `offline-md-editor-viewer.html` を Web サーバーへ配置することも可能（例外運用）。`<meta http-equiv="Content-Security-Policy">` で `connect-src 'none'` を強制し、サーバー配信下でも外部通信ゼロを担保する。
 
-オフラインファースト思想自体は維持しており、サーバー配信は「上げても動く」という事実を許容する位置づけ。実例 URL と具体的なデプロイ手順は `docs/local/manual_deploy-sakuravps.md`（git 管理外）を参照。
+オフラインファースト思想自体は維持しており、サーバー配信は「上げても動く」という事実を許容する位置づけ。実例 URL と具体的なデプロイ手順は `docs/local/manual/manual_deploy-sakuravps.md`（git 管理外）を参照。
 
 ## アーキテクチャ
 
@@ -24,6 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `apps/browser/lib/hljs-github-dark.min.css` — highlight.js 用 GitHub Dark テーマ（ローカル同梱）
 - `apps/browser/docs/syntax-sample.md` / `apps/browser/docs/syntax-sample.ja.md` — Markdown記法サンプル
 - `apps/desktop/` — Windowsデスクトップ版の Tauri プロジェクト。`src-tauri/tauri.conf.json` の `build.frontendDist` は `../../browser` を参照し、既存HTMLをWebViewで読み込む
+- `apps/npm/` — npm ランチャーパッケージ（`bin/offline-md-editor-viewer.js` が同梱の単一 HTML を既定ブラウザで開く）。同梱 HTML（`apps/npm/offline-md-editor-viewer.html`）はビルド生成物のため git 管理外
 
 ### 主要な設計ポイント
 
@@ -110,7 +111,7 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 ## リリース運用
 
 `v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
-詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual_release.md` を参照すること。
+詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual/manual_release.md` を参照すること。
 
 Release notes には、アプリ概要、Downloads、GitHub 自動生成ノート、SHA-256 Checksums が自動で入る。既存 Release へ再実行する場合も assets は `--clobber` で更新し、SHA-256 Checksums セクションは差し替える。
 
@@ -173,48 +174,16 @@ Web / Desktop 両方の配布候補をローカルでまとめて作る場合は
 - **ファイル名:** ケバブケース or スネークケース（例: `offline-md-editor-viewer.html`, `syntax-sample.md`）
 - **プログラム内識別子:** 言語慣習に従う（JS: キャメルケース、CSSクラス: ケバブケース、定数: アッパースネークケース）
 
-## plan_*.md 作成ルール（必須）
+## AI 作業共通ルール
 
-`plan_*.md` を新規作成するとき、**H1直下（最終更新日時の次）に必ず `## context配分` セクションを置く**。
+ビルド・コミット禁止、secrets-scan 責務、plan/bugfix/pending md の作成ルール等の AI 作業共通ルールは、各利用者のグローバル AI 設定に従う（作者環境の例: `~/.claude/CLAUDE.md` および `~/.claude/guides/`）。本ファイルへは再掲しない。
 
-- context番号は `C1`, `C2`, `C3`... の連番（`C2a` 等の細分化禁止）
-- context番号は実行順を表す。依存関係がある場合は、先に実施する作業ほど若い番号にする
-- 並列実行可能なcontextは `[並列OK]` を明示
-- `[並列OK]` は同時着手できる補足であり、C番号の実行順を崩す意味ではない
-- 1Context終わらない場合は、親子関係を作成してContext、トークン消費を抑える設計にする
-- 親 `plan_*.md` から各contextの子 `plan_*.md` へ分割してよい
-- 親 plan は context配分・スケジュール・概要までに留める
-- 子 plan は subagent が作業できるように細かい作業指示を書き込むこと
-- 親子関係は1階層まで。子計画からさらに孫mdを作らない
-- 子計画のファイル名は親計画を作成した年月日時分秒と親計画番号を入れる
-  - 例: `plan_<親topic>_c1_overview.md`
-- 子計画のファイル名・H1・context番号は、親のcontext番号と対応させる
-- 親計画の「実行順序」には `C1 → C2 → (C3, C4) → C5` のように矢印で順番を明示し、並列OKのcontextは括弧に入れる
-- 「Step 1 / Step 2」等の表記は使わない。必ず C番号で管理する
-- **contextの種別は `plan` / `fix` の2値のみ。`verify` `survey` `audit` 等の規約外種別は使わない**
-- **context完了時は `## context配分` 表の該当行を `plan` → `fix` に更新する。「実行結果」セクションへの完了記述だけでは不足**
-- **親 plan 1つを指示すれば走り切ることが目標。** ユーザー確認待ちを挟まず C 単位で進める（C 完了 → 次 C 自動進行）
-- plan に書かれている作業は「ユーザー承認済み」とみなす。permission prompt が出ても止めず、plan 内記載と一致する操作なら許可して続行する
-- Context・トークン消費を抑えるため、調査・確認の重複を避ける（同じファイルを複数回 Read しない、grep 結果を再取得しない）
-- 停止条件は次の3つのみ：
-  1. plan 記載と矛盾する破壊的変更が必要になった
-  2. 外部依存の致命的障害（ビルド不能、Tauri ビルド環境の致命的破損など plan 内で解決不能）
-  3. 重大なリリース済み版への退行リスク（既にタグ付けして配布済みのバージョンと挙動が大きく変わる懸念）
-- 上記以外（軽微な迷い・選択肢の優劣判断・命名揺れ等）は plan 記載 or 既存実装に倣って自走する。確認に倒さない
-- 各 C 完了時の報告は最小化し、`fix:完了/plan:未完了`・`変更ファイル一覧`・`検証結果1行` の3点のみ返す
+## plan_*.md 作成ルール（プロジェクト固有分のみ）
 
-### plan 実行時の subagent 委託（標準運用）
+共通ルールは上記「AI 作業共通ルール」参照（正本: `~/.claude/guides/plan_rules.md`）。本プロジェクト固有の追加は以下のみ：
 
-1指示で plan 全体を走り切りつつメイン context のトークン消費を抑えるため、各 C は subagent に委託する：
-
-- 親セッションは親 plan の `## context配分` 表のみ把握し、C 単位で subagent を起動する
-- subagent には「親plan path・担当C番号・子plan path（あれば）」を渡し、`完了/未完了`・`変更ファイル一覧`・`検証結果1行` のみ返させる
-- subagent 内での調査ログ・思考過程はメイン context に返さない（親 context 節約のため）
-- subagent は plan 記載の操作を確認なしで実行する。停止条件は本ルール記載の3項目のみ
-- 並列 OK な C（実行順序の括弧内）は1メッセージで複数 Agent を同時起動する
-- C 完了ごとに親 plan の `context配分` 表を `plan` → `fix` に更新するのは subagent 側の責務
-- subagent 種別: 実装は `general-purpose`、設計検討が必要なら `Plan`、軽い調査は haiku の subagent を使い分ける
-- subagent → 親への内部報告は上記の軽量3点（`完了/未完了`・`変更ファイル一覧`・`検証結果1行`）。一方、**親 → ユーザーへの最終報告**はグローバル `~/.claude/CLAUDE.md` の「ターン終端の出力ルール」（変更ファイル／稼働モデル／次のアクション）に従う
+- 停止条件の 2 番目「外部依存の致命的障害」には Tauri ビルド環境の致命的破損を含む
+- 停止条件の 3 番目（プロジェクト固有）: 重大なリリース済み版への退行リスク（既にタグ付けして配布済みのバージョンと挙動が大きく変わる懸念）
 
 ## docs/.md 編集ルール（必須）
 

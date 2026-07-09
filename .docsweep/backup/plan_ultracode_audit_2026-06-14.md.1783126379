@@ -1,0 +1,159 @@
+# [様子見] ultracode バグ・セキュリティ・脆弱性・保守性監査 2026-06-14
+> 最終更新: 2026-06-14(日) 15:02:57
+
+## context配分
+
+| context | 種別 | 状態 | 内容 |
+|---|---|---|---|
+| C1 | fix | 完了 | 初期把握・DB区分判定・対象範囲整理・plan/report 雛形作成 |
+| C2 | fix | 完了 | 調査フェーズ（観点別並列ファンアウト・50エージェント）＋ 敵対的検証（検証42件→確定15件/却下27件） |
+| C3 | fix | 完了 | 確定 finding の現行機能維持・最小修正（JS 6件適用、Rust/設計判断は判断待ち・進言へ） |
+| C4 | fix | 完了 | node --check 構文検証・再調査ループ・最終記録 |
+
+## 作業目的
+
+DBを使わないアプリ（オフライン Markdown エディタ/ビューア）として、バグの摘出と修正を主軸に、セキュリティ・脆弱性・保守性の問題を複合調査し、実害または将来リスクの高いものから現行機能を壊さない最小修正を行う。
+
+## 対象範囲
+
+- `apps/browser/offline-md-editor-viewer.html`（本体・12646 行・HTML/CSS/JS 一体）
+- `apps/browser/lib/` 同梱ライブラリの利用境界（marked 18.0.5 / DOMPurify 3.4.8 / encoding-japanese 2.2.0 / highlight.js 11.11.1）
+- `apps/desktop/src-tauri/src/lib.rs` / `main.rs`（Tauri/Rust invoke・ファイル操作）
+- `apps/desktop/package.json` / `package-lock.json` / `Cargo.toml` / `Cargo.lock`
+- `scripts/release/` の静的確認可能な範囲
+
+## 除外範囲
+
+- DB設計・SQL・ORM・migration・schema（本アプリは DB 不使用）
+- ビルド・コンパイル・バンドル・パッケージ生成・publish・deploy
+- git commit / push / tag
+- アーキテクチャ抜本改修・大規模リファクタ・新規フレームワーク導入
+- node_modules / target 等の生成物・第三者ライブラリ minified 本体の内部
+
+## DBを使わない前提
+
+リポジトリに SQL / ORM / migration / DB driver は無し。永続化は以下のみ:
+- ブラウザ UI 設定: `localStorage`（`offline_md_editor_viewer_` プレフィックス）
+- ブラウザ直近フォルダハンドル: IndexedDB（`offline_md_editor_viewer_directory`）
+- Tauri 直近フォルダ: `localStorage` の絶対パス文字列
+- Markdown 本文: File System Access API または Tauri invoke 経由ローカルファイル
+- 外部API: 通常実行時なし。`<meta CSP>` で `connect-src 'none'`
+
+## 状態管理 / 永続化方式
+
+C1 で確認済み（上記）。レンダリングパイプラインは `marked.parse()` → `DOMPurify.sanitize()` → `innerHTML`。サニタイズ設定は `MARKDOWN_SANITIZE_OPTIONS`（FORBID_TAGS に script/iframe/object 等、FORBID_ATTR に srcdoc/srcset/style 等）。
+
+## 禁止事項（厳守）
+
+- DB導入・DB前提の修正をしない
+- ビルド・コンパイル・バンドル・パッケージ生成をしない
+- commit / push / tag をしない
+- `git reset --hard` / `git checkout --` / 未依頼 revert をしない（他者の未コミット変更を戻さない）
+- 現行仕様・公開IF・設定形式・保存データ形式・主要UI挙動・データ互換性を壊さない
+- 秘密情報の値を転記しない（場所と種別のみマスク記録）
+- スコープ終端（フルループ=再調査ループ完了）まで止まらず走り切る。判断待ちは記録してパス、抜本改修は進言事項に記録
+
+## 現行機能維持の確認観点
+
+- レンダリングパイプライン（marked→DOMPurify→innerHTML）の出力が変わらない
+- File System Access / Tauri invoke の保存・読込フローが壊れない
+- フォルダツリー・検索・rename/delete/move/copy の挙動維持
+- localStorage / IndexedDB のキー・保存形式の互換
+- i18n（en/ja）両言語の文字列が壊れない
+
+## TODOチェックリスト
+
+- [x] C1: 指示ファイル・未コミット状態・依存・永続化方式の確認、plan/report 雛形作成
+- [x] C2: 調査ワークフロー（バグ複数モジュール / セキュリティ / 脆弱性 / 依存）並列実行
+- [x] C2: 各 finding の敵対的検証（確定 / 却下 / 重複 / 判断待ち分類）
+- [x] C3: 確定 high/critical を最小修正（JS 6件）
+- [x] C4: node --check による構文検証（ビルドを伴わない）
+- [x] C4: 再調査ループ・最終記録
+
+## 調査ログ
+
+- 2026-06-14 14:19: git status --short 空（作業前の未コミット変更なし、branch=develop）。
+- 2026-06-14 14:19: CLAUDE.md / CLAUDE.local.md / README_activation / README_naming / 監査プロンプト本文を確認。
+- 2026-06-14 14:19: DB関連（SQL/ORM/migration/driver）無し → DBなし版を選択。ツール=Claude ultracode。
+- 2026-06-14 14:19: lib.rs を通読。NUL拒否・symlinkスキップ・canonicalize 脱出防止・予約名チェック等で既に堅牢化済みと一次把握。
+- 2026-06-14 14:19: レンダリングサニタイズ（MARKDOWN_SANITIZE_OPTIONS）・marked renderer・source highlight innerHTML 箇所を一次把握。
+
+## finding 一覧（確定＝修正 / 確定＝判断待ち / 却下）
+
+### 修正した確定 finding（JS・6件）
+
+| ID | 観点 | 重大度 | 箇所 | 問題 | 修正 |
+|---|---|---|---|---|---|
+| F1 | バグ | high | saveFile 保存後（Tauri/Web 両経路） | 保存後 `fileState.bom`/`lineEnding` を未同期で stale | 保存成功後に `fileState.bom = hasBom; fileState.lineEnding = lineEndingSelect.value;` を両経路に追加 |
+| F2 | バグ | medium | bomCheckbox/lineEndingSelect change listener | BOM/改行コード変更で保存バイト列が変わるのに dirty 未更新 | `if (fileState.handle) setDirtyState(true);` を追加（読込時の代入は change を発火しない＝誤検知なし） |
+| F3 | バグ | high | createDirectoryEntry（Tauri） | フォルダ重複作成時 ALREADY_EXISTS が外側 catch に流れ汎用エラー表示 | createMarkdownFileEntry と同パターンで try-catch、`folderNameExists` 表示 |
+| F4 | バグ | high | deleteDirectoryEntry の3経路 | `deleteDirectoryEntryQuiet` 例外が未処理（ユーザー通知なし） | deleteSelectedEntries と同様 try-catch で `deleteFailed` 表示・early return |
+| F5 | バグ | high | syncScroll | 同期中に例外発生で `syncingScroll` が true 固着しスクロール同期が恒久停止 | 本体を try-finally で囲み finally で rAF 解除予約 |
+| F6 | バグ | medium | filesタブ Shift+クリック範囲選択 | fileTreeShowAll OFF 時に非表示ファイルまで範囲選択（一括削除/移動で誤操作） | 範囲候補を `shouldShowFileTreeNode` でフィルタしてから path 化 |
+
+### 確定だが今回修正せず判断待ち / 進言に回した finding
+
+| ID | 観点 | 重大度 | 箇所 | 判断 |
+|---|---|---|---|---|
+| J1 | バグ | medium | getReplacementPreviewForMatch/getReplacementForMatch (L7123/7508) | lookbehind/lookahead 等文脈依存正規表現の置換が match.text 単体適用で失敗。**【ユーザー判断 2026-06-14: 現状維持＋ヘルプ明記】** コード未変更、README 4箇所（README.md / README.ja.md / HTML 内 README_EN / README_JA）に制限を注記して対応完了 |
+| J2 | バグ | medium | collectFindMatches ゼロ幅マッチ skip (L7280) | `(?=x)`/`^` 等ゼロ幅パターンが無限ループ防止のため skip。意図的挙動で修正は無限ループリスク → 進言（ヘルプ明記推奨） |
+| J3 | バグ | medium | getHeadingLockedScrollTop null fallback (L7992) | 見出し<2 の文書で見出し精密同期不可・ratio fallback に落ちる。機能は成立 → 低優先・仕様 |
+| J4 | 脆弱性 | medium | desktop_rename_file / desktop_move_entry TOCTOU | exists()→rename 間の競合。OS の atomic rename が EEXIST で安全失敗・JS は ALREADY_EXISTS を処理。ビルド検証不可 → 進言 |
+| J5 | 脆弱性 | high(検証昇格) | desktop_read_file_bytes サイズ上限なし | 巨大ファイルで OOM。ローカル単一ユーザーで攻撃者不在・閾値はユーザー判断・上限導入は正当な大容量利用を拒否。**【ユーザー判断 2026-06-14: 上限なしのまま・記録のみ】** コード未変更で確定 |
+| J6 | 脆弱性 | low | collect_markdown_files 再帰深さ無制限 | 極端に深いツリーで stack overflow 余地（symlink 除外済で無限ループはなし）。深さ上限は正当な深いツリー切り捨て退行リスク → 進言 |
+| J7 | 保守性 | low-medium | encodeFileContent 重複 / FS 抽象層エラー処理の不統一 | 目的外リファクタ回避（F3 で一部改善）→ 進言 |
+
+## 敵対的検証結果
+
+ワークフロー（50 エージェント）で観点別調査 → 各 finding を独立 verifier が敵対的検証。検証対象 42 件中、確定 15 件 / 却下 27 件。
+さらにメイン context で確定分を再精査し、**T1-1（折りたたみフォルダへの move 時に項目が出ない）を誤検出として追加却下**（後述）。
+
+## 確認済みルール（却下理由と蒸留した一般ルール）
+
+- レンダリングは必ず `sanitizeMarkdownHtml()`（DOMPurify, USE_PROFILES html=true の whitelist）を通る。`escapeHtml()` 経由の innerHTML 代入（find ハイライト/選択ミラー）はユーザー入力をエスケープ済み。→ XSS 系 finding（on* 属性/SVG/MathML/CSP unsafe-inline）は DOMPurify whitelist + CSP `script-src-attr 'none'` + `connect-src 'none'` で既に防御済み＝却下。
+- 外部リンクは `normalizeLinkHref`（制御文字 ` -` と空白除去）＋ `isHttpUrl`（`^https?://`）の二段検証を通り、Tauri 側 `desktop_open_external_url` も http/https 前置と制御文字を再検証。→ `javascript:`/改行注入の link finding は却下。
+- Rust invoke は全コマンド先頭で `reject_nul_in_path()`。move/copy は `canonicalize` + `starts_with` で自己ディレクトリ脱出を防止、`symlink_metadata` で symlink を除外、`is_valid_child_name` で `..`/区切り文字/予約名を拒否。→ パストラバーサル/symlink ループ/explorer 引数注入 finding は却下。
+- async/await は `await f()` が throw した時点で後続の同期的ツリー変更（removeFileNode 等）を実行しない。→「変更が部分適用され状態不整合」系 finding（rename/move）は却下（ただし「エラー時にユーザー通知がない」UX ギャップは F4 として有効）。
+- ツリーの `children === null` は「未取得（遅延読込待ち）」マーカー。move 先が未展開ディレクトリのとき children を触らないのは**仕様として正しい**（展開時に lazy-load で実ディスク内容を取得し移動項目も表示される）。提案された `children=[node]` 化は、未取得ディレクトリを「取得済み・子1個」に誤マークし兄弟ファイルを隠す**退行**になるため不採用。→ T1-1 は誤検出として却下。
+- `Encoding.convert()`（encoding-japanese v2.2.0）は成功時 Array・失敗時 throw で null を返さない。同梱ライブラリはインライン同梱＝改ざん経路なし。→ 「convert が null/不正配列を返す」系 finding は却下。
+- ファイルパスの localStorage 保存は、ユーザー自身が選んだローカルパスをローカル端末内に保持する標準的 UX で機密漏洩ではない。→ 却下。
+
+## 修正方針
+
+確定した critical/high を中心に、現行機能・保存形式・UI挙動を変えない局所修正に限定。Rust は build/cargo check 禁止（ビルド検証不可）かつ閾値・深さ判断が伴うため、退行リスクの低い JS バグのみ適用し、Rust と設計判断は判断待ち/進言に記録。
+
+## 実施した修正
+
+`apps/browser/offline-md-editor-viewer.html` に F1〜F6 を適用（上表）。Rust（`lib.rs`）は無変更。
+
+## 実行した検証 / 実行しなかった検証と理由
+
+- 実行: インライン JS（L4155-12680）を抽出し `node --check` → SYNTAX_OK。
+- 実行: 各修正箇所の git diff レビューで無関係変更なしを確認。各修正の副作用（共有リソース i18n/CSS 非変更・既存パターン踏襲）を再点検。
+- 未実行: ブラウザ/Tauri 実機での挙動確認（手動 UI テストはこの監査スコープ外）。
+- 未実行（ビルド禁止）: `cargo build` / `cargo check` / `tauri build` / single-HTML バンドル生成（`build-browser-single-html.ps1`）。Rust 変更を行わなかったため Rust ビルド検証は不要。
+- 未設定のため未実行: eslint / tsc（本プロジェクトはビルドツール非使用で lint/型設定なし）。
+
+## 既存機能への影響確認
+
+- F1: 追加代入のみ。保存成功時の内部状態を実ディスクに一致させるだけで、保存バイト列・UI 表示・保存形式は不変。
+- F2: `fileState.handle` ガード付きで、ユーザー操作の change 時のみ dirty 化。プログラム的 `.checked`/`.value` 代入は change 非発火のため読込時の誤 dirty なし。Save ボタンの活性が正しく BOM/改行変更を反映する方向の改善。
+- F3: createMarkdownFileEntry と同一パターン。Web 経路は事前 existence チェックで従来通り、Tauri 経路のみエラー表示が `folderNameExists` に改善。それ以外の例外は従来通り再 throw。
+- F4: 既存 deleteSelectedEntries と同一の通知パターン。成功時挙動は不変、失敗時のみ通知して early return（選択クリア/再描画を行わず状態保持）。
+- F5: 成功経路は完全に従来通り（finally で rAF 解除は従来の解除と同タイミング）。例外時のみフラグ固着を回避。
+- F6: 範囲選択で表示中ファイルのみ対象化。可視ファイルの通常 Shift 選択挙動は不変、隠れファイルの誤選択のみ防止。
+
+## 残課題 / 判断待ち事項 / パスした項目 / 進言事項
+
+判断待ち: J1（文脈依存正規表現の置換）, J5（read_file_bytes サイズ上限の閾値）。
+進言: J2（ゼロ幅正規表現の挙動はヘルプ明記）, J4（Rust の TOCTOU を `io::ErrorKind::AlreadyExists` 検出で `ALREADY_EXISTS:` 前置にすると JS が一貫処理できる）, J6（collect_markdown_files を反復化 or 高い深さ上限）, J7（FS 抽象層のエラー処理パターン統一・encodeFileContent 重複削減）。
+パス: T1-1（誤検出として却下、修正しない）。
+ビルド禁止のため Rust 変更は今回見送り（J4/J5/J6 は別途ビルド可能なセッションでの対応を推奨）。
+
+## 完了条件（rubric）
+
+監査プロンプト本文の rubric 11 項目に従う。
+
+## 最終結果
+
+JS バグ 6 件を現行機能維持の最小修正で適用、`node --check` 構文 OK。Rust と設計判断 7 件は判断待ち/進言に記録。誤検出 1 件（T1-1）を追加却下。ビルド・commit・push 未実施、DB 前提なし、抜本改修なし、判断待ちで停止せず走り切り。詳細な利用者向けまとめは `report_ultracode_audit_2026-06-14.md` を参照。

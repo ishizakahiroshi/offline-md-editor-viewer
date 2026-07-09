@@ -612,6 +612,17 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
         if meta.file_type().is_symlink() {
             continue;
         }
+        // SEC-RS-001: list API と同様に Windows のジャンクション/マウントポイント
+        // (REPARSE_POINT) をコピー対象から除外する。is_symlink() だけでは拾えない
+        // reparse を辿ると想定外ボリュームの内容が混入しうる。
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::MetadataExt;
+            const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+            if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                continue;
+            }
+        }
         let dest_child = dest.join(entry.file_name());
         if meta.is_dir() {
             copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;

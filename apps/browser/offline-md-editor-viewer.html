@@ -4869,6 +4869,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       let confirmResolver = null;
       let tauriCloseGuardInstalled = false;
       let closingAfterUnsavedConfirm = false;
+      // BUG-LOAD-RACE-001: 並行 load の完了順序逆転を防ぐ世代トークン。
+      // beginFileLoad() で採番し、await 後に isFileLoadCurrent(gen) が false なら apply しない。
+      let loadGeneration = 0;
+      function beginFileLoad() {
+        loadGeneration += 1;
+        return loadGeneration;
+      }
+      function isFileLoadCurrent(gen) {
+        return gen === loadGeneration;
+      }
       const FALLBACK_LANG = "en";
       let currentLang = FALLBACK_LANG;
       let fileTreeShowAll = localStorage.getItem(STORAGE_FILE_TREE_SHOW_ALL_KEY) !== "false";
@@ -8608,6 +8618,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const MIN_PAIRS = 10;
         const NUL_RATIO_THRESHOLD = 0.80;
         const ASCII_RATIO_THRESHOLD = 0.70;
+        // BUG-ENC-UTF16-SHORT-001: サンプル全体がファイル本体（短い no-BOM UTF-16）のときは
+        // MIN_PAIRS=10 を満たせなくても 2 ペア以上 + 比率閾値で受理する。
         const sampleLength = Math.min(bytes.length, SAMPLE_BYTES);
         let pairCount = 0;
         let nulCount = 0;
@@ -8618,7 +8630,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (bytes[i + offset] === 0x00) nulCount++;
           if (bytes[i + opposite] < 0x80) asciiCount++;
         }
-        if (pairCount < MIN_PAIRS) return false;
+        if (pairCount < 2) return false;
+        const isFullShortBuffer = bytes.length <= SAMPLE_BYTES && bytes.length % 2 === 0;
+        if (pairCount < MIN_PAIRS && !isFullShortBuffer) return false;
         if (nulCount / pairCount < NUL_RATIO_THRESHOLD) return false;
         if (asciiCount / pairCount < ASCII_RATIO_THRESHOLD) return false;
         return true;
@@ -8921,13 +8935,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function loadTauriFilePath(path, options = {}) {
+        const gen = beginFileLoad();
         const fileName = getPathFileName(path);
         const loaded = await readTauriMarkdownFile(path);
+        if (!isFileLoadCurrent(gen)) return;
         const fileHandle = getTauriFileHandle(path);
         if (!applyLoadedContent(fileName, loaded, fileHandle, {
           viewModeKey: path,
           statusMessage: options.statusMessage
         })) return;
+        if (!isFileLoadCurrent(gen)) return;
 
         const knownEntry = flattenTreeFiles(dirState.files).find((entry) => entry.tauriPath === path);
         dirState.entryPath = knownEntry ? knownEntry.path : "";
@@ -8942,10 +8959,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           : (supportsFsAccess ? t("status", "loadReadyPickTarget") : t("status", "loadReadOnlyDone"));
       }
 
+      // Returns true on success, false when binary reject or missing file.
       async function loadFile(file, fileHandle = null) {
-        if (!file) return;
+        if (!file) return false;
         const loaded = await readMarkdownFile(file);
-        applyLoadedContent(file.name, loaded, fileHandle, { viewModeKey: file });
+        return applyLoadedContent(file.name, loaded, fileHandle, { viewModeKey: file });
       }
 
       async function openWithFsAccess() {
@@ -8953,10 +8971,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setStatus(t("status", "noFsOpen"), true);
           return;
         }
+        const gen = beginFileLoad();
         if (isTauri) {
           const path = await invokeTauri("desktop_open_file_dialog");
           if (!path) return;
           const loaded = await readTauriMarkdownFile(path);
+          if (!isFileLoadCurrent(gen)) return;
           const fileHandle = getTauriFileHandle(path);
           applyLoadedContent(getPathFileName(path), loaded, fileHandle, { viewModeKey: path });
           return;
@@ -8969,6 +8989,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
         const file = await handle.getFile();
         const loaded = await readMarkdownFile(file);
+        if (!isFileLoadCurrent(gen)) return;
         applyLoadedContent(file.name, loaded, handle, { viewModeKey: file });
       }
 
@@ -9118,9 +9139,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function loadFileReadOnly(file) {
-        if (!file) return;
+        if (!file) return false;
+        const gen = beginFileLoad();
         const loaded = await readMarkdownFile(file);
-        applyLoadedContent(file.name, loaded, null, { viewModeKey: file });
+        if (!isFileLoadCurrent(gen)) return false;
+        return applyLoadedContent(file.name, loaded, null, { viewModeKey: file });
       }
 
       function compareText(a, b) {
@@ -9576,21 +9599,30 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function loadDirectoryEntry(entry) {
+        const gen = beginFileLoad();
         if (entry.tauriPath) {
           const loaded = await readTauriMarkdownFile(entry.tauriPath);
+          if (!isFileLoadCurrent(gen)) return;
           const fileHandle = getTauriFileHandle(entry.tauriPath);
           const entryName = entry.name || getPathFileName(entry.tauriPath);
           if (!applyLoadedContent(entryName, loaded, fileHandle, {
             viewModeKey: entry.name || entry.tauriPath
           })) return;
+          if (!isFileLoadCurrent(gen)) return;
           dirState.entryPath = entry.path;
           dirState.entryTauriPath = entry.tauriPath || "";
           dirState.selectedPaths.clear();
           updateActiveSelection(entry.path, dirState.selectedPaths);
           return;
         }
+        // BUG-LOAD-BINARY-WEB-001: binary 拒否時は entryPath / selection を更新しない（Tauri 分岐と揃える）。
         const file = entry.fileHandle ? await entry.fileHandle.getFile() : entry.file;
-        await loadFile(file, entry.fileHandle || null);
+        if (!isFileLoadCurrent(gen)) return;
+        if (!file) return;
+        const loaded = await readMarkdownFile(file);
+        if (!isFileLoadCurrent(gen)) return;
+        if (!applyLoadedContent(file.name, loaded, entry.fileHandle || null, { viewModeKey: file })) return;
+        if (!isFileLoadCurrent(gen)) return;
         dirState.entryPath = entry.path;
         dirState.entryTauriPath = "";
         dirState.selectedPaths.clear();
@@ -9728,10 +9760,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       // Copy source directory handle into targetParentHandle, auto-resolving name collisions.
+      // BUG-WEB-COPY-PARTIAL-001: 途中失敗時は dest を best-effort で掃除し、部分コピー残骸を残さない（Rust copy_dir_recursive と同方針）。
       async function copyDirectoryHandleToDirectory(sourceHandle, targetParentHandle, name) {
         const destName = await resolveUniqueWebName(targetParentHandle, name);
         const targetHandle = await targetParentHandle.getDirectoryHandle(destName, { create: true });
-        await copyDirectoryContents(sourceHandle, targetHandle);
+        try {
+          await copyDirectoryContents(sourceHandle, targetHandle);
+        } catch (err) {
+          try {
+            await targetParentHandle.removeEntry(destName, { recursive: true });
+          } catch (_cleanupErr) { /* best-effort */ }
+          throw err;
+        }
         return targetHandle;
       }
 
@@ -9908,8 +9948,36 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const createdPath = await invokeTauri("desktop_create_file", { parentPath, name });
           return { tauriPath: createdPath, parentPath };
         }
+        // BUG-WEB-CREATE-TOCTOU-001: create:true + createWritable は既存ファイルを truncate するため、
+        // 先に create:false で存在確認し、作成後も size>0 なら書き込まず ALREADY_EXISTS で fail-closed。
+        // FS Access API に OS 級 create_new が無いため空ファイル同士の極小レースは残るが、
+        // 内容のあるファイルを消す経路は塞ぐ（Rust desktop_create_file の create_new と意図を揃える）。
         const parentHandle = parentEntry && parentEntry.directoryHandle ? parentEntry.directoryHandle : dirState.handle;
+        try {
+          await parentHandle.getFileHandle(name, { create: false });
+          throw new Error("ALREADY_EXISTS: A file with that name already exists.");
+        } catch (err) {
+          if (err && /ALREADY_EXISTS:/.test(String(err.message || err))) throw err;
+          if (err && err.name === "TypeMismatchError") {
+            throw new Error("ALREADY_EXISTS: A file with that name already exists.");
+          }
+          if (!err || err.name !== "NotFoundError") throw err;
+        }
+        try {
+          await parentHandle.getDirectoryHandle(name, { create: false });
+          throw new Error("ALREADY_EXISTS: A file with that name already exists.");
+        } catch (err) {
+          if (err && /ALREADY_EXISTS:/.test(String(err.message || err))) throw err;
+          if (err && err.name === "TypeMismatchError") {
+            throw new Error("ALREADY_EXISTS: A file with that name already exists.");
+          }
+          if (!err || err.name !== "NotFoundError") throw err;
+        }
         const createdHandle = await parentHandle.getFileHandle(name, { create: true });
+        const existing = await createdHandle.getFile();
+        if (existing.size > 0) {
+          throw new Error("ALREADY_EXISTS: A file with that name already exists.");
+        }
         const writable = await createdHandle.createWritable();
         await writable.write("");
         await writable.close();
@@ -10674,6 +10742,19 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
 
         return root;
+      }
+
+      // BUG-TREE-FLAT-001: desktop_get_file_directory は flat リストを返す。
+      // showDirectoryFiles に直接渡すと階層が崩れ tauriPath も欠落するため、必ず tree 化してから表示し、
+      // 開いたファイルの active 選択を復元する。
+      function showTauriParentDirectoryFromFlat(filesInDir, dirPath, activeFilePath) {
+        if (!dirPath) return;
+        const tree = buildTreeFromFlat(filesInDir || [], dirPath);
+        showDirectoryFiles(tree, dirPath, dirPath, { revealFileList: true });
+        if (!activeFilePath) return;
+        const displayPath = getTauriDisplayPath(activeFilePath, dirPath);
+        dirState.entryTauriPath = activeFilePath;
+        expandToPath(displayPath);
       }
 
       async function rescanCurrentDirectory() {
@@ -11619,9 +11700,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         input.addEventListener("change", () => {
           const file = input.files && input.files[0];
           if (!file) return;
+          const gen = beginFileLoad();
           readMarkdownFile(file).then((loaded) => {
+            if (!isFileLoadCurrent(gen)) return;
             applyLoadedContent(file.name, loaded, null, { viewModeKey: file });
           }).catch((err) => {
+            if (!isFileLoadCurrent(gen)) return;
             preview.classList.remove("hint");
             preview.classList.add("error");
             preview.textContent = t("status", "fileReadFailed") + (err && err.message ? err.message : String(err));
@@ -12622,18 +12706,20 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         invokeTauri("desktop_get_launch_file_path")
           .then(async (path) => {
             if (!path) return;
+            const gen = beginFileLoad();
             try {
               const loaded = await readTauriMarkdownFile(path);
+              if (!isFileLoadCurrent(gen)) return;
               const fileHandle = getTauriFileHandle(path);
               if (!applyLoadedContent(getPathFileName(path), loaded, fileHandle, { viewModeKey: path })) return;
+              if (!isFileLoadCurrent(gen)) return;
 
               const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: path });
+              if (!isFileLoadCurrent(gen)) return;
               if (filesInDir && filesInDir.length > 0) {
                 const sepIdx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
                 const dirPath = sepIdx >= 0 ? path.substring(0, sepIdx) : "";
-                if (dirPath) {
-                  showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
-                }
+                showTauriParentDirectoryFromFlat(filesInDir, dirPath, path);
               }
             } catch (err) {
               setStatus(t("status", "launchFileOpenFailed") + (err && err.message ? err.message : String(err)), true);
@@ -12759,11 +12845,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
             // Default: open folder or file.
             if (!confirmDiscardUnsavedChanges()) return;
+            const gen = beginFileLoad();
             try {
               if (payload.kind === "dir") {
                 storeLastDirectoryHandle(payload.path);
                 showDirectoryFiles([], payload.path, payload.path, { revealFileList: true });
                 const files = await collectTauriShallowFiles(payload.path);
+                if (!isFileLoadCurrent(gen)) return;
                 dirState.files = getSortedDirectoryFiles(files);
                 updateCardLayout();
                 renderFileList();
@@ -12772,16 +12860,17 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
                 const filePath = payload.path;
                 const fileBaseName = String(filePath).split(/[\\/]/).pop() || "";
                 const loaded = await readTauriMarkdownFile(filePath);
+                if (!isFileLoadCurrent(gen)) return;
                 const fileHandle = getTauriFileHandle(filePath);
                 if (!applyLoadedContent(fileBaseName, loaded, fileHandle, { viewModeKey: fileBaseName })) return;
+                if (!isFileLoadCurrent(gen)) return;
 
                 const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: filePath });
+                if (!isFileLoadCurrent(gen)) return;
                 if (filesInDir && filesInDir.length > 0) {
                   const sepIdx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
                   const dirPath = sepIdx >= 0 ? filePath.substring(0, sepIdx) : "";
-                  if (dirPath) {
-                    showDirectoryFiles(filesInDir, dirPath, dirPath, { revealFileList: true });
-                  }
+                  showTauriParentDirectoryFromFlat(filesInDir, dirPath, filePath);
                 }
               }
             } catch (err) {

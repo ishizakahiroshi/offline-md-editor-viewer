@@ -1,0 +1,132 @@
+# [様子見] npm npx ランチャー配布（DL 簡易化）
+
+> 最終更新: 2026-07-03(金) 09:11:02
+
+## context配分
+
+| C | 種別 | 内容 | 並列 |
+|---|---|---|---|
+| C1 | fix | ランチャーパッケージ実装（apps/npm/）+ ローカル検証 | — |
+| C2 | fix | release.yml への npm チャネル配線 + release-registry.csv 更新 | — |
+| C3 | fix | README 4 箇所同期（npx 導線の追記）+ CHANGELOG | [並列OK with C2] |
+
+実行順序: `C1 → (C2, C3)`
+
+---
+
+## 概要
+
+`npx offline-md-editor-viewer` の 1 コマンドで同梱の単一 HTML を既定ブラウザで開けるようにし、ZIP ダウンロード → 展開 → HTML を開く手順を置き換える（DL 簡易化）。npm パッケージは「起動ランチャー」であり、アプリ本体の配布正本は従来どおり GitHub Releases。デスクトップ exe の配布には関与しない（スコープ外）。winget / Homebrew は本計画のスコープ外（別途検討）。
+
+## 前提・決定事項
+
+- npm 名 `offline-md-editor-viewer` は予約済み（2026-06-13 / v0.0.1 スタブ / maintainer: ishizakahiroshi）。**0.0.1 は使用済み（immutable）**。初回の本公開はタグ版数（v0.1.2 以降想定）で行う。
+- チャネル分類（reference_release-pipeline.md P2）: **npm = repackager**。正本 = GitHub Release のブラウザ版 ZIP（`offline-md-editor-viewer-browser-<tag>.zip`）+ SHA256SUMS。npm job は**正本 ZIP をダウンロード → SHA-256 照合 → HTML を抽出**して tarball に同梱する（ローカル dist や別ビルドから取らない。P1/P2/P3）。
+- バージョンはタグのみを単一ソースとする（P8）。`apps/npm/package.json` の version はコミット上は `0.0.0-dev` 固定とし、CI が publish 直前にタグ値へ書き換える。
+- 認証は **npm trusted publishing（GitHub Actions OIDC）を第一候補**（P8・長寿命トークン排除）。npmjs.com 側の設定（パッケージ → Settings → Trusted Publisher に repo/workflow を登録）が必要 = **ユーザー操作の判断待ち**。設定困難な場合のフォールバックは `NPM_TOKEN`（Granular・Bypass 2FA）を GitHub Secrets に 1 箇所のみ保持。
+- publish は idempotent（既に同版が存在 = 成功扱い）+ E429 バックオフ（P5）。npm チャネル単独の再実行口として `workflow_dispatch`（tag 指定 + npm-only）を設ける（P6）。
+- ランチャーは依存ゼロの CommonJS 単一ファイル。Node >= 18。
+
+## 現状と問題
+
+- 現状のブラウザ版導線は GitHub Releases の ZIP のみで、ダウンロード → 展開 → HTML を開く 3 手順が必要。
+- Node を持つ開発者層には `npx` 1 コマンドの導線が最短（reference_cli-distribution.md §3「試し = npx」）。
+- npm 上のスタブ（0.0.1）は README だけの中身で、放置すると「インストールしても何も起きない」状態が続く。
+
+---
+
+## C1: ランチャーパッケージ実装（apps/npm/）
+
+### 作業内容
+
+- `apps/npm/package.json` を新規作成:
+  - `name: "offline-md-editor-viewer"` / `version: "0.0.0-dev"`（CI が上書き）/ `license: MIT` / `repository` / `homepage` / `engines.node: ">=18"`
+  - `bin: { "offline-md-editor-viewer": "bin/offline-md-editor-viewer.js" }`
+  - `files: ["bin/", "offline-md-editor-viewer.html", "README.md"]`（HTML は CI ステージ時に配置。git にはコミットしない = `.gitignore` に `apps/npm/offline-md-editor-viewer.html` を追記）
+- `apps/npm/bin/offline-md-editor-viewer.js` を新規作成（依存ゼロ・CJS）:
+  - 同梱 HTML（`../offline-md-editor-viewer.html`）の絶対パスを解決
+  - OS 別に既定ブラウザで開く: win32 = `cmd /c start "" "<path>"` / darwin = `open` / その他 = `xdg-open`（spawn・shell 経由の文字列連結はしない = インジェクション面を作らない）
+  - `--path` オプションで HTML のフルパス表示のみ（ブラウザを開かない）、`--help` / `--version` 対応
+  - HTML が見つからない場合（dev 状態で実行）は「リリース版 tarball にのみ同梱される」旨をエラー表示
+- `apps/npm/README.md` を新規作成（npm 表示用・EN 主体 + JA 併記の簡潔版）: `npx offline-md-editor-viewer`（試し）と `npm i -g`（常用）の両導線、アプリ本体・デスクトップ版は GitHub へのリンク
+
+### 検証（ローカル）
+
+- `.\scripts\release\build-browser-single-html.ps1 -Clean -Verify` で HTML 生成 → `apps/npm/` へ手動コピー → `node apps/npm/bin/offline-md-editor-viewer.js` でブラウザが開くこと
+- `npm pack --dry-run`（apps/npm 内）で tarball 内容を目視（bin/ + HTML + README のみ。秘匿物・docs/local が入らないこと）
+
+### 変更予定ファイル
+
+- `apps/npm/package.json`（新規）
+- `apps/npm/bin/offline-md-editor-viewer.js`（新規）
+- `apps/npm/README.md`（新規）
+- `.gitignore`（`apps/npm/offline-md-editor-viewer.html` 追記）
+
+### 完了条件
+
+- ローカルで node 直叩き → ブラウザ起動を確認
+- `npm pack --dry-run` の同梱物が想定 3 種のみ
+
+---
+
+## C2: release.yml への npm チャネル配線 + 台帳更新
+
+### 作業内容
+
+- `.github/workflows/release.yml` に `publish-npm` job を追加:
+  - **既存 Release 作成 job の完了後**に実行（正本先行 P3）
+  - gh CLI で当該タグの `offline-md-editor-viewer-browser-<tag>.zip` と SHA-256 をダウンロード → checksum 照合（P9）→ ZIP から HTML を抽出して `apps/npm/` へ配置
+  - `npm version <tag値> --no-git-tag-version` で version をタグへ同期（P8）
+  - trusted publishing（OIDC: `permissions: id-token: write` + `npm publish --access public --provenance`）で publish。fallback は NPM_TOKEN
+  - idempotent 化: publish 前に `npm view offline-md-editor-viewer@<ver>` で既存確認 → あれば成功スキップ。E429 は指数バックオフで最大 3 回（P5）
+  - `workflow_dispatch`（inputs: tag / channel=npm-only）で単独再実行可能に（P6）。再実行時も正本 ZIP から再取得（byte-identical 保証）
+- `C:/dev/workshop/release-registry.csv` の本プロジェクト行に npm チャネルと npmName を追記（_meta の語彙は release-registry-meta.yaml 準拠）
+
+### 変更予定ファイル
+
+- `.github/workflows/release.yml`
+- `C:/dev/workshop/release-registry.csv`
+
+### 完了条件
+
+- release.yml が YAML 構文チェックを通る（actionlint or yq があれば実行、なければ目視）
+- 台帳の channels に npm が入り、npmName が一致
+
+### 判断待ち（ユーザー操作）
+
+- npmjs.com で trusted publisher（repo: ishizakahiroshi/offline-md-editor-viewer / workflow: release.yml）を登録するか、NPM_TOKEN を GitHub Secrets に設定するか
+
+---
+
+## C3: README 4 箇所同期 + CHANGELOG
+
+### 作業内容
+
+- README の「Quick Download」または Install 相当節に npx 導線を追記:
+  - `README.md` / `README.ja.md` / HTML 内定数 `README_EN` / `README_JA` の **4 箇所すべて**を同時に揃える（CLAUDE.md の二重管理ルール。HTML 内定数では外部リンク除外規約に従う）
+  - 内容: 試し = `npx offline-md-editor-viewer` / 常用 = `npm i -g offline-md-editor-viewer`、Node 18+ 前提、開くのはブラウザ版である旨
+- `CHANGELOG.md` の Unreleased（または次版）に npm 配布追加を記載
+
+### 変更予定ファイル
+
+- `README.md` / `README.ja.md`
+- `apps/browser/offline-md-editor-viewer.html`（README_EN / README_JA 定数）
+- `CHANGELOG.md`
+
+### 完了条件
+
+- 4 箇所のセクション構成・文言が同期している（grep で相互確認）
+
+---
+
+## スコープ外・将来
+
+- winget: **対応しない（2026-07-03 ユーザー判断で確定）**。マニフェスト運用の手間と署名判断が見合わないため。配布は github-release + npm の 2 チャネルで完結させる
+- Homebrew（macOS 版 Tauri ビルド解禁後に cask で再検討）
+- P10 secrets-scan の release gate 4 層配線（このリポは未配線。project-init での配線は別件）
+
+## 実行結果
+
+- C3（2026-07-03）: README 4 箇所（`README.md` / `README.ja.md` / HTML 内 `README_EN` / `README_JA`）に「Try with npm (Node.js 18+)」/「npm で試す（Node.js 18+）」節を Quick Download 直後（HTML 定数では blockquote 直後・Quick Download は除外規約により元々不在）へ同一構成で追記（npx = 試し / npm i -g = 常用 / ブラウザ版 HTML を開く旨。HTML 定数は Releases リンクをプレーンテキスト化）。`CHANGELOG.md` / `CHANGELOG.ja.md` に Unreleased / Added で npm 配布追加を記載。検証: grep で 4 箇所の見出し・コマンド 2 種の記載順一致を確認。
+- C2（2026-07-03）: `.github/workflows/release.yml` に `publish-npm` job 追加（publish-release 後に正本 ZIP + SHA256SUMS.txt を gh release download → sha256 照合 → HTML 抽出 → `npm version <tag>` → OIDC trusted publishing で `npm publish --access public --provenance`。idempotent スキップ + E429/一時失敗の指数バックオフ最大3回。NPM_TOKEN はコメント言及のみで未配線）。`workflow_dispatch`（inputs: tag 必須）で npm-only 再実行経路を追加（ビルド系 job は `if: github.event_name == 'push'` でスキップ、既存 push 挙動は不変）。`C:/dev/workshop/release-registry.csv` の本プロジェクト行: channels=`github-release|npm`・npmName=`offline-md-editor-viewer`・notes 更新。検証: PyYAML safe_load 通過（jobs 4 件 / on: push+workflow_dispatch）。残: npmjs.com の Trusted Publisher 登録（ユーザー操作・判断待ち）。
+- C1（2026-07-03）: `apps/npm/package.json` / `apps/npm/bin/offline-md-editor-viewer.js` / `apps/npm/README.md` 新規作成、`.gitignore` に `apps/npm/offline-md-editor-viewer.html` 追記。検証: build-browser-single-html.ps1 -Clean -Verify 通過 → HTML を apps/npm/ へコピー → `--path` 正常表示・ブラウザ起動確認・`--version`/`--help` OK。`npm pack --dry-run` 同梱物は bin/offline-md-editor-viewer.js + offline-md-editor-viewer.html + README.md + package.json の 4 点のみ。HTML は gitignore 済み（`git check-ignore` 確認）。

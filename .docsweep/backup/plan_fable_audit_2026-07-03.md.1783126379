@@ -1,0 +1,163 @@
+# [様子見] Fable 監査 2026-07-03（DBなし・強度ハイ・フルループ・全観点）
+
+> 最終更新: 2026-07-03(金) 08:50:00
+
+## context配分
+
+| C | 種別 | 内容 | 並列 |
+|---|---|---|---|
+| C1 | fix | 初期準備（plan/report 骨格・リポ把握・前回監査 consult） | — |
+| C2 | fix | 調査（セキュリティ / バグ / 依存関係 / 状態管理 / 保守性を単一エージェント深掘り） | — |
+| C3 | fix | 敵対的検証（verifier サブエージェント委託） | — |
+| C4 | fix | 確定 finding の最小修正 | — |
+| C5 | fix | 検証（ビルドなし: fmt/lint/audit 可能なもの） | — |
+| C6 | fix | 再調査 + rubric 採点（verifier 委託）+ report 最終化 | — |
+
+実行順序: `C1 → C2 → C3 → C4 → C5 → C6`
+
+---
+
+## 作業目的
+
+`claude_fable_audit_db_less_app.md`（監査プロンプト正本: ai-audit-prompts リポ）に基づき、DBを使わないアプリとしてセキュリティ・脆弱性・バグ・保守性を単一エージェント深掘りで監査し、現行機能を壊さない最小修正まで行う。
+
+- 引数: 強度=ハイ / スコープ=フルループ / 観点=全部 / 対象=リポジトリ全体 / 除外=なし
+- 禁止: git commit/push/tag、ビルド・バンドル・パッケージ生成、抜本改修、ブランチ操作、secrets 出力
+- ブランチ: develop（既存チェックアウトのまま。ブランチ操作なし）
+- 作業前 git status: クリーン（未コミット変更なし）
+
+## 対象範囲
+
+- `apps/browser/offline-md-editor-viewer.html`（11,792 行・アプリ本体）
+- `apps/desktop/src-tauri/src/lib.rs`（780 行）+ Tauri 設定・capabilities
+- `scripts/release/*.ps1`、`.github/workflows/`
+- 同梱ライブラリ（`apps/browser/lib/*.min.js`）は版数・既知 CVE 確認のみ（第三者コードの内部監査はしない）
+
+## 除外範囲
+
+- `apps/desktop/src-tauri/desktop-frontend-dist/`（ビルドステージ成果物・ソースの複製）
+- `docs/` `archive/` の記録文書（監査対象コードでない）
+- DB 前提の観点（SQL / ORM / migration / transaction）— DBなしアプリのため対象外
+
+## 状態管理 / 永続化方式（DBなし前提の確認）
+
+- UI 設定: `localStorage`（`offline_md_editor_viewer_` プレフィックス）
+- フォルダハンドル: IndexedDB（`offline_md_editor_viewer_directory` / store `handles`）
+- Tauri: 直近フォルダ絶対パスを localStorage、ファイル I/O は Rust invoke command
+- メモリ状態: `directoryFiles` ツリー / `expandedDirs` Set / `fileState`
+- 外部通信: CSP `connect-src 'none'` で遮断（オフラインファースト）
+
+## 確認済みルール（前回監査 2026-06-25 から consult 引き継ぎ）
+
+- レンダパイプラインは `marked.parse → DOMPurify.sanitize → preview.innerHTML`。`marked.use()` 改変なし。
+- 外部通信は CSP `connect-src 'none'` で強制ブロック済。
+- Tauri 側 `desktop_*` invoke command は `validate_workspace_path` で UNC verbatim / `..` / shell metacharacter / 予約名を検査済。
+- `desktop_create_file` は `OpenOptions::create_new(true)` で TOCTOU 対策済（BUG-RS-NEW-201 修正済）。
+- `desktop_read_file_bytes` は metadata fail-closed（BUG-RS-NEW-203 修正済）。
+- `desktop_list_shallow_entries` は REPARSE_POINT 除外済（BUG-RS-NEW-204 修正済）。
+- 依存版数（2026-06-25 時点）: marked 18.0.5 / DOMPurify 3.4.8 / highlight.js 11.11.1 / encoding-japanese 2.2.0 / Tauri 2.11.2 — 既知 CVE なし。
+- HEAD 9c47e55（2026-06-25）が前回監査修正込みコミット。以降コード変更なし → 今回は「前回並列監査（ultracode fan-out）が見落としうる深掘り観点」を重点にする。
+- 判断待ち 2 件（countNormalizedMatchesBefore fall-through / appendDirectoryNode lazy UX）は 2026-06-25 ユーザー判断「現状維持」で resolve 済 → 再 finding 化しない。
+- 進言 BUG-RS-NEW-205（atomic_write 親 fsync）は macOS/Linux 対応時の将来対応で確定済 → 再 finding 化しない。
+
+## TODO
+
+- [x] C1: plan / report 骨格作成・リポ把握・前回監査 consult
+- [x] C2: 調査
+- [x] C3: 敵対的検証
+- [x] C4: 修正
+- [x] C5: 検証
+- [x] C6: 再調査 + rubric 採点 + report 最終化
+
+## 調査ログ（C2）
+
+対象コード変更なし（HEAD 9c47e55 = 前回監査修正込み）を踏まえ、前回並列監査の見落とし領域を単一エージェントで深掘りした。
+
+- HTML sink 全数確認: `innerHTML` 14 箇所 → preview/readme は `sanitizeMarkdownHtml`（DOMPurify USE_PROFILES html + FORBID_TAGS/ATTR）経由、find/highlight 系は `escapeHtml` 経由、copy ボタンは静的 SVG リテラル、select 系はクリアのみ。問題なし。
+- CSP: ブラウザ版 meta（connect-src 'none' 等 16 ディレクティブ）・Tauri 版 `tauri.conf.json`（default-src 'none' ベース）とも堅牢。capabilities は `core:default` のみ。
+- 外部リンク: opt-in ゲート（externalLinksEnabled）+ Tauri 側 http/https 限定 + rundll32/explorer は SystemRoot 絶対パス起動。問題なし。
+- 相対リンク: `resolveRelativeDisplayPath` で `..` 正規化 + containment root 判定済（BUG-TAURI-RELATIVE-* 対応済）。問題なし。
+- 検索・置換: `new RegExp(ユーザー入力)` は try/catch + ITERATION_LIMIT + FIND_MATCH_RENDER_LIMIT。正規表現置換の文脈依存制限は README 明記済（J1 判断）。問題なし。
+- localStorage/JSON.parse: 全 5 箇所 try/catch + 型ガード（BUG-INIT-002/003 対応済）。問題なし。
+- Rust lib.rs 全 780 行精読: raw finding 2 件（下記 FBL-001 / FBL-002）。
+- 依存: marked 18.0.5 / DOMPurify 3.4.8 / hljs 11.11.1 / encoding-japanese 2.2.0 / Tauri 2.11.2 / rfd 0.17.2。前回監査（2026-06-25）時点で既知 CVE なし・以降依存変更なし。cargo-audit は本端末に未導入。
+- release.yml: actions はメジャータグ pin・permissions ブロックあり。目視で injection パターンなし。
+- fail→investigate→verify: Grep ツール出力で `${targetEntry.path}\${result.name}`（L11428）に見えたパス連結は、Read での実バイト確認により `/` 区切りで正常（Grep 表示のバックスラッシュ潰れによる誤検出）。
+
+### 確認済みルールの訂正（fail→verify→distill）
+
+- **前回 plan の「Tauri 側 desktop_* は validate_workspace_path で検査済」は誤り**。`git log --all -S validate_workspace_path` が空 = 全履歴に存在しない（誤伝承）。実態: このリポジトリの Tauri invoke command のパス検証は `reject_nul_in_path`（NUL 拒否）+ 子名検証 `is_valid_child_name` のみで、workspace スコープ検証は存在しない。フロントエンドが渡すパスを信頼する設計（任意フォルダを開くアプリ仕様上、スコープ固定は設計変更を要する）。
+- このリポジトリでは web 版のファイル作成/rename は FS Access API の制約上、原子的 create-new が不可能で、live 存在チェック + create:true が上限（残余レースは API 制約）。
+- このリポジトリでは deep 列挙（collect_markdown_files_inner）はアクセス不能エントリを skip（continue）する方針が確立している（BUG-RS-004/105/NEW-204 の系譜）。
+
+## finding 一覧
+
+### FBL-001 [medium / confidence:high] desktop_rename_file / desktop_move_entry の TOCTOU 上書き（BUG-RS-NEW-201 と同クラスの未修正残り）
+
+- 観点: バグ・正確性 / ロジック不整合
+- 対象: `apps/desktop/src-tauri/src/lib.rs` `desktop_rename_file` (L348-351) / `desktop_move_entry` (L386-391, L411)
+- 問題: `exists()` 事前チェック → `fs::rename`（または cross-device 時 `fs::copy`）の 2 段階。Windows の `fs::rename` は MoveFileExW(MOVEFILE_REPLACE_EXISTING) 相当で既存ファイルを置換するため、チェックと実行の間に同名ファイルが作られるとサイレント上書き（データ消失）。前回監査で `desktop_create_file` のみ `create_new(true)` 化され、rename/move が同クラス未修正。
+- 根拠: L348 `if new_path.exists()` → L351 `fs::rename`。Rust std の Windows rename は既存ファイル置換仕様。
+- 再現条件: rename/move 実行と同時に外部プロセスが同名ファイルを生成（競合窓はマイクロ秒オーダー）。
+- 推奨修正: ファイルの no-clobber rename は std に原子操作がなく、`hard_link + remove_file` 案は exFAT/FAT32（USB 運用 = 本アプリのポータブル用途）で非対応のため regression リスクあり。**設計トレードオフを伴うため自動修正せず判断待ち**。
+- スコア影響: バグ・正確性 / ロジック不整合。クリアで総合 +2 点
+- ステータス: **確定（C3 verifier 検証済）→ 判断待ち**（修正は設計トレードオフを伴うため未適用。verifier 補足: target がディレクトリの場合は Windows では置換されず OS エラーになるため、サイレント消失はファイル同士の競合に限定。JS 側の事前重複チェックは `!isTauri` ブロック内のみで Tauri 経路に追加防御なし＝到達可能）
+
+### FBL-002 [low / confidence:high] desktop_list_shallow_entries が単一エントリのエラーで列挙全体を失敗させる（deep 列挙と不整合）
+
+- 観点: バグ / 保守性
+- 対象: `apps/desktop/src-tauri/src/lib.rs` `desktop_list_shallow_entries` (L303, L306)
+- 問題: `entry.map_err(...)?` / `fs::symlink_metadata(...).map_err(...)?` で 1 エントリの取得失敗が列挙全体を Err にする。deep 列挙 `collect_markdown_files_inner` (L97-105) は同ケースを `continue` でスキップするため、「フォルダを開いた時は表示されるのに、lazy 展開すると失敗する」不整合が生じる。
+- 根拠: L303 `let entry = entry.map_err(|e| e.to_string())?;` / L306 `let metadata = fs::symlink_metadata(entry.path()).map_err(|e| e.to_string())?;` vs L97-105 の `Err(_) => continue`。
+- 再現条件: フォルダ内にアクセス拒否・ロック等で metadata 取得不能なエントリが 1 つある状態で当該フォルダを lazy 展開。
+- 推奨修正: deep 列挙と同じ skip（continue）方針に揃える最小修正。
+- スコア影響: バグ・正確性 / 例外処理。クリアで総合 +1 点
+- ステータス: **確定（C3 verifier 検証済）→ 修正済（C4）**。verifier による根拠の訂正: 「deep で出るのに shallow で失敗」の対比は限定的（`desktop_list_markdown_files` は dead code。ただし deep 実装 `collect_markdown_files` は `desktop_get_file_directory` 経由で単体ファイル open/drop 時に実際に使用され、skip 方針との混在は実フローで存在——親セッションで grep 裏取り済 L12600/L12748）。修正理由は「エントリ単位の失敗で列挙全体を落とさない（deep 実装の既存方針に整合）」とする。
+
+### FBL-003 [low / confidence:high] desktop_list_markdown_files が dead code（HTML から一度も invoke されない）
+
+- 観点: 保守性 / 重複・死コード
+- 対象: `apps/desktop/src-tauri/src/lib.rs` `desktop_list_markdown_files` (L285-290) + `generate_handler!` 登録
+- 問題: HTML 側に `desktop_list_markdown_files` の invoke が 1 箇所もない（grep 全数 0。C3 verifier 発見・親セッションで裏取り済）。全列挙経路は `collectTauriShallowFiles`（shallow）と `desktop_get_file_directory`（deep）に置き換わっており、コマンドとして露出したまま残置。
+- 影響: 実害なし。未使用 API 面の残置（保守性・攻撃面の最小化観点で削除が望ましい）。
+- 推奨修正: 関数と `generate_handler!` 登録の削除。**ただし本監査はビルド禁止（cargo check も不可）でコンパイル検証ができないため、削除は適用せず判断待ちとする**（次回ビルド可能なタイミングで削除推奨）。
+- スコア影響: 保守性 / 重複・死コード。クリアで総合 +1 点
+- ステータス: 確定 → **修正済（2026-07-03 ユーザー承認で wrapper + 登録行を削除。`collect_markdown_files` 本体は desktop_get_file_directory 用に温存・参照残ゼロを grep 確認。コンパイル検証は次回ビルド時）**
+
+## 修正方針・実施した修正（C4）
+
+- FBL-002: `desktop_list_shallow_entries` の entry / symlink_metadata 取得失敗を `?`（全体 Err）から `match → continue`（エントリ単位 skip）へ変更。`fs::read_dir` 自体の失敗は従来どおり Err（フォルダ不存在・権限なしの本質エラーは隠蔽しない）。変更ファイル: `apps/desktop/src-tauri/src/lib.rs`（+10/-2）
+- FBL-001 / FBL-003: 判断待ちのため未適用（上記 finding 参照）
+
+## 検証結果（C5）
+
+- `cargo fmt --check`: 今回修正箇所（L297-310 付近）は fmt クリーン。既存コード 3 箇所（L398 / L687 / L787）に pre-existing な rustfmt 差分があるが修正範囲外のため触らない（前回監査でも同判断）。
+- `git diff --stat`: `apps/desktop/src-tauri/src/lib.rs` +10/-2 のみ。無関係な変更なし。
+- `cargo check` / `cargo build` / test: ビルド禁止のため未実行（cargo check も成果物生成を伴うため前回監査同様ビルド扱い）。
+- JS 側変更なし（HTML は今回未修正）。
+
+## 判断待ち事項
+
+- FBL-001: rename/move の TOCTOU 上書き。no-clobber rename の実現手段（windows-sys 依存追加で MoveFileExW を REPLACE なし直呼び / hard_link+remove は exFAT 非対応で USB ポータブル運用に regression リスク）の選定はユーザー判断。**→ 2026-07-03 ユーザー指示で当面保留に確定**。
+- FBL-003: → 2026-07-03 ユーザー承認で削除適用済み（判断待ち解消）。
+
+## パスした項目
+
+- 2026-06-25 監査で「現状維持」とユーザー判断済みの 2 件（countNormalizedMatchesBefore fall-through / appendDirectoryNode lazy UX）は再 finding 化せずパス。
+- 進言 BUG-RS-NEW-205（atomic_write 親 fsync）は macOS/Linux 対応時の将来対応で確定済みのためパス。
+- pre-existing rustfmt 差分 3 箇所は修正範囲外のためパス。
+
+## 抜本改修の提言
+
+- 新規なし。前回監査の提言（テストハーネス導入・BUG-RS-NEW-205）を維持。
+- 補足（防御多層化・設計判断）: Tauri invoke command には workspace スコープ検証がなく、フロント JS が侵害された場合はディスク全域の read/write/delete が可能。CSP + DOMPurify で XSS 到達は困難であり、任意フォルダを開くアプリ仕様上スコープ固定は設計変更を要するため、finding ではなく将来の防御多層化候補として記録。
+
+## 最終結果（C6）
+
+- 総合評価: **95 / 100 [S]**（セキュリティ 30/30・バグ 23/25・依存 15/15・保守性 15/15・検証カバレッジ 12/15）※初回採点 94 → FBL-003 適用（2026-07-03 ユーザー承認）で 95 に更新
+- raw finding 3 件 → C3 verifier 敵対的検証で 3 件とも確定（却下 0・確信度 low 0）
+- 修正適用 2 件（FBL-002 / FBL-003=ユーザー承認後に適用）・保留 1 件（FBL-001: ユーザー指示で当面保留に確定）
+- 再調査: 修正は `desktop_list_shallow_entries` のエラーパスのみで、新規の認可漏れ・入力検証漏れ・API 契約変更・依存変更なし（git diff 全文確認済み）。secrets のログ出力なし。
+- rubric 採点（独立 verifier）: 20 項目全充足・スコアリング整合を確認
+- 詳細は `report_fable_audit_2026-07-03.md` 参照
+- git commit / ビルド未実施・抜本改修なし・判断待ちで停止せず完走

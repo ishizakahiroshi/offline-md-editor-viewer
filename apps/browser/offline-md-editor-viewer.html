@@ -242,7 +242,7 @@
     /* === Layout: App / Toolbar === */
     .app {
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto minmax(0, 1fr);
       height: 100%;
       min-width: 0;
     }
@@ -266,6 +266,87 @@
     [data-density="compact"] .toolbar {
       gap: 8px 10px;
       padding: 8px 12px;
+    }
+
+    .current-document-bar {
+      min-width: 0;
+      padding: 5px 16px;
+      border-bottom: 1px solid var(--line);
+      background: var(--toolbar-bg);
+    }
+
+    .current-document-bar[hidden] {
+      display: none;
+    }
+
+    [data-density="compact"] .current-document-bar {
+      padding: 3px 12px;
+    }
+
+    .current-document-copy {
+      appearance: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-width: 0;
+      padding: 5px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .current-document-copy:hover {
+      border-color: var(--line);
+      background: var(--accent-soft);
+    }
+
+    .current-document-copy:focus-visible {
+      border-color: var(--accent);
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .current-document-file-icon,
+    .current-document-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      color: var(--muted);
+    }
+
+    .current-document-file-icon svg,
+    .current-document-action svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .current-document-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--text);
+      font-family: var(--mono-font);
+      font-size: calc(0.82rem * var(--app-font-scale));
+      font-weight: 600;
+      line-height: 1.25;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .current-document-action {
+      margin-left: auto;
+      opacity: 0.65;
+    }
+
+    .current-document-copy:hover .current-document-action,
+    .current-document-copy:focus-visible .current-document-action {
+      color: var(--accent);
+      opacity: 1;
     }
 
     .toolbar-main {
@@ -3481,6 +3562,11 @@
         justify-content: flex-start;
       }
 
+      .current-document-bar {
+        padding-right: 10px;
+        padding-left: 10px;
+      }
+
       .view-toggle-text {
         display: none;
       }
@@ -3997,6 +4083,27 @@
           </span>
         </button>
       </div>
+    </div>
+
+    <div id="currentDocumentBar" class="current-document-bar" hidden>
+      <button id="copyCurrentDocumentNameBtn" class="current-document-copy" type="button">
+        <span class="current-document-file-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+        </span>
+        <span id="currentDocumentName" class="current-document-name"></span>
+        <span class="current-document-action" aria-hidden="true">
+          <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </span>
+      </button>
     </div>
 
     <div id="appMenuPanel" class="app-menu hidden" role="dialog" aria-modal="false" aria-labelledby="appMenuTitle">
@@ -4586,6 +4693,9 @@
   <script>
     (() => {
       const appTitle = document.getElementById("appTitle");
+      const currentDocumentBar = document.getElementById("currentDocumentBar");
+      const currentDocumentName = document.getElementById("currentDocumentName");
+      const copyCurrentDocumentNameBtn = document.getElementById("copyCurrentDocumentNameBtn");
       const newBtn = document.getElementById("newBtn");
       const openBtn = document.getElementById("openBtn");
       const folderBtn = document.getElementById("folderBtn");
@@ -6777,10 +6887,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setUiTooltip(currentFileName, fileName, { aria: false });
           copyFileNameBtn.style.display = "inline-flex";
           setUiTooltip(copyFileNameBtn, t("ui", "copyFileName"));
+          currentDocumentName.textContent = fileName;
+          currentDocumentBar.hidden = false;
+          setUiTooltip(copyCurrentDocumentNameBtn, fileName, { aria: false });
+          copyCurrentDocumentNameBtn.setAttribute("aria-label", `${t("ui", "copyFileName")}: ${fileName}`);
         } else {
           currentFileName.textContent = "";
           delete currentFileName.dataset.uiTooltip;
           copyFileNameBtn.style.display = "none";
+          currentDocumentName.textContent = "";
+          currentDocumentBar.hidden = true;
+          delete copyCurrentDocumentNameBtn.dataset.uiTooltip;
+          copyCurrentDocumentNameBtn.removeAttribute("aria-label");
         }
         updateSourceExtBadge(fileName);
         updateModeLabelLayout();
@@ -6811,14 +6929,47 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }, duration);
       }
 
-      copyFileNameBtn.addEventListener("click", () => {
-        const name = currentFileName.textContent;
+      function writePlainTextToClipboard(text) {
+        const writeWithSelection = () => new Promise((resolve, reject) => {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          try {
+            if (!document.execCommand("copy")) throw new Error("Clipboard API is unavailable.");
+            resolve();
+          } catch (err) {
+            reject(err);
+          } finally {
+            textarea.remove();
+          }
+        });
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          return navigator.clipboard.writeText(text).catch(() => writeWithSelection());
+        }
+        return writeWithSelection();
+      }
+
+      function copyFileNameText(name, feedbackButton) {
         if (!name) return;
-        navigator.clipboard.writeText(name).then(() => {
-          showCopySuccess(copyFileNameBtn);
+        writePlainTextToClipboard(name).then(() => {
+          if (feedbackButton) showCopySuccess(feedbackButton);
+          setStatus(t("status", "copyFileNameDone"), false);
         }).catch((err) => {
           setStatus(t("status", "copyFileNameFailed") + (err && err.message ? err.message : String(err)), true);
         });
+      }
+
+      copyFileNameBtn.addEventListener("click", () => {
+        copyFileNameText(currentFileName.textContent, copyFileNameBtn);
+      });
+
+      copyCurrentDocumentNameBtn.addEventListener("click", () => {
+        copyFileNameText(currentDocumentName.textContent, copyCurrentDocumentNameBtn);
       });
 
       function setBtnLabel(btn, labelText, titleText) {
@@ -12538,11 +12689,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const entry = dirState.contextMenuEntry;
         hideFileContextMenu();
         if (!entry || !entry.name) return;
-        navigator.clipboard.writeText(entry.name).then(() => {
-          setStatus(t("status", "copyFileNameDone"), false);
-        }).catch((err) => {
-          setStatus(t("status", "copyFileNameFailed") + (err && err.message ? err.message : String(err)), true);
-        });
+        copyFileNameText(entry.name);
       });
 
       copyEntryMenuBtn.addEventListener("click", () => {

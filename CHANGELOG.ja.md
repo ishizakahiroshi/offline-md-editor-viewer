@@ -24,6 +24,7 @@
 ### Changed
 
 - 同梱 Web 依存を更新: DOMPurify 3.4.12（3.4.8 に公開された脆弱性 2 件への対応。本アプリは `setConfig()`/hook を使わず `sanitize()` を単発で呼ぶだけのため到達不能だが、予防的に更新）、marked 18.0.6。
+- Tauri を 2.11.5 へ、`plist` 依存を 1.10.0 へ更新。これにより、v0.2.0 で受容していた RUSTSEC-2026-0194 / RUSTSEC-2026-0195（quick-xml）を `plist`/macOS メタデータ経路で解消した。`rfd` の Linux/Wayland ファイルダイアログ経路に残る quick-xml 0.39.4 は Windows ビルドにはコンパイルされないことを `cargo tree --target x86_64-pc-windows-msvc` で確認済みで、到達不能として受容を継続する。
 - デスクトップ版の Content Security Policy を強化（`script-src-attr 'none'`、`worker-src 'none'`、`child-src 'none'` などのディレクティブを追加）。
 
 ## 0.2.0 - 2026-07-03

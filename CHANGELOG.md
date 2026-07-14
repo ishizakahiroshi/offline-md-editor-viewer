@@ -24,6 +24,7 @@
 ### Changed
 
 - Updated bundled web dependencies: DOMPurify 3.4.12 (fixes two published advisories in 3.4.8 that were not reachable in this app, which uses a single `sanitize()` call without `setConfig()`/hooks) and marked 18.0.6.
+- Updated Tauri to 2.11.5 and the `plist` dependency to 1.10.0, which resolves the previously-accepted RUSTSEC-2026-0194 / RUSTSEC-2026-0195 (quick-xml) advisories on the `plist`/macOS-metadata dependency path. A separate quick-xml 0.39.4 instance remains in `Cargo.lock` via `rfd`'s Linux/Wayland file-dialog backend; it is not compiled into the Windows build (confirmed with `cargo tree --target x86_64-pc-windows-msvc`) and is accepted as unreachable.
 - Hardened the desktop edition Content Security Policy (added `script-src-attr 'none'`, `worker-src 'none'`, `child-src 'none'`, and related directives).
 
 ## 0.2.0 - 2026-07-03

@@ -1,6 +1,6 @@
 [package]
 name = "offline-md-editor-viewer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Windows desktop wrapper for offline-md-editor-viewer"
 authors = ["Hiroshi Ishizaka (ishizakahiroshi)"]
 license = "MIT"

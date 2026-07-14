@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-14
+
+### Added
+
+- Command palette (`Ctrl/Cmd+K` or `Ctrl/Cmd+Shift+P`) that runs most editor actions from the keyboard.
+- Heading outline panel for jumping between Markdown headings.
+- Zen mode for distraction-free editing (exit with `Esc`).
+- Diff view showing unsaved changes against the last saved content.
+- Recent files list with a one-click clear option.
+- Status-bar text metrics: character count, word count, estimated reading time, and selected-character count.
+- Current document bar in the toolbar showing the open file name, with one-click copy.
+
+### Fixed
+
+- Robustness fixes from the July 2026 code audit: the Windows desktop edition no longer flattens the parent folder tree when launched with (or receiving a drop of) a single file; concurrent file loads can no longer finish out of order and display stale content; rejected binary files no longer update the file selection state; creating a file in the browser edition no longer truncates a same-named file created concurrently; a folder copy that fails midway in the browser edition now cleans up the partially copied files; folder copies on the desktop edition exclude Windows junctions/reparse points; short UTF-16 files without a BOM are now detected correctly.
+- Partial failures while deleting multiple selected items are now reported with deleted/failed counts instead of being masked by the last success message.
+- Deleting the currently open file now also clears the current document name display.
+- The "external links blocked" notice is now translated in all 13 UI languages (previously Japanese/English only).
+
+### Changed
+
+- Updated bundled web dependencies: DOMPurify 3.4.12 (fixes two published advisories in 3.4.8 that were not reachable in this app, which uses a single `sanitize()` call without `setConfig()`/hooks) and marked 18.0.6.
+- Hardened the desktop edition Content Security Policy (added `script-src-attr 'none'`, `worker-src 'none'`, `child-src 'none'`, and related directives).
+
 ## 0.2.0 - 2026-07-03
 
 ### Added

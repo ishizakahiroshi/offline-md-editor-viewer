@@ -17,8 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### ファイル構成
 
 - `apps/browser/offline-md-editor-viewer.html` — アプリ本体。HTML/CSS/JSがすべて1ファイルに収まっている
-- `apps/browser/lib/marked.min.js` — Markdownパーサー（v18.0.5、ローカル同梱）
-- `apps/browser/lib/purify.min.js` — XSSサニタイザー（DOMPurify v3.4.8、ローカル同梱）
+- `apps/browser/lib/marked.min.js` — Markdownパーサー（v18.0.6、ローカル同梱）
+- `apps/browser/lib/purify.min.js` — XSSサニタイザー（DOMPurify v3.4.12、ローカル同梱）
 - `apps/browser/lib/encoding.min.js` — 文字コード変換ライブラリ（encoding-japanese v2.2.0、ローカル同梱）
 - `apps/browser/lib/highlight.min.js` — コードブロックのシンタックスハイライト（highlight.js v11.11.1、ローカル同梱）
 - `apps/browser/lib/hljs-github-dark.min.css` — highlight.js 用 GitHub Dark テーマ（ローカル同梱）

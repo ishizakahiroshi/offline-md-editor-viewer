@@ -5,6 +5,7 @@ GEMINI.md
 
 # Local/private docs and scripts
 docs/local/
+scripts/dev/
 scripts/local/
 
 # Build artifacts

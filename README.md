@@ -56,6 +56,8 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Your files stay yours.** File content is never uploaded anywhere. Save writes back to the original file on your disk.
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
+- **Navigate and focus quickly.** Command palette (`Ctrl/Cmd+K`), heading outline panel, distraction-free Zen mode, recent files list, and an unsaved-changes diff view.
+- **Writing stats at a glance.** The status bar shows character / word counts and estimated reading time, and the toolbar shows the current file name with one-click copy.
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
@@ -80,6 +82,8 @@ flowchart LR
 Edits on the left source pane update the right preview pane in real time. `Save (Overwrite)` writes back to the original file. You can also open a single file without choosing a folder.
 
 In edit mode, use `Ctrl/Cmd+F` to open the floating find bar and `Ctrl/Cmd+H` or `Ctrl/Cmd+R` to expand replace controls. `Enter` moves to the next match, `Shift+Enter` moves to the previous match, and `Esc` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. `(?<=foo)bar`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
+
+Press `Ctrl/Cmd+K` (or `Ctrl/Cmd+Shift+P`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press `Esc` to exit.
 
 ## Use in the Browser
 
@@ -214,6 +218,7 @@ The app remembers some preferences in your browser's local storage so you don't 
 - Theme (dark/blue/light) and font size
 - File list sort order and tool-row visibility
 - Card (file list / source / preview) visibility and width
+- Recent files list and outline panel visibility
 - Last opened folder handle (stored in IndexedDB; permission may still be re-prompted on next use)
 
 These values stay on the device and browser profile where you set them. They are not synced across devices or browsers. They are cleared if you clear site data, use a private/incognito window, or switch browsers.

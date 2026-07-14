@@ -6376,6 +6376,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           "{count} elementi eliminati.",
           "{count} item dihapus.",
         ],
+        "status.deleteSelectedPartial": [
+          "{deleted} items deleted; {failed} failed.",
+          "{deleted} 個の項目を削除し、{failed} 個は失敗しました。",
+          "已刪除 {deleted} 個項目；{failed} 個失敗。",
+          "已删除 {deleted} 个项目；{failed} 个失败。",
+          "{deleted} elementos eliminados; {failed} con error.",
+          "{deleted} Elemente geloescht; {failed} fehlgeschlagen.",
+          "항목 {deleted}개를 삭제했고 {failed}개는 실패했습니다.",
+          "{deleted} itens excluidos; falha em {failed}.",
+          "Удалено: {deleted}; не удалось удалить: {failed}.",
+          "Đã xóa {deleted} mục; {failed} mục thất bại.",
+          "{deleted} éléments supprimés ; échec pour {failed}.",
+          "{deleted} elementi eliminati; {failed} non riusciti.",
+          "{deleted} item dihapus; {failed} gagal.",
+        ],
         "status.copyFileNameDone": ["File name copied.", "ファイル名をコピーしました。", "檔案名稱已複製。", "已复制文件名。", "Nombre de archivo copiado.", "Dateiname kopiert.", "파일 이름을 복사했습니다.", "Nome do arquivo copiado.", "Имя файла скопировано.", "Đã sao chép tên tệp.", "Nom du fichier copié.", "Nome file copiato.", "Nama file disalin."],
         "status.copyFileNameFailed": ["Copy failed: ", "コピーに失敗: ", "複製失敗：", "复制失败: ", "Error al copiar: ", "Kopieren fehlgeschlagen: ", "복사 실패: ", "Falha ao copiar: ", "Не удалось скопировать: ", "Sao chép thất bại: ", "Échec de la copie : ", "Copia fallita: ", "Penyalinan gagal: "],
         "status.copyEntryDone": ["Copied to clipboard.", "クリップボードにコピーしました。", "已複製到剪貼簿。", "已复制到剪贴板。", "Copiado al portapapeles.", "In die Zwischenablage kopiert.", "클립보드에 복사했습니다.", "Copiado para a área de transferência.", "Скопировано в буфер обмена.", "Đã sao chép vào bộ nhớ tạm.", "Copié dans le presse-papiers.", "Copiato negli appunti.", "Disalin ke papan klip."],
@@ -9390,9 +9405,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function getExternalLinkBlockedHoverMessage() {
-        return currentLang === "ja"
-          ? "外部リンクは現在ブロックされています。開くには設定から「外部リンク」をONにしてください。"
-          : "External links are currently blocked. Turn on External links in settings to open this link.";
+        return t("status", "externalLinkBlocked");
       }
 
       function updateExternalLinkAvailability() {
@@ -9474,7 +9487,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function getRelativeLinkPathPart(anchor) {
-        if (getExternalHref(anchor)) return "";
+        if (!anchor || getExternalHref(anchor)) return "";
         const href = (anchor.getAttribute("href") || "").trim();
         if (!href || href.startsWith("#")) return "";
         const pathPart = href.split(/[?#]/)[0];
@@ -11256,6 +11269,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (activeFile) {
             fileState.handle = null;
             dirState.entryPath = "";
+            setAppDocumentTitle();
             setDirtyState(fileState.unsaved);
           }
         }
@@ -11283,19 +11297,34 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         );
         if (!confirmed) return;
         let deletedCount = 0;
+        let failedCount = 0;
+        let firstError = "";
         for (const entry of entries) {
           try {
             if (await deleteDirectoryEntryQuiet(entry)) {
               deletedCount += 1;
+            } else {
+              failedCount += 1;
+              if (!firstError) firstError = statusMessage.textContent;
             }
           } catch (err) {
-            setStatus(t("status", "deleteFailed") + (err && err.message ? err.message : String(err)), true);
+            failedCount += 1;
+            if (!firstError) firstError = t("status", "deleteFailed") + (err && err.message ? err.message : String(err));
           }
         }
         dirState.selectedPaths.clear();
         dirState.lastSelectedPath = "";
         renderFileList();
-        setStatus(t("status", "deleteSelectedDone").replace("{count}", String(deletedCount)), false);
+        if (failedCount === 0) {
+          setStatus(t("status", "deleteSelectedDone").replace("{count}", String(deletedCount)), false);
+        } else if (deletedCount > 0) {
+          const summary = t("status", "deleteSelectedPartial")
+            .replace("{deleted}", String(deletedCount))
+            .replace("{failed}", String(failedCount));
+          setStatus(firstError ? `${summary} ${firstError}` : summary, true);
+        } else {
+          setStatus(firstError || t("status", "deleteFailed"), true);
+        }
       }
 
       async function deleteDirectoryEntry(entry) {
@@ -14132,7 +14161,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       (() => {
         const splitter = document.getElementById("splitter");
         const fileListSplitter = document.getElementById("fileListSplitter");
-        const SPLITTER_W = 14;
         const FILE_LIST_MARGIN_W = 4;
         const MIN_FILE_LIST_W = 180;
         const MIN_CONTENT_W = 220;

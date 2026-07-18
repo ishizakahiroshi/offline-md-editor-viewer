@@ -21,3 +21,6 @@ apps/desktop/src-tauri/desktop-frontend-dist/
 *.log
 .DS_Store
 Thumbs.db
+
+# docsweep: local backup/state dir (v0.4+ is a no-op but kept for older runs)
+.docsweep/

@@ -928,6 +928,17 @@
       background: var(--overlay-bg);
     }
 
+    /*
+      オーバーレイの開閉は JS が hidden 属性で行う（例: recentOverlay.hidden = true）。
+      上の display:flex は作者スタイルなので UA の [hidden]{display:none} に勝ってしまう。
+      個別クラスごとに打ち消しを書くと追加時に書き忘れる（実際 recent / diff /
+      command-palette の 3 つで漏れ、全画面オーバーレイが常時表示になりクリックを
+      すべて吸っていた）。ここで一括して打ち消し、新しいオーバーレイにも自動で効かせる。
+    */
+    .modal-overlay[hidden] {
+      display: none;
+    }
+
     .about-overlay {
       z-index: 40;
     }
@@ -4914,7 +4925,7 @@
         return _svgTemplates;
       }
       const APP_NAME = "offline-md-editor-viewer";
-      const APP_VERSION = "v0.3.0";
+      const APP_VERSION = "v0.3.1";
       const UI_HOVER_TOOLTIP_SHOW_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_HIDE_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_FADE_MS = 0;

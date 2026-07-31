@@ -7,6 +7,9 @@ GEMINI.md
 docs/local/
 scripts/dev/
 scripts/local/
+# 開発計画 md はすべて docs/local/archive/ 配下で管理する。
+# 過去にリポ直下 archive/ へ置いた plan_*.md が公開追跡されていたため封をする。
+/archive/
 
 # Build artifacts
 dist/

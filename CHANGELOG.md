@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-07-31
+
+### Fixed
+
+- Fixed the app being unusable immediately after launch in 0.3.0. The recent-files, diff, and command-palette overlays were rendered permanently: `.modal-overlay` sets `display: flex` unconditionally, and unlike the other dialogs these three had no `[hidden]` override, so the author stylesheet won over the user-agent `[hidden] { display: none }` rule. Three full-screen overlays stayed on top of the interface and absorbed every click, so no toolbar button, no editor input, and not even the dialogs' own close button or the `Esc` key had any effect. All editions (browser, Windows desktop, npm launcher) share the same HTML and were affected. 0.2.0 and earlier are unaffected.
+
 ## 0.3.0 - 2026-07-14
 
 ### Added

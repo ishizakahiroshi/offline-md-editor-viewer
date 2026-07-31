@@ -15,6 +15,7 @@ tech: ["HTML", "JavaScript", "CSS"]
 store: null
 live: null
 guide: null
+privacy: "https://ishizakahiroshi.com/privacy/offline-md-editor-viewer/"
 featured: true
 features:
   - icon: "◇"

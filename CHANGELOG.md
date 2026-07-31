@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Windows desktop edition: the embedded app manifest now declares DPI awareness (`dpiAware=true/PM`, `dpiAwareness=PerMonitorV2`). Previously the app had no DPI declaration and relied on Windows' bitmap-stretching fallback, which the Windows App Certification Kit flags as a warning. This changes rendering behavior on high-DPI displays and multi-monitor setups with different scale factors; verified normal rendering at standard DPI, but multi-DPI/multi-monitor behavior has not been verified on real hardware.
+
 ## 0.3.1 - 2026-07-31
 
 ### Fixed

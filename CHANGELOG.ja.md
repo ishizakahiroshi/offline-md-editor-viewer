@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Windows デスクトップ版: 埋め込みアプリマニフェストに DPI 対応宣言（`dpiAware=true/PM`、`dpiAwareness=PerMonitorV2`）を追加。従来は DPI 宣言が無く、Windows のビットマップ拡大（ぼやけた表示）にフォールバックしており、Windows App Certification Kit で警告扱いになっていた。高 DPI ディスプレイやスケール倍率の異なるマルチモニタ環境での描画挙動が変わる。通常の DPI 環境での正常描画は確認済みだが、マルチ DPI・マルチモニタでの実機確認はまだ未実施。
+
 ## 0.3.1 - 2026-07-31
 
 ### Fixed

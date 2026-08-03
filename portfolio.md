@@ -12,7 +12,7 @@ short:
   ja: "オフラインで動くMarkdownエディタ／ビューア。単一HTMLとWindows用ポータブルexe。"
   en: "An offline Markdown editor/viewer — a single HTML file plus a portable Windows exe."
 tech: ["HTML", "JavaScript", "CSS"]
-store: null
+store: "https://apps.microsoft.com/detail/9N9FDS8BB2F6"
 live: null
 guide: null
 privacy: "https://ishizakahiroshi.com/privacy/offline-md-editor-viewer/"

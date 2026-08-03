@@ -1,6 +1,7 @@
 # offline-md-editor-viewer
 
 [![GitHub](https://img.shields.io/badge/GitHub-repository-black?logo=github)](https://github.com/ishizakahiroshi/offline-md-editor-viewer)
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Windows%20app-0067b8?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMyAyMyIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTAgMGgxMXYxMUgweiIvPjxwYXRoIGQ9Ik0xMiAwaDExdjExSDEyeiIvPjxwYXRoIGQ9Ik0wIDEyaDExdjExSDB6Ii8+PHBhdGggZD0iTTEyIDEyaDExdjExSDEyeiIvPjwvc3ZnPg==)](https://apps.microsoft.com/detail/9N9FDS8BB2F6)
 ![Languages](https://img.shields.io/badge/UI_languages-13-blue)
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -34,6 +35,8 @@ Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/o
 | Run it as a Windows app | `offline-md-editor-viewer.exe` |
 | Archive or redistribute the browser edition | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Archive or redistribute the Windows edition | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
+Prefer installing from a store instead? The Windows desktop edition is also published on the [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) (Windows 11 or later).
 
 ## Try with npm (Node.js 18+)
 
@@ -104,7 +107,9 @@ Recommended on macOS and Linux for now — native desktop packages are currently
 
 ## Use the Windows Desktop App
 
-Two options on the [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) page:
+**Option 1 — Microsoft Store.** Install [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) from the Store. The package is signed by Microsoft, so there is no SmartScreen warning, and updates arrive through the Store. Requires Windows 11 (build 22000) or later. Note that the Store edition installs to a system-managed location, so the portable "carry it on a USB drive" workflow described below does not apply to it — use the GitHub Releases exe for that.
+
+**Option 2 — GitHub Releases.** Two files on the [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) page:
 
 1. **`offline-md-editor-viewer.exe`** — single portable file, ideal for a quick try. Download and run it directly — no installation required.
 2. **`offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip`** — includes README, CHANGELOG, LICENSE, and LICENSES/. Recommended for archiving or redistribution.

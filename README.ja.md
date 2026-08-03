@@ -1,6 +1,7 @@
 # offline-md-editor-viewer
 
 [![GitHub](https://img.shields.io/badge/GitHub-repository-black?logo=github)](https://github.com/ishizakahiroshi/offline-md-editor-viewer)
+[![Microsoft Store](https://img.shields.io/badge/Microsoft%20Store-Windows%20app-0067b8?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMyAyMyIgZmlsbD0iI2ZmZiI+PHBhdGggZD0iTTAgMGgxMXYxMUgweiIvPjxwYXRoIGQ9Ik0xMiAwaDExdjExSDEyeiIvPjxwYXRoIGQ9Ik0wIDEyaDExdjExSDB6Ii8+PHBhdGggZD0iTTEyIDEyaDExdjExSDEyeiIvPjwvc3ZnPg==)](https://apps.microsoft.com/detail/9N9FDS8BB2F6)
 ![Languages](https://img.shields.io/badge/UI_languages-13-blue)
 ![Platform](https://img.shields.io/badge/platform-Browser%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -34,6 +35,8 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 | Windows アプリとして使う | `offline-md-editor-viewer.exe` |
 | ブラウザ版を保管・再配布する | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Windows 版を保管・再配布する | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
+
+ストア経由でインストールしたい場合は、Windows デスクトップ版を [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) でも配布しています（Windows 11 以降）。
 
 ## npm で試す（Node.js 18+）
 
@@ -104,7 +107,9 @@ macOS / Linux では当面ブラウザ版をご利用ください。デスクト
 
 ## Windows デスクトップアプリで使う
 
-[GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) ページに2つの選択肢があります。
+**入手方法 1 — Microsoft Store。** [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) をストアからインストールできます。パッケージは Microsoft によって署名されるため SmartScreen 警告は出ず、更新もストア経由で届きます。動作条件は Windows 11（build 22000）以降です。なお、ストア版はシステム管理下の場所にインストールされるため、下記のポータブル運用（USB メモリで持ち歩く）は利用できません。ポータブル運用が必要な場合は GitHub Releases の exe をご利用ください。
+
+**入手方法 2 — GitHub Releases。** [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) ページに2つのファイルがあります。
 
 1. **`offline-md-editor-viewer.exe`** — 単一ポータブルファイル。すぐ試したい方はこちら。ダウンロードしてそのまま実行できます（インストール不要）。
 2. **`offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip`** — README / CHANGELOG / LICENSE / LICENSES/ を同梱。保管や再配布にはこちらを推奨。

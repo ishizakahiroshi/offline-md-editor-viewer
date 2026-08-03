@@ -110,6 +110,8 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 
 ## リリース運用
 
+正本の配布チャネルは GitHub Releases（ブラウザ版 ZIP・単体 HTML・Windows デスクトップ版ポータブル ZIP・単体 exe）と npm（ブラウザ版のランチャー配布）。加えて Microsoft Store（MSIX 経路）で Windows デスクトップ版を配布している（2026-08-03 公開・掲載 URL は `https://apps.microsoft.com/detail/9N9FDS8BB2F6`。初版は v0.3.1）。Store 版は MSIX のため Windows 11（build 22000）以降が対象で、ポータブル運用（exe と userdata を USB で持ち歩く）は成立しない点がポータブル exe 版と異なる。MSIX 生成・提出手順は `docs/local/manual/manual_release.md`、経緯と判断ログは `docs/local/archive/v0.3.1/plan_ms-store-submission.md`（いずれも git 管理外）を参照。既存チャネルの成果物・手順への影響はない。
+
 `v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
 詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual/manual_release.md` を参照すること。
 

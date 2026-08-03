@@ -1,0 +1,98 @@
+name: Publish to Microsoft Store
+
+# 既存の Release workflow（GitHub Releases / npm）とは意図的に分離している。
+# 理由（docs/local/archive/v0.3.1/plan_ms-store-submission.md C9 参照）:
+#   - Store submission API は「Partner Center で初回提出を作成済み」であることが前提で、
+#     初回はこの workflow では代行できない（C8 で手動提出してから有効化する）
+#   - Store 提出は認定審査を伴う非同期プロセスで、タグ push で数分で終わる
+#     GitHub Release / npm 公開とは運用感が異なる
+#   - secrets（AZURE_AD_TENANT_ID 等）が未設定の間にタグ push トリガーへ混ぜると
+#     毎リリースで無意味に失敗する job が発生するため、当面は workflow_dispatch 専用にする
+#
+# 前提条件（初回のみ・ユーザー手作業）:
+#   1. アプリが Microsoft Store で公開済みであること（2026-08-03 に達成済み）
+#      公式が「The app you want to update must already be published and live in Microsoft Store」と明記
+#   2. Partner Center > Account settings > Tenants で Entra ID テナントを紐付け
+#      （既存テナントの関連付け or Partner Center 内で新規テナント作成。有料 Azure サブスクリプション不要）
+#   3. Entra ID でアプリを登録し、Partner Center の
+#      Account settings > User management > Microsoft Entra applications から追加する。
+#      このとき **Manager ロールを割り当てる**（未割り当てだと submission API が使えない）
+#   4. 取得する 4 値:
+#      - Tenant ID: https://entra.microsoft.com/ > Identity > Overview
+#      - Client ID: Identity > Applications > App registrations > 対象アプリの Application (client) ID
+#      - Client Secret: 同アプリの Certificates & secrets（**発行直後にしか表示されない**）
+#      - Seller ID: Partner Center > Account settings > Identifiers の Publisher ID / Seller ID
+#   5. 上記 4 値を GitHub Secrets へ登録（キー名は公式ドキュメントに合わせている）:
+#      AZURE_AD_TENANT_ID / AZURE_AD_APPLICATION_CLIENT_ID / AZURE_AD_APPLICATION_SECRET / SELLER_ID
+#
+# 制約:
+#   - GitHub Actions 経由の更新は **無料製品のみ対応**（本アプリは無料配布のため該当なし）
+#   - 公開は非同期。publish 実行後に Partner Center 側の認定審査が入る
+#
+# 未検証（初回実行時に確認すること）:
+#   - windows-latest ランナーに Windows SDK（makeappx.exe）が標準搭載されているか
+#
+# WACK（Windows App Certification Kit）はこの workflow に含めない。
+# 管理者権限昇格が要る（scripts/local/run-wack.ps1）ため、提出前にローカルで手動実行する運用とする。
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Submit the desktop exe from this existing GitHub Release tag (e.g. v0.4.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-submit-msix:
+    name: Build MSIX from release exe and submit
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Download release desktop exe (single source of truth)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path apps/desktop/src-tauri/target/release | Out-Null
+          gh release download "${{ inputs.tag }}" --pattern "offline-md-editor-viewer.exe" --dir apps/desktop/src-tauri/target/release --clobber
+
+      - name: Build MSIX package
+        shell: pwsh
+        run: |
+          ./scripts/local/build-msix.ps1
+
+      # 2026-08-03 に learn.microsoft.com で確認済み。
+      # 旧 `microsoft/setup-msstore-cli` はリポジトリ改名により解決不能
+      # （"Repository not found" / microsoft/microsoft-store-apppublisher#304）。
+      - name: Setup MS Store CLI
+        uses: microsoft/microsoft-store-apppublisher@v1.1
+
+      - name: Configure MS Store CLI
+        shell: pwsh
+        run: |
+          msstore reconfigure `
+            --tenantId "${{ secrets.AZURE_AD_TENANT_ID }}" `
+            --sellerId "${{ secrets.SELLER_ID }}" `
+            --clientId "${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}" `
+            --clientSecret "${{ secrets.AZURE_AD_APPLICATION_SECRET }}"
+
+      # `msstore publish <pathOrUrl> -id <Store product Id>` が公式サンプルの形。
+      # `-id/--appId` は init 済みでないプロジェクトでは必須（`--productId` という
+      # オプションは存在しない）。パッケージを明示したい場合は `-i/--inputFile` を使う。
+      - name: Publish MSIX to Microsoft Store
+        shell: pwsh
+        run: |
+          $msix = Get-ChildItem dist/msix -Filter *.msix | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $msix) { throw "dist/msix に .msix が見つかりません" }
+          Write-Host "Publishing $msix"
+          msstore publish "$msix" -id 9N9FDS8BB2F6

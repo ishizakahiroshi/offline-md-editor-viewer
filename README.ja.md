@@ -27,16 +27,16 @@ https://github.com/user-attachments/assets/00d80cbc-ca93-4cfd-86d3-5299895d06b7
 
 ## すぐ使う
 
-最新版は [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードできます。
+**Windows デスクトップ版は [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) からのインストールをおすすめします。** パッケージは Microsoft によって署名されるため SmartScreen 警告が出ず、更新もストア経由で届きます。動作条件は Windows 11（build 22000）以降です。
+
+それ以外のファイルは [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) から入手できます。
 
 | やりたいこと | ダウンロード |
 | --- | --- |
 | Chrome ですぐ試す | `offline-md-editor-viewer.html` |
-| Windows アプリとして使う | `offline-md-editor-viewer.exe` |
+| Windows アプリを USB から使う / Windows 10 で使う | `offline-md-editor-viewer.exe` |
 | ブラウザ版を保管・再配布する | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Windows 版を保管・再配布する | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
-
-ストア経由でインストールしたい場合は、Windows デスクトップ版を [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) でも配布しています（Windows 11 以降）。
 
 ## npm で試す（Node.js 18+）
 
@@ -51,11 +51,11 @@ npm i -g offline-md-editor-viewer
 offline-md-editor-viewer
 ```
 
-npm パッケージはブラウザ版だけを同梱した小さなランチャーです。Windows デスクトップ版の `.exe` は npm では配布していません。[GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードしてください。
+npm パッケージはブラウザ版だけを同梱した小さなランチャーです。Windows デスクトップ版は npm では配布していません。[Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) からインストールするか、ポータブル exe を [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest) からダウンロードしてください。
 
 ## こんな人に向いています
 
-- **ビルドもインストールも不要。** ブラウザ版は単一 HTML ファイルを開くだけで動作し、Windows デスクトップ版は USB に置けるポータブル `.exe` です。
+- **ビルドもインストールも不要。** ブラウザ版は単一 HTML ファイルを開くだけで動作し、Windows デスクトップ版は Microsoft Store からインストールするか、USB に置けるポータブル `.exe` として使えます。
 - **書いたものは手元に残ります。** ファイル内容をどこかへ送信する処理はなく、保存は元ファイルへの上書きだけです。
 - **書きながら結果が見えます。** タイプに合わせてプレビューが更新され、左右パネルはスクロール同期します。
 - **フォルダ単位で扱えます。** 一度フォルダを指定すれば、左側のツリーから `.md` を選んで開けます。ノート集やドキュメントツリーの確認に。
@@ -107,7 +107,7 @@ macOS / Linux では当面ブラウザ版をご利用ください。デスクト
 
 ## Windows デスクトップアプリで使う
 
-**入手方法 1 — Microsoft Store。** [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) をストアからインストールできます。パッケージは Microsoft によって署名されるため SmartScreen 警告は出ず、更新もストア経由で届きます。動作条件は Windows 11（build 22000）以降です。なお、ストア版はシステム管理下の場所にインストールされるため、下記のポータブル運用（USB メモリで持ち歩く）は利用できません。ポータブル運用が必要な場合は GitHub Releases の exe をご利用ください。
+**入手方法 1 — Microsoft Store（推奨）。** [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) をストアからインストールできます。パッケージは Microsoft によって署名されるため SmartScreen 警告は出ず、更新もストア経由で届きます。動作条件は Windows 11（build 22000）以降です。なお、ストア版はシステム管理下の場所にインストールされるため、下記のポータブル運用（USB メモリで持ち歩く）は利用できません。ポータブル運用が必要な場合は GitHub Releases の exe をご利用ください。
 
 **入手方法 2 — GitHub Releases。** [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) ページに2つのファイルがあります。
 

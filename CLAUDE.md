@@ -110,7 +110,19 @@ Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が sou
 
 ## リリース運用
 
-正本の配布チャネルは GitHub Releases（ブラウザ版 ZIP・単体 HTML・Windows デスクトップ版ポータブル ZIP・単体 exe）と npm（ブラウザ版のランチャー配布）。加えて Microsoft Store（MSIX 経路）で Windows デスクトップ版を配布している（2026-08-03 公開・掲載 URL は `https://apps.microsoft.com/detail/9N9FDS8BB2F6`。初版は v0.3.1）。Store 版は MSIX のため Windows 11（build 22000）以降が対象で、ポータブル運用（exe と userdata を USB で持ち歩く）は成立しない点がポータブル exe 版と異なる。MSIX 生成・提出手順は `docs/local/manual/manual_release.md`、経緯と判断ログは `docs/local/archive/v0.3.1/plan_ms-store-submission.md`（いずれも git 管理外）を参照。既存チャネルの成果物・手順への影響はない。
+**Windows デスクトップ版の第一の入手経路は Microsoft Store**（MSIX 経路・2026-08-03 公開・掲載 URL は `https://apps.microsoft.com/detail/9N9FDS8BB2F6`・初版 v0.3.1）。2026-08-05 に導線の主従を見直し、README の入手案内も Store を先頭に置く構成へ変更した。Store 版は Microsoft が再署名するため SmartScreen 警告が出ず、更新もストア経由で届く。
+
+ただし Store 版は MSIX のため **Windows 11（build 22000）以降が対象**で、**ポータブル運用（exe と userdata を USB で持ち歩く）は成立しない**。この 2 条件に当てはまる利用者向けに、GitHub Releases のポータブル exe を代替として維持する（廃止しない）。README でポータブル exe を案内するときは、この「USB 持ち歩き用・Windows 10 向け」という位置づけを落とさないこと。
+
+配布チャネルは次の 3 本。主従の見直しは記述上のものであり、成果物・CI・リリース手順そのものは変更していない。
+
+| チャネル | 配布物 | 位置づけ |
+|---------|-------|---------|
+| Microsoft Store | Windows デスクトップ版（MSIX） | Windows デスクトップ版の第一の入手経路 |
+| GitHub Releases | ブラウザ版 ZIP・単体 HTML・デスクトップ版ポータブル ZIP・単体 exe | 正本のリリース生成元。ポータブル運用と Windows 10 の受け皿 |
+| npm | ブラウザ版のランチャー | ブラウザ版の手軽な入口（デスクトップ版は含まない） |
+
+MSIX 生成・提出手順は `docs/local/manual/manual_release.md`、経緯と判断ログは `docs/local/archive/v0.3.1/plan_ms-store-submission.md`（いずれも git 管理外）を参照。
 
 `v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
 詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual/manual_release.md` を参照すること。

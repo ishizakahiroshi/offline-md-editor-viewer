@@ -27,16 +27,16 @@ Open a `.md` file, edit on the left, see the rendered result on the right, and s
 
 ## Quick Download
 
-Get the latest files from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
+**Windows desktop edition — install it from the [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6).** This is the recommended route on Windows: the package is signed by Microsoft, so no SmartScreen warning appears, and updates arrive through the Store. Requires Windows 11 (build 22000) or later.
+
+Everything else comes from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
 
 | Want to... | Download |
 | --- | --- |
 | Try it quickly in Chrome | `offline-md-editor-viewer.html` |
-| Run it as a Windows app | `offline-md-editor-viewer.exe` |
+| Run the Windows app from a USB drive, or on Windows 10 | `offline-md-editor-viewer.exe` |
 | Archive or redistribute the browser edition | `offline-md-editor-viewer-browser-vX.X.X.zip` |
 | Archive or redistribute the Windows edition | `offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip` |
-
-Prefer installing from a store instead? The Windows desktop edition is also published on the [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6) (Windows 11 or later).
 
 ## Try with npm (Node.js 18+)
 
@@ -51,11 +51,11 @@ npm i -g offline-md-editor-viewer
 offline-md-editor-viewer
 ```
 
-The npm package is a small launcher that bundles the browser edition only. The Windows desktop `.exe` is not distributed via npm — download it from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
+The npm package is a small launcher that bundles the browser edition only. The Windows desktop edition is not distributed via npm — install it from the [Microsoft Store](https://apps.microsoft.com/detail/9N9FDS8BB2F6), or download the portable exe from [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases/latest).
 
 ## Why you might like it
 
-- **No build, no install.** The browser edition is a single HTML file you open directly. The Windows desktop edition is a portable `.exe` you can drop on a USB stick.
+- **No build, no install.** The browser edition is a single HTML file you open directly. The Windows desktop edition installs from the Microsoft Store, or runs as a portable `.exe` you can drop on a USB stick.
 - **Your files stay yours.** File content is never uploaded anywhere. Save writes back to the original file on your disk.
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
@@ -107,7 +107,7 @@ Recommended on macOS and Linux for now — native desktop packages are currently
 
 ## Use the Windows Desktop App
 
-**Option 1 — Microsoft Store.** Install [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) from the Store. The package is signed by Microsoft, so there is no SmartScreen warning, and updates arrive through the Store. Requires Windows 11 (build 22000) or later. Note that the Store edition installs to a system-managed location, so the portable "carry it on a USB drive" workflow described below does not apply to it — use the GitHub Releases exe for that.
+**Option 1 — Microsoft Store (recommended).** Install [offline-md-editor-viewer](https://apps.microsoft.com/detail/9N9FDS8BB2F6) from the Store. The package is signed by Microsoft, so there is no SmartScreen warning, and updates arrive through the Store. Requires Windows 11 (build 22000) or later. Note that the Store edition installs to a system-managed location, so the portable "carry it on a USB drive" workflow described below does not apply to it — use the GitHub Releases exe for that.
 
 **Option 2 — GitHub Releases.** Two files on the [GitHub Releases](https://github.com/ishizakahiroshi/offline-md-editor-viewer/releases) page:
 

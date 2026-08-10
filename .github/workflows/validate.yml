@@ -1,0 +1,93 @@
+name: Validate
+
+# Pre-tag gate. Release (release.yml) fires on tag push and does not depend on this
+# workflow, so this is the only place where a broken tree is caught before a tag
+# becomes public.
+#
+# `develop` is included in the push triggers on purpose: this repository releases
+# from `main` but develops on `develop`, so a main-only trigger would give its first
+# signal after the merge that immediately precedes the tag.
+#
+# `cargo fmt --check` is deliberately NOT a gate yet: apps/desktop/src-tauri/src/lib.rs
+# currently has three formatting diffs, and reformatting it inside a Store hotfix was
+# out of scope. Apply `cargo fmt` in a normal release and add the check then.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+env:
+  # Parity with release.yml: keeps JavaScript actions on Node 24.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  browser:
+    name: Browser single HTML
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The app is one HTML file with its runtime in inline <script> blocks, so a
+      # syntax error produces a page that loads and does nothing. Compile it.
+      - name: Check inline JavaScript syntax (source HTML)
+        run: node scripts/ci/check-html-inline-js.mjs apps/browser/offline-md-editor-viewer.html
+
+      # Same script CI uses to produce the release asset: verifies that no
+      # placeholder is left unreplaced, no `<script src=` survives inlining, and
+      # the bundled license texts are present.
+      - name: Build and verify single HTML
+        shell: pwsh
+        run: ./scripts/release/build-browser-single-html.ps1 -Clean -Verify
+
+      # Inlining rewrites the script blocks, so the generated file is checked too.
+      - name: Check inline JavaScript syntax (generated single HTML)
+        run: node scripts/ci/check-html-inline-js.mjs dist/browser/offline-md-editor-viewer.html
+
+  consistency:
+    name: Version and MSIX manifest consistency
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check version and MSIX manifest consistency
+        shell: pwsh
+        run: ./scripts/ci/check-consistency.ps1
+
+  desktop:
+    name: Windows desktop lint
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      # tauri.conf.json has no beforeBuildCommand and points frontendDist at the
+      # tracked apps/browser directory, so clippy needs no npm install or staging.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: apps/desktop/src-tauri

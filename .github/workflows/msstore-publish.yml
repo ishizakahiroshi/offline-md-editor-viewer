@@ -69,7 +69,7 @@ jobs:
       - name: Build MSIX package
         shell: pwsh
         run: |
-          ./scripts/local/build-msix.ps1
+          ./scripts/release/build-msix.ps1
 
       # 2026-08-03 に learn.microsoft.com で確認済み。
       # 旧 `microsoft/setup-msstore-cli` はリポジトリ改名により解決不能

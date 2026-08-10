@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.2 - 2026-08-11
+
+### Fixed
+
+- Microsoft Store 版で壊れていた `.md` の関連付けを修正。Git 管理された MSIX Manifest に `.md` の `windows.fileTypeAssociation` を追加し、Store workflow が Git 管理外で欠落していた `scripts/local` のスクリプトではなく、追跡対象のパッケージ生成スクリプトを使うよう変更した。生成処理はステージング時と完成 MSIX の展開後の両方で Manifest を検査し、関連付けが欠けていれば失敗する。
+
 ### Changed
 
 - Windows デスクトップ版: 埋め込みアプリマニフェストに DPI 対応宣言（`dpiAware=true/PM`、`dpiAwareness=PerMonitorV2`）を追加。従来は DPI 宣言が無く、Windows のビットマップ拡大（ぼやけた表示）にフォールバックしており、Windows App Certification Kit で警告扱いになっていた。高 DPI ディスプレイやスケール倍率の異なるマルチモニタ環境での描画挙動が変わる。通常の DPI 環境での正常描画は確認済みだが、マルチ DPI・マルチモニタでの実機確認はまだ未実施。

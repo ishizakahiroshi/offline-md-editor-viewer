@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-08-11
+
+### Security
+
+- `serde_with` を 3.20.0 から 3.21.0 へ更新し、GHSA-7gcf-g7xr-8hxj（`KeyValueMap` のシリアライズが空のシーケンス/マップ要素で panic する）を解消した。この crate は `tauri-utils` 経由で Windows ビルドに到達しており（`cargo tree --target x86_64-pc-windows-msvc` で確認）、配布する exe にコンパイルされている。panic には壊れた入力が必要で、その経路の入力はこのリポジトリで追跡している設定ファイルだけなので、攻撃者が到達できる状態ではなかった。版は通常の更新ではなく `cargo update --precise 3.21.0` で固定している。3.22.0 まで上げると、追加の修正が無いまま transitive な crate が 10 個（`jiff` 系と `defmt` 系、`portable-atomic`）増えるため。副作用として、不要になった 3 crate（`windows-core` 0.62.2、`windows-result` 0.4.1、`windows-strings` 0.5.1）が `Cargo.lock` から外れた。
+- `glib` 0.18.5 は GHSA-wrw7-89jp-8q8g（`glib::VariantStrIter` の `Iterator` および `DoubleEndedIterator` 実装の unsoundness）を抱えたまま `Cargo.lock` に残るが、到達不能として受容した。この crate は Linux/GTK バックエンド（`atk`、`gtk`、`webkit2gtk`、`cairo-rs`）経由でしか引き込まれず、Windows ビルドにはコンパイルされない。`cargo tree --target x86_64-pc-windows-msvc` は `glib` について何も出力しない。0.20.0 へ上げるには `tauri`、`tao`、`wry`、`webkit2gtk` の上流で `gtk` を 0.18 から 0.20 へ上げる必要があり、このリポジトリ側では対応できないため、Tauri が `gtk` を上げた時点で再評価する。
+
+### Changed
+
+- `Validate` workflow が実行する整合チェックに、`LICENSES/desktop-third-party.txt` が現在の `Cargo.lock` から生成されたものかどうかの検査を追加した。この検査は従来 gitignore 対象のローカルスクリプトにしかなく、同じスクリプト内の無関係な検査が先に例外を投げるため 0.3.0 以降動いていなかった。そのため 0.3.1 と 0.3.2 は、記録ハッシュが実態と一致しないライセンスファイルを同梱して出ている。依存の増減が無かったためライセンス本文自体は正しかったが、ずれていたとしても気づく手段が無かった。なお版上げだけでも `Cargo.lock` は変わるため、以後はリリースごとにライセンスファイルの再生成が必要になる。
+
 ## 0.3.2 - 2026-08-11
 
 ### Fixed

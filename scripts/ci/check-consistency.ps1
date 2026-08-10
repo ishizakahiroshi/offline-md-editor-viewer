@@ -6,14 +6,20 @@
   This repository keeps the same version in six tracked places and the Tauri
   version string in two (Cargo.lock resolves it, the About dialog hardcodes it).
   It also declares the `.md` file type association only in the tracked MSIX
-  manifest. Both classes of drift have already shipped once:
+  manifest, and records which Cargo.lock its bundled Rust license text was
+  generated from. Every one of these has already drifted in a shipped release:
 
     - v0.3.1 went to the Microsoft Store without the `.md` association, which
       broke "Open with" for every Store user.
     - The About dialog's Tauri string has to be updated by hand whenever
       Cargo.toml moves, so it silently goes stale.
+    - v0.3.1 and v0.3.2 shipped a LICENSES/desktop-third-party.txt whose
+      recorded Cargo.lock hash no longer matched, because the only check for it
+      lived in a gitignored local script that had stopped running after v0.3.0.
+      The license text happened to stay correct (no dependency was added or
+      removed), but nothing would have caught it if it had not.
 
-  Nothing about either failure is visible at build time, so both are checked here.
+  None of these are visible at build time, so all of them are checked here.
 
   Run locally exactly as CI does:
     pwsh -NoProfile -File scripts/ci/check-consistency.ps1
@@ -171,6 +177,31 @@ if (-not (Test-Path -LiteralPath $manifestPath)) {
     Add-Failure "MSIX manifest: the .md windows.fileTypeAssociation declaration is gone (this is the v0.3.1 Store regression)"
   } else {
     Write-Host "OK   MSIX manifest declares the .md file type association"
+  }
+}
+
+# --- Bundled Rust license text must match the current Cargo.lock -----------
+
+$desktopLicensePath = Join-Path $RepoRoot "LICENSES/desktop-third-party.txt"
+$cargoLockPath = Join-Path $RepoRoot "apps/desktop/src-tauri/Cargo.lock"
+if (-not (Test-Path -LiteralPath $desktopLicensePath)) {
+  Add-Failure "LICENSES/desktop-third-party.txt is missing (run scripts/local/gen-desktop-licenses.ps1)"
+} else {
+  $header = Select-String -LiteralPath $desktopLicensePath -Pattern '^# Cargo\.lock SHA-256:\s*([0-9A-Fa-f]+)' |
+    Select-Object -First 1
+  if (-not $header) {
+    Add-Failure "LICENSES/desktop-third-party.txt has no '# Cargo.lock SHA-256:' header, so its freshness cannot be checked"
+  } else {
+    $recorded = $header.Matches[0].Groups[1].Value.ToUpperInvariant()
+    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $cargoLockPath).Hash.ToUpperInvariant()
+    if ($recorded -ne $actual) {
+      # Note that a version bump alone changes Cargo.lock, so the license file has
+      # to be regenerated on every release even when no dependency moved.
+      Add-Failure ("LICENSES/desktop-third-party.txt was generated from a different Cargo.lock " +
+        "(recorded $recorded, actual $actual). Re-run scripts/local/gen-desktop-licenses.ps1")
+    } else {
+      Write-Host "OK   LICENSES/desktop-third-party.txt matches the current Cargo.lock"
+    }
   }
 }
 

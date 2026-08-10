@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-08-11
+
+### Security
+
+- Updated `serde_with` from 3.20.0 to 3.21.0, resolving GHSA-7gcf-g7xr-8hxj (`KeyValueMap` serialization panics on empty sequence or map entries). This crate does reach the Windows build, through `tauri-utils` (confirmed with `cargo tree --target x86_64-pc-windows-msvc`), so it is compiled into the distributed exe. The panic needs malformed input, and the only inputs on that path are tracked configuration files in this repository, so it was not reachable by an attacker. The version is pinned with `cargo update --precise 3.21.0` rather than a plain update, because moving to 3.22.0 would have added ten transitive crates (the `jiff` and `defmt` families, `portable-atomic`) without fixing anything further. Three crates that are no longer needed (`windows-core` 0.62.2, `windows-result` 0.4.1, `windows-strings` 0.5.1) dropped out of `Cargo.lock` as a side effect.
+- `glib` 0.18.5 stays in `Cargo.lock` with GHSA-wrw7-89jp-8q8g (unsoundness in the `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`) and is accepted as unreachable. It is pulled in only through the Linux/GTK backend (`atk`, `gtk`, `webkit2gtk`, `cairo-rs`) and is not compiled into the Windows build; `cargo tree --target x86_64-pc-windows-msvc` reports nothing at all for `glib`. Upgrading to 0.20.0 needs `gtk` 0.18 to 0.20 across the `tauri`, `tao`, `wry`, and `webkit2gtk` upstream and cannot be done in this repository, so it will be revisited when Tauri bumps `gtk`.
+
+### Changed
+
+- The consistency check that the `Validate` workflow runs now also verifies that `LICENSES/desktop-third-party.txt` was generated from the current `Cargo.lock`. That check previously existed only in a gitignored local script, and it had stopped running after 0.3.0 because an unrelated assertion earlier in the same script threw first, so 0.3.1 and 0.3.2 both shipped a license file whose recorded hash no longer matched. The license text itself was correct in those releases because no dependency was added or removed, but nothing would have caught it otherwise. Note that a version bump alone changes `Cargo.lock`, so the license file now has to be regenerated on every release.
+
 ## 0.3.2 - 2026-08-11
 
 ### Fixed

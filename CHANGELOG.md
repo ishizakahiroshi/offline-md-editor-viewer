@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.3.2 - 2026-08-11
+
+### Fixed
+
+- Fixed the Microsoft Store package's broken `.md` association. The tracked MSIX manifest now declares `windows.fileTypeAssociation` for `.md`, and the Store workflow uses the tracked package builder instead of a missing gitignored `scripts/local` script. The builder validates both the staged manifest and the manifest unpacked from the generated MSIX before it can succeed.
+
 ### Changed
 
 - Windows desktop edition: the embedded app manifest now declares DPI awareness (`dpiAware=true/PM`, `dpiAwareness=PerMonitorV2`). Previously the app had no DPI declaration and relied on Windows' bitmap-stretching fallback, which the Windows App Certification Kit flags as a warning. This changes rendering behavior on high-DPI displays and multi-monitor setups with different scale factors; verified normal rendering at standard DPI, but multi-DPI/multi-monitor behavior has not been verified on real hardware.

@@ -45,6 +45,9 @@ jobs:
       - name: Check inline JavaScript syntax (source HTML)
         run: node scripts/ci/check-html-inline-js.mjs apps/browser/offline-md-editor-viewer.html
 
+      - name: Check Browser runtime safety contracts
+        run: node scripts/ci/check-browser-runtime-safety.mjs
+
       # Same script CI uses to produce the release asset: verifies that no
       # placeholder is left unreplaced, no `<script src=` survives inlining, and
       # the bundled license texts are present.

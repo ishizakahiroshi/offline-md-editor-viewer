@@ -61,6 +61,13 @@ IndexedDB（`DIRECTORY_DB_NAME = "offline_md_editor_viewer_directory"` / store `
 
 Tauri環境では直近フォルダを絶対パス文字列として `localStorage`（`STORAGE_LAST_DIRECTORY_TAURI_KEY`）に保存し、Chrome の保護フォルダ判定や IndexedDB のハンドル再許可には依存しない。
 
+### Browser/Tauri runtime safety の不変条件
+
+- Browser の全量ファイル読み込みは、Desktop と同じ 64 MiB 上限を使い、`arrayBuffer()` で全量を確保する前に拒否する。
+- Browser の `localStorage` 操作は `safeLocalStorageGet` / `safeLocalStorageSet` / `safeLocalStorageRemove` 経由に限定する。読み取り不能時は既存の既定値へフォールバックし、storage key と JSON 形式は変更しない。
+- ファイル・フォルダ機能を変更するときは、Browser / Tauri を分けて backend → state 更新 → context menu → keyboard shortcut → README 英日 2 ファイルと HTML 内蔵英日 2 コピーまで確認する。backend 実装だけで「対応済み」と判断しない。
+- 上記領域を変更したら `node scripts/ci/check-browser-runtime-safety.mjs` を更新・実行し、実装と回帰契約を同期する。
+
 ## デスクトップ版ビルド
 
 スコープは Windows 限定。macOS / Linux のデスクトップ配布は将来対応で、現時点ではブラウザ版を使う。

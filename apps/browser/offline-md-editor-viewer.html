@@ -5038,7 +5038,9 @@ Editing, rendering, and preview share the same HTML on both editions, so **the c
 | File-association launch (right-click → "Open with" in Explorer) | | ✓ |
 | Explorer integration (click the folder path to open it) | | ✓ |
 | Folder drag & drop | ✓ | ✓ |
-| Create / rename / delete files and folders in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Create / delete files and folders in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Rename files in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Rename folders in the tree | | ✓ |
 | Moving files and folders inside the tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 | Copy external files/folders into the opened tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 
@@ -5252,7 +5254,9 @@ macOS / Linux 版のデスクトップアプリは将来対応予定です。そ
 | 関連付け起動（エクスプローラーで右クリック→「プログラムから開く」） | | ✓ |
 | エクスプローラー連携（ファイル一覧タイトルのパスをクリックで開く） | | ✓ |
 | フォルダのドラッグ&ドロップ | ✓ | ✓ |
-| ツリー内でのファイル/フォルダの作成・名前変更・削除 | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
+| ツリー内でのファイル/フォルダの作成・削除 | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
+| ツリー内でのファイル名変更 | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
+| ツリー内でのフォルダ名変更 | | ✓ |
 | ツリー内でのファイル/フォルダのドラッグ&ドロップ移動 | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
 | 外部からドラッグ&ドロップしたファイル/フォルダを開いているツリーへコピー | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
 
@@ -5415,6 +5419,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
         } catch (_e) { /* setStatus may not be ready during early init */ }
       }
+      function safeLocalStorageGet(key) {
+        try {
+          return localStorage.getItem(key);
+        } catch (err) {
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn("localStorage.getItem failed", key, err);
+          }
+          // Reading persisted settings is optional. Fall back to each caller's
+          // default so a blocked/opaque storage origin cannot abort app startup.
+          return null;
+        }
+      }
       function safeLocalStorageSet(key, value) {
         try {
           localStorage.setItem(key, value);
@@ -5461,8 +5477,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         previewAutoCollapsed: false,    // 旧: previewAutoCollapsed（true while a non-Markdown file is loaded）
         baselineText: "",               // last loaded/saved text for unsaved diff
       };
-      let wrapEnabled = localStorage.getItem(STORAGE_WRAP_ENABLED_KEY) !== "false";
-      let eofMarkerEnabled = localStorage.getItem(STORAGE_EOF_MARKER_KEY) === "true";
+      let wrapEnabled = safeLocalStorageGet(STORAGE_WRAP_ENABLED_KEY) !== "false";
+      let eofMarkerEnabled = safeLocalStorageGet(STORAGE_EOF_MARKER_KEY) === "true";
       let lineRanges = [{ start: 0, end: 0, text: "" }];
       let lineHeights = [];
       let scrollSyncAnchors = [];
@@ -5487,8 +5503,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
       const FALLBACK_LANG = "en";
       let currentLang = FALLBACK_LANG;
-      let fileTreeShowAll = localStorage.getItem(STORAGE_FILE_TREE_SHOW_ALL_KEY) !== "false";
-      let externalLinksEnabled = localStorage.getItem(STORAGE_EXTERNAL_LINKS_ENABLED_KEY) === "true";
+      let fileTreeShowAll = safeLocalStorageGet(STORAGE_FILE_TREE_SHOW_ALL_KEY) !== "false";
+      let externalLinksEnabled = safeLocalStorageGet(STORAGE_EXTERNAL_LINKS_ENABLED_KEY) === "true";
       const tauriCore = window.__TAURI__ && window.__TAURI__.core;
       const tauriInternals = window.__TAURI_INTERNALS__;
       const isTauri = !!(
@@ -5520,7 +5536,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       };
       // favoriteDirs の localStorage 復元（順序維持）
       try {
-        const savedFavorites = localStorage.getItem(STORAGE_FAVORITES_KEY);
+        const savedFavorites = safeLocalStorageGet(STORAGE_FAVORITES_KEY);
         if (savedFavorites) {
           const parsed = JSON.parse(savedFavorites);
           const arr = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
@@ -6290,38 +6306,38 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.moveExists": ["An item with that name already exists in the target folder.", "移動先に同じ名前の項目が既にあります。", "目標資料夾中已存在同名項目。", "目标文件夹中已存在同名项目。", "Ya existe un elemento con ese nombre en la carpeta destino.", "Im Zielordner existiert bereits ein Eintrag mit diesem Namen.", "대상 폴더에 같은 이름의 항목이 이미 있습니다.", "Ja existe um item com esse nome na pasta de destino.", "В целевой папке уже есть элемент с таким именем.", "Thư mục đích đã có mục cùng tên.", "Un élément portant ce nom existe déjà dans le dossier cible.", "Nella cartella di destinazione esiste già un elemento con questo nome.", "Item dengan nama tersebut sudah ada di folder target."],
         "status.moveFailed": ["Move failed: ", "移動に失敗: ", "移動失敗：", "移动失败: ", "Error al mover: ", "Verschieben fehlgeschlagen: ", "이동 실패: ", "Falha ao mover: ", "Не удалось переместить: ", "Di chuyển thất bại: ", "Échec du déplacement : ", "Spostamento fallito: ", "Gagal memindahkan: "],
         "status.renameUnsupported": [
-          "Rename is available only for files opened from a folder with write access.",
-          "名前変更は、書き込み可能なフォルダから開いたファイルでのみ使えます。",
-          "重新命名僅適用於從具有寫入權限的資料夾開啟的檔案。",
-          "重命名仅适用于从可写文件夹打开的文件。",
-          "Renombrar solo está disponible para archivos abiertos desde una carpeta con acceso de escritura.",
-          "Umbenennen ist nur fuer Dateien verfuegbar, die aus einem Ordner mit Schreibzugriff geoeffnet wurden.",
-          "이름 바꾸기는 쓰기 권한이 있는 폴더에서 연 파일에만 사용할 수 있습니다.",
-          "Renomear esta disponivel apenas para arquivos abertos de uma pasta com acesso de escrita.",
-          "Переименование доступно только для файлов, открытых из папки с доступом на запись.",
-          "Chỉ có thể đổi tên tệp được mở từ thư mục có quyền ghi.",
-          "Le renommage est disponible uniquement pour les fichiers ouverts depuis un dossier avec accès en écriture.",
-          "La rinomina è disponibile solo per i file aperti da una cartella con accesso in scrittura.",
-          "Ganti nama hanya tersedia untuk file yang dibuka dari folder dengan akses tulis.",
+          "Rename is available only for entries in a folder with write access.",
+          "名前変更は、書き込み可能なフォルダ内の項目でのみ使えます。",
+          "重新命名僅適用於具有寫入權限的資料夾內項目。",
+          "重命名仅适用于具有写入权限的文件夹内项目。",
+          "Renombrar solo está disponible para elementos de una carpeta con acceso de escritura.",
+          "Umbenennen ist nur fuer Eintraege in einem Ordner mit Schreibzugriff verfuegbar.",
+          "이름 바꾸기는 쓰기 권한이 있는 폴더의 항목에만 사용할 수 있습니다.",
+          "Renomear esta disponivel apenas para itens em uma pasta com acesso de escrita.",
+          "Переименование доступно только для элементов в папке с доступом на запись.",
+          "Chỉ có thể đổi tên mục trong thư mục có quyền ghi.",
+          "Le renommage est disponible uniquement pour les éléments d'un dossier avec accès en écriture.",
+          "La rinomina è disponibile solo per gli elementi in una cartella con accesso in scrittura.",
+          "Ganti nama hanya tersedia untuk item dalam folder dengan akses tulis.",
         ],
-        "status.renamePrompt": ["New file name:", "新しいファイル名:", "新檔案名稱：", "新文件名:", "Nuevo nombre de archivo:", "Neuer Dateiname:", "새 파일 이름:", "Novo nome do arquivo:", "Новое имя файла:", "Tên tệp mới:", "Nouveau nom de fichier :", "Nuovo nome file:", "Nama file baru:"],
+        "status.renamePrompt": ["New name:", "新しい名前:", "新名稱：", "新名称:", "Nuevo nombre:", "Neuer Name:", "새 이름:", "Novo nome:", "Новое имя:", "Tên mới:", "Nouveau nom :", "Nuovo nome:", "Nama baru:"],
         "status.renameInvalid": [
-          "Use a supported file name without folder separators.",
-          "対応形式のファイル名を入力してください（フォルダ区切りは使えません）。",
-          "請使用支援格式的檔案名稱，且不得包含路徑分隔符號。",
-          "请使用受支持格式的文件名，且不能包含文件夹分隔符。",
-          "Usa un nombre de archivo en un formato compatible sin separadores de carpeta.",
-          "Verwenden Sie einen Dateinamen in einem unterstuetzten Format ohne Ordnertrennzeichen.",
-          "폴더 구분자가 없는 지원되는 형식의 파일 이름을 사용하세요.",
-          "Use um nome de arquivo em formato compativel, sem separadores de pasta.",
-          "Используйте имя файла поддерживаемого формата без разделителей папок.",
-          "Dùng tên tệp ở định dạng được hỗ trợ, không chứa dấu phân tách thư mục.",
-          "Utilisez un nom de fichier dans un format pris en charge, sans séparateur de dossier.",
-          "Usa un nome file in un formato supportato senza separatori di cartella.",
-          "Gunakan nama file dalam format yang didukung tanpa pemisah folder.",
+          "Use a valid name without folder separators.",
+          "有効な名前を入力してください（フォルダ区切りは使えません）。",
+          "請使用有效名稱，且不得包含路徑分隔符號。",
+          "请使用有效名称，且不能包含文件夹分隔符。",
+          "Usa un nombre válido sin separadores de carpeta.",
+          "Verwenden Sie einen gueltigen Namen ohne Ordnertrennzeichen.",
+          "폴더 구분자가 없는 올바른 이름을 사용하세요.",
+          "Use um nome valido, sem separadores de pasta.",
+          "Используйте допустимое имя без разделителей папок.",
+          "Dùng tên hợp lệ, không chứa dấu phân tách thư mục.",
+          "Utilisez un nom valide, sans séparateur de dossier.",
+          "Usa un nome valido senza separatori di cartella.",
+          "Gunakan nama yang valid tanpa pemisah folder.",
         ],
-        "status.renameExists": ["A file with that name already exists.", "同じ名前のファイルが既にあります。", "已存在相同名稱的檔案。", "已存在同名文件。", "Ya existe un archivo con ese nombre.", "Eine Datei mit diesem Namen existiert bereits.", "같은 이름의 파일이 이미 있습니다.", "Ja existe um arquivo com esse nome.", "Файл с таким именем уже существует.", "Đã có tệp cùng tên.", "Un fichier portant ce nom existe déjà.", "Esiste già un file con questo nome.", "File dengan nama tersebut sudah ada."],
-        "status.renameDone": ["File renamed.", "ファイル名を変更しました。", "檔案已重新命名。", "文件已重命名。", "Archivo renombrado.", "Datei umbenannt.", "파일 이름을 변경했습니다.", "Arquivo renomeado.", "Файл переименован.", "Đã đổi tên tệp.", "Fichier renommé.", "File rinominato.", "File berhasil diganti nama."],
+        "status.renameExists": ["An item with that name already exists.", "同じ名前の項目が既にあります。", "已存在相同名稱的項目。", "已存在同名项目。", "Ya existe un elemento con ese nombre.", "Ein Eintrag mit diesem Namen existiert bereits.", "같은 이름의 항목이 이미 있습니다.", "Ja existe um item com esse nome.", "Элемент с таким именем уже существует.", "Đã có mục cùng tên.", "Un élément portant ce nom existe déjà.", "Esiste già un elemento con questo nome.", "Item dengan nama tersebut sudah ada."],
+        "status.renameDone": ["Renamed.", "名前を変更しました。", "已重新命名。", "已重命名。", "Nombre cambiado.", "Umbenannt.", "이름을 변경했습니다.", "Nome alterado.", "Переименовано.", "Đã đổi tên.", "Renommé.", "Rinominato.", "Nama berhasil diubah."],
         "status.renameFailed": ["Rename failed: ", "名前変更に失敗: ", "重新命名失敗：", "重命名失败: ", "Error al renombrar: ", "Umbenennen fehlgeschlagen: ", "이름 바꾸기 실패: ", "Falha ao renomear: ", "Не удалось переименовать: ", "Đổi tên thất bại: ", "Échec du renommage : ", "Rinomina fallita: ", "Penggantian nama gagal: "],
         "status.deleteUnsupported": [
           "Delete is available only for files opened from a folder with write access.",
@@ -6495,7 +6511,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       })();
 
       function detectInitialLanguage() {
-        const saved = localStorage.getItem(STORAGE_LANG_KEY);
+        const saved = safeLocalStorageGet(STORAGE_LANG_KEY);
         if (saved && hasLanguage(saved)) return saved;
         const langs = [];
         if (Array.isArray(navigator.languages)) langs.push(...navigator.languages);
@@ -6716,7 +6732,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function getInitialFileSortMode() {
-        const saved = localStorage.getItem(STORAGE_FILE_SORT_KEY);
+        const saved = safeLocalStorageGet(STORAGE_FILE_SORT_KEY);
         return ["path-asc", "path-desc", "name-asc", "name-desc", "updated-desc", "updated-asc"].includes(saved)
           ? saved
           : "name-asc";
@@ -6724,7 +6740,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       dirState.sortMode = getInitialFileSortMode(); // 宣言時に呼べないため関数定義直後に設定
 
       function getInitialFileToolsVisible() {
-        const saved = localStorage.getItem(STORAGE_FILE_TOOLS_VISIBLE_KEY);
+        const saved = safeLocalStorageGet(STORAGE_FILE_TOOLS_VISIBLE_KEY);
         if (saved === "true") return true;
         if (saved === "false") return false;
         return true;
@@ -6751,7 +6767,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function getInitialCardVisibility() {
         const fallback = { fileList: true, source: true, preview: true };
         try {
-          const saved = JSON.parse(localStorage.getItem(STORAGE_CARD_VISIBILITY_KEY) || "{}");
+          const saved = JSON.parse(safeLocalStorageGet(STORAGE_CARD_VISIBILITY_KEY) || "{}");
           return {
             fileList: typeof saved.fileList === "boolean" ? saved.fileList : fallback.fileList,
             source: typeof saved.source === "boolean" ? saved.source : fallback.source,
@@ -6768,7 +6784,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function loadSavedCardWidths() {
         try {
-          const saved = JSON.parse(localStorage.getItem(STORAGE_CARD_WIDTH_KEY) || "{}");
+          const saved = JSON.parse(safeLocalStorageGet(STORAGE_CARD_WIDTH_KEY) || "{}");
           const result = {};
           if (Number.isFinite(saved.source) && saved.source > 0) result.source = saved.source;
           if (Number.isFinite(saved.preview) && saved.preview > 0) result.preview = saved.preview;
@@ -6782,7 +6798,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function saveCardWidths(widths) {
         let next = widths;
         try {
-          const prev = JSON.parse(localStorage.getItem(STORAGE_CARD_WIDTH_KEY) || "{}");
+          const prev = JSON.parse(safeLocalStorageGet(STORAGE_CARD_WIDTH_KEY) || "{}");
           // BUG-INIT-003: prev が配列だと `{ ...[1,2], ...widths }` でインデックスがキー化された
           // ゴミオブジェクトが保存されるため、非配列のプレーン object に限定する。
           if (prev && typeof prev === "object" && !Array.isArray(prev)) {
@@ -7968,6 +7984,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const FIND_MATCH_RENDER_LIMIT = 2000;
       const PREVIEW_RENDER_SOFT_LIMIT_CHARS = 300000;
       const PREVIEW_RENDER_SOFT_LIMIT_LINE_CHARS = 12000;
+      // Keep Browser and Desktop editions on the same fail-fast boundary before
+      // allocating a full-file ArrayBuffer for decoding.
+      const MAX_FILE_BYTES = 64 * 1024 * 1024;
       const MARKDOWN_SANITIZE_OPTIONS = {
         USE_PROFILES: { html: true },
         FORBID_TAGS: ["base", "embed", "iframe", "link", "meta", "object", "script", "style"],
@@ -8634,7 +8653,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         // recent + outline after load (name may be set by caller via setAppDocumentTitle)
         window.setTimeout(() => {
           rememberCurrentAsRecent();
-          if (outlineVisible || localStorage.getItem(STORAGE_OUTLINE_VISIBLE_KEY) === "true") {
+          if (outlineVisible || safeLocalStorageGet(STORAGE_OUTLINE_VISIBLE_KEY) === "true") {
             setOutlineVisible(true);
           }
         }, 0);
@@ -8914,7 +8933,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function getDismissedHints() {
         try {
-          const raw = localStorage.getItem(STORAGE_DISMISSED_HINTS_KEY);
+          const raw = safeLocalStorageGet(STORAGE_DISMISSED_HINTS_KEY);
           if (!raw) return {};
           const parsed = JSON.parse(raw);
           // BUG-INIT-002: Array.isArray を除外しないと、外部破損で `[]` が入ったとき
@@ -9390,6 +9409,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function readMarkdownFile(file) {
+        if (file && Number.isFinite(file.size) && file.size > MAX_FILE_BYTES) {
+          throw new Error(`File is too large to open in this editor (limit: ${MAX_FILE_BYTES / (1024 * 1024)} MiB).`);
+        }
         const buffer = await file.arrayBuffer();
         return { ...decodeMarkdownBuffer(buffer), buffer };
       }
@@ -9471,7 +9493,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       async function openExternalHref(href, options = {}) {
         if (!externalLinksEnabled) {
-          const hasSeenBlockedNotice = localStorage.getItem(STORAGE_EXTERNAL_LINKS_BLOCKED_NOTICE_SEEN_KEY) === "true";
+          const hasSeenBlockedNotice = safeLocalStorageGet(STORAGE_EXTERNAL_LINKS_BLOCKED_NOTICE_SEEN_KEY) === "true";
           const message = hasSeenBlockedNotice
             ? t("status", "externalLinkBlocked")
             : t("status", "externalLinkFirstBlocked") + " " + t("status", "externalLinkBlocked");
@@ -10107,7 +10129,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         } else {
           newMarkdownFileMenuBtn.hidden = !(isDir || isEmpty);
           newFolderMenuBtn.hidden = !(isDir || isEmpty);
-          renameFileMenuBtn.hidden = isDir || isEmpty;
+          // Browser rename currently copies/removes files only. The Desktop raw
+          // command and state-update path support directories, so expose it there.
+          renameFileMenuBtn.hidden = isEmpty || (isDir && !isTauri);
           copyFileNameMenuBtn.hidden = isEmpty;
           copyEntryMenuBtn.hidden = isEmpty || !dirState.handle;
           pasteEntryMenuBtn.hidden = !dirState.clipboardEntry || !dirState.handle;
@@ -11615,9 +11639,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       async function getLastDirectoryHandle() {
         if (isTauri) {
-          let value = localStorage.getItem(STORAGE_LAST_DIRECTORY_TAURI_KEY);
+          let value = safeLocalStorageGet(STORAGE_LAST_DIRECTORY_TAURI_KEY);
           if (!value) {
-            const legacy = localStorage.getItem(LEGACY_STORAGE_LAST_DIRECTORY_TAURI_KEY);
+            const legacy = safeLocalStorageGet(LEGACY_STORAGE_LAST_DIRECTORY_TAURI_KEY);
             if (legacy) {
               if (safeLocalStorageSet(STORAGE_LAST_DIRECTORY_TAURI_KEY, legacy)) {
                 safeLocalStorageRemove(LEGACY_STORAGE_LAST_DIRECTORY_TAURI_KEY);
@@ -12941,7 +12965,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
 
       /* UX-DELIGHT-FEATURES */
-      let outlineVisible = localStorage.getItem(STORAGE_OUTLINE_VISIBLE_KEY) === "true";
+      let outlineVisible = safeLocalStorageGet(STORAGE_OUTLINE_VISIBLE_KEY) === "true";
       let outlineRaf = 0;
       let zenActive = false;
       let zenSnapshot = null;
@@ -12982,7 +13006,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function loadRecentFiles() {
         try {
-          const raw = localStorage.getItem(STORAGE_RECENT_FILES_KEY);
+          const raw = safeLocalStorageGet(STORAGE_RECENT_FILES_KEY);
           const parsed = raw ? JSON.parse(raw) : [];
           if (!Array.isArray(parsed)) return [];
           return parsed
@@ -13538,11 +13562,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             }
           }
         }
-        // --- F2: rename selected file ---
+        // --- F2: rename selected file (or Desktop directory) ---
         if (e.key === "F2" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
           if (!dirState.handle || !shouldHandleFileListShortcut()) return;
           const entry = resolveActiveDirectoryEntry();
-          if (!entry || entry.kind === "dir") return;
+          if (!entry || (entry.kind === "dir" && !isTauri)) return;
           e.preventDefault();
           hideFileContextMenu();
           renameDirectoryEntry(entry).catch((err) => {
@@ -13575,8 +13599,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       setupTauriCloseGuard();
 
       function detectInitialTheme() {
-        const saved = localStorage.getItem(STORAGE_THEME_KEY);
-        const themeSchema = localStorage.getItem(STORAGE_THEME_SCHEMA_KEY);
+        const saved = safeLocalStorageGet(STORAGE_THEME_KEY);
+        const themeSchema = safeLocalStorageGet(STORAGE_THEME_SCHEMA_KEY);
         if (themeSchema === null) {
           safeLocalStorageSet(STORAGE_THEME_SCHEMA_KEY, "three-theme");
           if (saved === "dark") return "blue";
@@ -13645,7 +13669,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       });
 
       function detectInitialFontScale() {
-        const saved = localStorage.getItem(STORAGE_FONT_SCALE_KEY);
+        const saved = safeLocalStorageGet(STORAGE_FONT_SCALE_KEY);
         if (FONT_SCALE_OPTIONS.some((opt) => opt.key === saved)) return saved;
         return "medium";
       }
@@ -13676,7 +13700,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       });
 
       function detectInitialDensity() {
-        const saved = localStorage.getItem(STORAGE_DENSITY_KEY);
+        const saved = safeLocalStorageGet(STORAGE_DENSITY_KEY);
         if (DENSITY_OPTIONS.some((opt) => opt.key === saved)) return saved;
         return "standard";
       }

@@ -8,6 +8,14 @@
 
 - `serde_with` を 3.20.0 から 3.21.0 へ更新し、GHSA-7gcf-g7xr-8hxj（`KeyValueMap` のシリアライズが空のシーケンス/マップ要素で panic する）を解消した。この crate は `tauri-utils` 経由で Windows ビルドに到達しており（`cargo tree --target x86_64-pc-windows-msvc` で確認）、配布する exe にコンパイルされている。panic には壊れた入力が必要で、その経路の入力はこのリポジトリで追跡している設定ファイルだけなので、攻撃者が到達できる状態ではなかった。版は通常の更新ではなく `cargo update --precise 3.21.0` で固定している。3.22.0 まで上げると、追加の修正が無いまま transitive な crate が 10 個（`jiff` 系と `defmt` 系、`portable-atomic`）増えるため。副作用として、不要になった 3 crate（`windows-core` 0.62.2、`windows-result` 0.4.1、`windows-strings` 0.5.1）が `Cargo.lock` から外れた。
 - `glib` 0.18.5 は GHSA-wrw7-89jp-8q8g（`glib::VariantStrIter` の `Iterator` および `DoubleEndedIterator` 実装の unsoundness）を抱えたまま `Cargo.lock` に残るが、到達不能として受容した。この crate は Linux/GTK バックエンド（`atk`、`gtk`、`webkit2gtk`、`cairo-rs`）経由でしか引き込まれず、Windows ビルドにはコンパイルされない。`cargo tree --target x86_64-pc-windows-msvc` は `glib` について何も出力しない。0.20.0 へ上げるには `tauri`、`tao`、`wry`、`webkit2gtk` の上流で `gtk` を 0.18 から 0.20 へ上げる必要があり、このリポジトリ側では対応できないため、Tauri が `gtk` を上げた時点で再評価する。
+- Windows target に到達する `anyhow` を 1.0.102 から 1.0.103 へ更新し、RUSTSEC-2026-0190 を解消した。影響関数 `Error::downcast_mut` の呼び出しはアプリと直接の逆依存ソースから見つからなかったが、修正版への変更は1 crateだけの precise lockfile update で適用できた。
+
+### Fixed
+
+- Browser 版で 64 MiB を超えるファイルを全量 `ArrayBuffer` 化する前に拒否し、既存の Desktop 版上限と揃えた。巨大ファイルによるメモリ不足・長時間停止経路を防ぐ。
+- `localStorage.getItem` が保存領域拒否で例外を投げても、既定設定で起動を続けるようにした。既存の storage key と保存形式は変更していない。
+- 実装済みだった Desktop 版のフォルダ名変更を、コンテキストメニューと `F2` から利用可能にした。Browser 版の未対応範囲は、対応していると誤記していた英日 README の各コピーで明示した。
+- 埋め込み済み storage/file-read helper を実行し、フォルダ名変更の版境界も確認する非ビルド CI 回帰チェックを追加した。
 
 ### Changed
 

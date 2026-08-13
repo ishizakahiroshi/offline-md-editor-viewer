@@ -8,6 +8,14 @@
 
 - Updated `serde_with` from 3.20.0 to 3.21.0, resolving GHSA-7gcf-g7xr-8hxj (`KeyValueMap` serialization panics on empty sequence or map entries). This crate does reach the Windows build, through `tauri-utils` (confirmed with `cargo tree --target x86_64-pc-windows-msvc`), so it is compiled into the distributed exe. The panic needs malformed input, and the only inputs on that path are tracked configuration files in this repository, so it was not reachable by an attacker. The version is pinned with `cargo update --precise 3.21.0` rather than a plain update, because moving to 3.22.0 would have added ten transitive crates (the `jiff` and `defmt` families, `portable-atomic`) without fixing anything further. Three crates that are no longer needed (`windows-core` 0.62.2, `windows-result` 0.4.1, `windows-strings` 0.5.1) dropped out of `Cargo.lock` as a side effect.
 - `glib` 0.18.5 stays in `Cargo.lock` with GHSA-wrw7-89jp-8q8g (unsoundness in the `Iterator` and `DoubleEndedIterator` impls for `glib::VariantStrIter`) and is accepted as unreachable. It is pulled in only through the Linux/GTK backend (`atk`, `gtk`, `webkit2gtk`, `cairo-rs`) and is not compiled into the Windows build; `cargo tree --target x86_64-pc-windows-msvc` reports nothing at all for `glib`. Upgrading to 0.20.0 needs `gtk` 0.18 to 0.20 across the `tauri`, `tao`, `wry`, and `webkit2gtk` upstream and cannot be done in this repository, so it will be revisited when Tauri bumps `gtk`.
+- Updated Windows-reachable `anyhow` from 1.0.102 to 1.0.103, resolving RUSTSEC-2026-0190. No call to the affected `Error::downcast_mut` function was found in the app or its direct reverse-dependency sources, but the patched version is a one-crate precise lockfile update.
+
+### Fixed
+
+- Browser edition: reject files larger than 64 MiB before allocating a full-file `ArrayBuffer`, matching the existing Desktop limit and avoiding an out-of-memory or long-hang path.
+- Continue startup with default settings when `localStorage.getItem` is blocked and throws, instead of aborting the entire inline runtime. Existing storage keys and formats are unchanged.
+- Make the already-supported Desktop folder-rename path reachable from the context menu and `F2`. The Browser limitation is now stated explicitly in the English/Japanese README copies instead of claiming folder rename support there.
+- Added a non-build CI regression check that executes the embedded storage/file-read helpers and verifies the folder-rename edition boundary.
 
 ### Changed
 

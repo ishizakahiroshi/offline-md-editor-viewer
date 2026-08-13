@@ -5,6 +5,7 @@ GEMINI.md
 
 # Local/private docs and scripts
 docs/local/
+/docs/ai-audit-prompts/
 scripts/dev/
 scripts/local/
 # 開発計画 md はすべて docs/local/archive/ 配下で管理する。

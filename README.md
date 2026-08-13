@@ -142,7 +142,9 @@ Editing, rendering, and preview share the same HTML on both editions, so **the c
 | File-association launch (right-click → "Open with" in Explorer) | | ✓ |
 | Explorer integration (click the folder path to open it) | | ✓ |
 | Folder drag & drop | ✓ | ✓ |
-| Create / rename / delete files and folders in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Create / delete files and folders in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Rename files in the tree | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Rename folders in the tree | | ✓ |
 | Moving files and folders inside the tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 | Copy external files/folders into the opened tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 

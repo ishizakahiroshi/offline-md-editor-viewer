@@ -29,6 +29,29 @@ fn reject_nul_in_path(path: &str) -> Result<(), String> {
     }
 }
 
+fn reject_symlink_or_reparse(path: &Path) -> Result<(), String> {
+    // Defense-in-depth: list/copy already skip symlinks/reparse points.
+    // Refuse mutate/read targets that are links so a planted link cannot redirect IO.
+    let meta = match fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err.to_string()),
+    };
+    if meta.file_type().is_symlink() {
+        return Err("Symbolic links are not supported.".to_string());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+        if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err("Reparse points are not supported.".to_string());
+        }
+    }
+    Ok(())
+}
+
+
 const VIEWABLE_EXTENSIONS: &[&str] = &[
     "md", "markdown", "txt", "log", "rst", "adoc", "json", "yml", "yaml", "toml", "ini", "conf",
     "xml", "csv", "tsv", "sql", "diff", "patch",
@@ -197,6 +220,7 @@ const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 #[tauri::command]
 fn desktop_read_file_bytes(path: String) -> Result<Vec<u8>, String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     // BUG-RS-NEW-203: metadata 失敗時にサイズチェックをスキップすると、
     // 64 MiB 上限ガード (BUG-RS-106) が fail-open になり巨大ファイルが読まれる可能性が残る。
     // metadata 取得失敗は即エラーにし、fail-closed にする。
@@ -259,6 +283,7 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
 #[tauri::command]
 fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     // BUG-RS-106: 巨大ペイロードの書き込みは fs::File::create → write_all 経由でメモリ・I/O を圧迫する。
     if text.len() as u64 > MAX_FILE_BYTES {
         return Err(format!(
@@ -272,6 +297,7 @@ fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
 #[tauri::command]
 fn desktop_write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err(format!(
             "Content is too large to save (limit: {} MiB).",
@@ -284,6 +310,7 @@ fn desktop_write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> 
 #[tauri::command]
 fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Value>, String> {
     reject_nul_in_path(&dir_path)?;
+    reject_symlink_or_reparse(Path::new(&dir_path))?;
     let read_dir = fs::read_dir(&dir_path).map_err(|e| e.to_string())?;
     let mut entries = Vec::new();
     for entry in read_dir {
@@ -337,6 +364,7 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
 #[tauri::command]
 fn desktop_rename_file(path: String, new_name: String) -> Result<String, String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     if !is_valid_child_name(&new_name) {
         return Err("Invalid file name.".to_string());
     }
@@ -356,6 +384,8 @@ fn desktop_rename_file(path: String, new_name: String) -> Result<String, String>
 fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    reject_symlink_or_reparse(Path::new(&source_path))?;
+    reject_symlink_or_reparse(Path::new(&target_dir_path))?;
     let source = PathBuf::from(source_path);
     let target_dir = PathBuf::from(target_dir_path);
     if !source.exists() {
@@ -426,6 +456,7 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
 #[tauri::command]
 fn desktop_delete_file(path: String) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     fs::remove_file(path).map_err(|err| err.to_string())
 }
 
@@ -475,6 +506,7 @@ fn is_valid_child_name(name: &str) -> bool {
 #[tauri::command]
 fn desktop_create_directory(parent_path: String, name: String) -> Result<String, String> {
     reject_nul_in_path(&parent_path)?;
+    reject_symlink_or_reparse(Path::new(&parent_path))?;
     if !is_valid_child_name(&name) {
         return Err("Invalid folder name.".to_string());
     }
@@ -493,6 +525,7 @@ fn desktop_create_directory(parent_path: String, name: String) -> Result<String,
 #[tauri::command]
 fn desktop_create_file(parent_path: String, name: String) -> Result<String, String> {
     reject_nul_in_path(&parent_path)?;
+    reject_symlink_or_reparse(Path::new(&parent_path))?;
     if !is_valid_child_name(&name) {
         return Err("Invalid file name.".to_string());
     }
@@ -525,6 +558,8 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
 fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    reject_symlink_or_reparse(Path::new(&source_path))?;
+    reject_symlink_or_reparse(Path::new(&target_dir_path))?;
     let source = PathBuf::from(&source_path);
     let target_dir = PathBuf::from(&target_dir_path);
     if !source.exists() {
@@ -636,6 +671,7 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
 #[tauri::command]
 fn desktop_delete_directory(path: String, recursive: bool) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(Path::new(&path))?;
     let target = PathBuf::from(path);
     if !target.is_dir() {
         return Err("Directory does not exist.".to_string());
@@ -654,6 +690,7 @@ fn desktop_open_path_in_explorer(path: String) -> Result<(), String> {
     }
     reject_nul_in_path(&path)?;
     let target = PathBuf::from(&path);
+    reject_symlink_or_reparse(&target)?;
     let canonical = fs::canonicalize(&target).map_err(|err| err.to_string())?;
     if !canonical.is_dir() {
         return Err("Path is not a directory.".to_string());
@@ -720,6 +757,7 @@ fn desktop_force_close_window<R: tauri::Runtime>(window: tauri::Window<R>) -> Re
 #[tauri::command]
 fn desktop_get_file_directory(file_path: String) -> Result<Vec<DesktopFileEntry>, String> {
     reject_nul_in_path(&file_path)?;
+    reject_symlink_or_reparse(Path::new(&file_path))?;
     let path = PathBuf::from(&file_path);
     let parent = path
         .parent()

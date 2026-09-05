@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- DOMPurify を 3.4.12 から 3.4.14 へ更新（防衛的。主な 3.4.13 効告は IN_PLACE+hooks 前提で本アプリでは未使用）。
+
 ## 0.3.3 - 2026-08-17
 
 ### Security

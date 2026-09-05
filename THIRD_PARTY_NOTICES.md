@@ -26,7 +26,7 @@ and release single HTML expose the same texts from the About dialog.
 ## DOMPurify
 
 - Project: https://github.com/cure53/DOMPurify
-- Version: 3.4.12
+- Version: 3.4.14
 - License: Apache License 2.0 or Mozilla Public License 2.0
 - Usage: Sanitizes rendered HTML
 - Source bundle: `apps/browser/lib/purify.min.js`

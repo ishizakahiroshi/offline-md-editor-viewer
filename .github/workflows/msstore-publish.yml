@@ -53,7 +53,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ inputs.tag }}
 
@@ -75,7 +75,7 @@ jobs:
       # 旧 `microsoft/setup-msstore-cli` はリポジトリ改名により解決不能
       # （"Repository not found" / microsoft/microsoft-store-apppublisher#304）。
       - name: Setup MS Store CLI
-        uses: microsoft/microsoft-store-apppublisher@v1.1
+        uses: microsoft/microsoft-store-apppublisher@15abd1c50fcc164b19cb240fb04ef3c49bf715a2 # v1.1
 
       - name: Configure MS Store CLI
         shell: pwsh

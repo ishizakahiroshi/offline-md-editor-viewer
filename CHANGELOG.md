@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Updated bundled DOMPurify from 3.4.12 to 3.4.14 (defense-in-depth; primary 3.4.13 advisory requires IN_PLACE+hooks which this app does not use).
+
 ## 0.3.3 - 2026-08-17
 
 ### Security

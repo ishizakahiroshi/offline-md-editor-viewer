@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Security
+
+- Added `SECURITY.md` describing how to report a vulnerability privately (GitHub Security Advisories).
+- Desktop edition: reject a symlink or Windows reparse point (junction) as the direct target of a filesystem command (read, write, rename, delete, move/copy source, open in Explorer). Directory listing and recursive copy already excluded such entries; this closes the remaining gap where a planted link at the exact path a command operates on could redirect the operation to an unintended file, including the narrow window between listing a folder and later acting on one of its entries.
+
 ## 0.3.3 - 2026-08-17
 
 ### Security

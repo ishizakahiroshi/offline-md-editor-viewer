@@ -1,10 +1,11 @@
 use serde::Serialize;
 use std::fs;
-use std::io::Write;
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 #[derive(Serialize)]
 struct DesktopFileEntry {
@@ -14,6 +15,27 @@ struct DesktopFileEntry {
     parent_path: String,
     modified: u128,
 }
+
+#[derive(Serialize)]
+struct DesktopDirectoryListing {
+    entries: Vec<DesktopFileEntry>,
+    truncated: bool,
+    warnings: Vec<String>,
+}
+
+#[derive(Default)]
+struct DirectoryListingState {
+    entries: Vec<DesktopFileEntry>,
+    truncated: bool,
+    warnings: Vec<String>,
+}
+
+#[derive(Default)]
+struct CloseGuardState {
+    frontend_ready: AtomicBool,
+}
+
+const RAW_PATH_HEADER: &str = "x-offline-md-editor-path";
 
 fn path_to_string(path: &Path) -> String {
     // 全コマンドで一貫した '/' 区切り表現を返す（HTML 側のキー比較を破綻させないため）。
@@ -27,6 +49,33 @@ fn reject_nul_in_path(path: &str) -> Result<(), String> {
     } else {
         Ok(())
     }
+}
+
+// SEC-RS-002: BUG-RS-004 / SEC-RS-001 はディレクトリ列挙中に見つかった symlink を除外するだけで、
+// フロントエンドが単一の操作対象として直接渡すパス（読み書き・削除・改名・移動元・コピー元）自体が
+// symlink やジャンクションだった場合までは検査していなかった。列挙済みリストは既に除外済みだが、
+// 列挙してから操作するまでの間に対象が symlink へ差し替えられる TOCTOU も塞ぐため、破壊的操作の
+// 直接対象はここで検査する。ユーザーが明示的に選ぶフォルダそのもの（ダイアログで開いた
+// ルートフォルダ・親ディレクトリ）はここでは対象にしない。ジャンクション経由でプロジェクトフォルダを
+// 運用する既存の使い方を壊さないため。
+fn reject_symlink_or_reparse(path: &str) -> Result<(), String> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err.to_string()),
+    };
+    if metadata.file_type().is_symlink() {
+        return Err("Symbolic links are not supported.".to_string());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+        if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err("Reparse points are not supported.".to_string());
+        }
+    }
+    Ok(())
 }
 
 const VIEWABLE_EXTENSIONS: &[&str] = &[
@@ -76,32 +125,71 @@ fn modified_millis(path: &Path) -> u128 {
 
 const MAX_LIST_DEPTH: usize = 32;
 const MAX_LIST_ENTRIES: usize = 50_000;
+const MAX_LIST_WARNINGS: usize = 8;
 
-fn collect_markdown_files(dir: &Path, files: &mut Vec<DesktopFileEntry>) -> Result<(), String> {
-    collect_markdown_files_inner(dir, files, 0)
+fn record_listing_warning(
+    state: &mut DirectoryListingState,
+    path: &Path,
+    detail: impl Into<String>,
+) {
+    state.truncated = true;
+    if state.warnings.len() < MAX_LIST_WARNINGS {
+        state
+            .warnings
+            .push(format!("{}: {}", path_to_string(path), detail.into()));
+    }
+}
+
+fn collect_markdown_files(dir: &Path) -> Result<DesktopDirectoryListing, String> {
+    let mut state = DirectoryListingState::default();
+    collect_markdown_files_inner(dir, &mut state, 0)?;
+    Ok(DesktopDirectoryListing {
+        entries: state.entries,
+        truncated: state.truncated,
+        warnings: state.warnings,
+    })
 }
 
 fn collect_markdown_files_inner(
     dir: &Path,
-    files: &mut Vec<DesktopFileEntry>,
+    state: &mut DirectoryListingState,
     depth: usize,
 ) -> Result<(), String> {
     if depth > MAX_LIST_DEPTH {
-        return Err("Directory tree is too deep to list.".to_string());
+        record_listing_warning(state, dir, "Directory tree is too deep to list.");
+        return Ok(());
     }
-    let entries = fs::read_dir(dir).map_err(|err| err.to_string())?;
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(err) if depth == 0 => return Err(err.to_string()),
+        Err(err) => {
+            record_listing_warning(state, dir, err.to_string());
+            return Ok(());
+        }
+    };
     for entry in entries {
-        if files.len() >= MAX_LIST_ENTRIES {
-            return Err("Too many entries to list. Please open a smaller folder.".to_string());
+        if state.entries.len() >= MAX_LIST_ENTRIES {
+            record_listing_warning(
+                state,
+                dir,
+                "Too many entries to list. Please open a smaller folder.",
+            );
+            break;
         }
         let entry = match entry {
             Ok(entry) => entry,
-            Err(_) => continue,
+            Err(err) => {
+                record_listing_warning(state, dir, err.to_string());
+                continue;
+            }
         };
         let path = entry.path();
         let metadata = match fs::symlink_metadata(&path) {
             Ok(metadata) => metadata,
-            Err(_) => continue,
+            Err(err) => {
+                record_listing_warning(state, &path, err.to_string());
+                continue;
+            }
         };
         if metadata.file_type().is_symlink() {
             continue;
@@ -123,14 +211,14 @@ fn collect_markdown_files_inner(
                 .unwrap_or_default()
                 .to_string();
             let parent_path = path.parent().map(path_to_string).unwrap_or_default();
-            files.push(DesktopFileEntry {
+            state.entries.push(DesktopFileEntry {
                 kind: "dir".to_string(),
                 name,
                 path: path_to_string(&path),
                 parent_path,
-                modified: 0,
+                modified: modified_millis(&path),
             });
-            let _ = collect_markdown_files_inner(&path, files, depth + 1);
+            collect_markdown_files_inner(&path, state, depth + 1)?;
         } else if metadata.is_file() {
             let name = path
                 .file_name()
@@ -138,7 +226,7 @@ fn collect_markdown_files_inner(
                 .unwrap_or_default()
                 .to_string();
             let parent_path = path.parent().map(path_to_string).unwrap_or_default();
-            files.push(DesktopFileEntry {
+            state.entries.push(DesktopFileEntry {
                 kind: "file".to_string(),
                 name,
                 path: path_to_string(&path),
@@ -194,20 +282,81 @@ fn desktop_open_directory_dialog() -> Option<String> {
 // HTML 側は数 MB の Markdown を想定しており、64 MiB を超えるテキストは編集対象外として明示拒否する。
 const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 
-#[tauri::command]
-fn desktop_read_file_bytes(path: String) -> Result<Vec<u8>, String> {
+fn decode_hex_nibble(value: u8) -> Option<u8> {
+    match value {
+        b'0'..=b'9' => Some(value - b'0'),
+        b'a'..=b'f' => Some(value - b'a' + 10),
+        b'A'..=b'F' => Some(value - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn decode_path_header_value(encoded: &str) -> Result<String, String> {
+    if encoded.is_empty() || encoded.len() % 2 != 0 {
+        return Err("Invalid raw path header.".to_string());
+    }
+    let encoded_bytes = encoded.as_bytes();
+    let mut bytes = Vec::with_capacity(encoded_bytes.len() / 2);
+    for pair in encoded_bytes.chunks_exact(2) {
+        let high =
+            decode_hex_nibble(pair[0]).ok_or_else(|| "Invalid raw path header.".to_string())?;
+        let low =
+            decode_hex_nibble(pair[1]).ok_or_else(|| "Invalid raw path header.".to_string())?;
+        bytes.push((high << 4) | low);
+    }
+    String::from_utf8(bytes).map_err(|_| "Raw path header is not valid UTF-8.".to_string())
+}
+
+fn path_from_raw_request(request: &tauri::ipc::Request<'_>) -> Result<String, String> {
+    let mut values = request.headers().get_all(RAW_PATH_HEADER).iter();
+    let value = values
+        .next()
+        .ok_or_else(|| "Missing raw path header.".to_string())?;
+    if values.next().is_some() {
+        return Err("Duplicate raw path header.".to_string());
+    }
+    let encoded = value
+        .to_str()
+        .map_err(|_| "Raw path header is not valid ASCII.".to_string())?;
+    let path = decode_path_header_value(encoded)?;
     reject_nul_in_path(&path)?;
-    // BUG-RS-NEW-203: metadata 失敗時にサイズチェックをスキップすると、
-    // 64 MiB 上限ガード (BUG-RS-106) が fail-open になり巨大ファイルが読まれる可能性が残る。
-    // metadata 取得失敗は即エラーにし、fail-closed にする。
-    let meta = fs::metadata(&path).map_err(|err| err.to_string())?;
-    if meta.len() > MAX_FILE_BYTES {
+    Ok(path)
+}
+
+fn read_bounded<R: Read>(
+    reader: R,
+    initial_size: Option<u64>,
+    max_bytes: u64,
+) -> Result<Vec<u8>, String> {
+    let capacity = initial_size
+        .unwrap_or(0)
+        .min(max_bytes)
+        .try_into()
+        .unwrap_or(0usize);
+    let mut limited_reader = reader.take(max_bytes.saturating_add(1));
+    let mut bytes = Vec::with_capacity(capacity);
+    limited_reader
+        .read_to_end(&mut bytes)
+        .map_err(|err| err.to_string())?;
+    if bytes.len() as u64 > max_bytes {
         return Err(format!(
             "File is too large to open in this editor (limit: {} MiB).",
-            MAX_FILE_BYTES / (1024 * 1024)
+            max_bytes / (1024 * 1024)
         ));
     }
-    fs::read(path).map_err(|err| err.to_string())
+    Ok(bytes)
+}
+
+#[tauri::command]
+fn desktop_read_file_bytes(path: String) -> Result<tauri::ipc::Response, String> {
+    reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(&path)?;
+    // BUG-RS-NEW-205: metadata と fs::read の間にファイルが成長すると、事前サイズ検査だけでは
+    // 64 MiB 上限が fail-open になる。先にハンドルを開き、そのハンドルから上限 + 1 byte だけ読む。
+    let file = fs::File::open(&path).map_err(|err| err.to_string())?;
+    let initial_size = file.metadata().ok().map(|metadata| metadata.len());
+    let bytes = read_bounded(file, initial_size, MAX_FILE_BYTES)?;
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
@@ -259,6 +408,7 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
 #[tauri::command]
 fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(&path)?;
     // BUG-RS-106: 巨大ペイロードの書き込みは fs::File::create → write_all 経由でメモリ・I/O を圧迫する。
     if text.len() as u64 > MAX_FILE_BYTES {
         return Err(format!(
@@ -270,39 +420,58 @@ fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn desktop_write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
-    reject_nul_in_path(&path)?;
+fn desktop_write_file_bytes(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+    let path = path_from_raw_request(&request)?;
+    reject_symlink_or_reparse(&path)?;
+    let bytes = match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) => bytes,
+        tauri::ipc::InvokeBody::Json(_) => {
+            return Err("Raw byte request body is required.".to_string());
+        }
+    };
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err(format!(
             "Content is too large to save (limit: {} MiB).",
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(Path::new(&path), &bytes)
+    atomic_write(Path::new(&path), bytes.as_slice())
 }
 
 #[tauri::command]
-fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Value>, String> {
+fn desktop_list_shallow_entries(dir_path: String) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&dir_path)?;
-    let read_dir = fs::read_dir(&dir_path).map_err(|e| e.to_string())?;
-    let mut entries = Vec::new();
+    let dir = PathBuf::from(&dir_path);
+    let read_dir = fs::read_dir(&dir).map_err(|e| e.to_string())?;
+    let mut state = DirectoryListingState::default();
     for entry in read_dir {
         // BUG-RS-105: collect_markdown_files_inner と同様に上限を設け、
         // 1 ディレクトリに数百万エントリある pathological ケースで UI 無応答を防ぐ。
-        if entries.len() >= MAX_LIST_ENTRIES {
-            return Err("Too many entries to list. Please open a smaller folder.".to_string());
+        if state.entries.len() >= MAX_LIST_ENTRIES {
+            record_listing_warning(
+                &mut state,
+                &dir,
+                "Too many entries to list. Please open a smaller folder.",
+            );
+            break;
         }
         // FBL-002 (2026-07-03): エントリ単位の取得失敗（列挙中の削除競合・ACL 拒否等）で
         // 列挙全体を Err にせず skip する。deep 列挙 collect_markdown_files_inner と同方針。
         let entry = match entry {
             Ok(entry) => entry,
-            Err(_) => continue,
+            Err(err) => {
+                record_listing_warning(&mut state, &dir, err.to_string());
+                continue;
+            }
         };
+        let entry_path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
-        let path = path_to_string(&entry.path());
-        let metadata = match fs::symlink_metadata(entry.path()) {
+        let metadata = match fs::symlink_metadata(&entry_path) {
             Ok(metadata) => metadata,
-            Err(_) => continue,
+            Err(err) => {
+                record_listing_warning(&mut state, &entry_path, err.to_string());
+                continue;
+            }
         };
         if metadata.file_type().is_symlink() {
             continue;
@@ -318,25 +487,238 @@ fn desktop_list_shallow_entries(dir_path: String) -> Result<Vec<serde_json::Valu
             }
         }
         if metadata.is_dir() {
-            entries.push(serde_json::json!({
-                "name": name,
-                "kind": "dir",
-                "path": path
-            }));
+            state.entries.push(DesktopFileEntry {
+                kind: "dir".to_string(),
+                name,
+                path: path_to_string(&entry_path),
+                parent_path: path_to_string(&dir),
+                modified: modified_millis(&entry_path),
+            });
         } else if metadata.is_file() {
-            entries.push(serde_json::json!({
-                "name": name,
-                "kind": "file",
-                "path": path
-            }));
+            state.entries.push(DesktopFileEntry {
+                kind: "file".to_string(),
+                name,
+                path: path_to_string(&entry_path),
+                parent_path: path_to_string(&dir),
+                modified: modified_millis(&entry_path),
+            });
         }
     }
-    Ok(entries)
+    Ok(DesktopDirectoryListing {
+        entries: state.entries,
+        truncated: state.truncated,
+        warnings: state.warnings,
+    })
+}
+
+fn is_already_exists_error(err: &io::Error) -> bool {
+    err.kind() == io::ErrorKind::AlreadyExists || matches!(err.raw_os_error(), Some(80) | Some(183))
+}
+
+fn already_exists_error(kind: &str) -> io::Error {
+    io::Error::new(
+        io::ErrorKind::AlreadyExists,
+        format!("An item with that name already exists: {}", kind),
+    )
+}
+
+fn unique_temp_sibling(parent: &Path) -> io::Result<PathBuf> {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+    let pid = std::process::id();
+    for counter in 0..1000u32 {
+        let candidate = parent.join(format!(
+            ".offline-md-editor-viewer-temp-{}-{}-{}",
+            pid, nanos, counter
+        ));
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::AlreadyExists,
+        "Could not allocate a temporary sibling path.",
+    ))
+}
+
+#[cfg(windows)]
+fn move_without_replace(source: &Path, destination: &Path) -> io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn MoveFileExW(
+            existing_file_name: *const u16,
+            new_file_name: *const u16,
+            flags: u32,
+        ) -> i32;
+    }
+
+    const MOVEFILE_WRITE_THROUGH: u32 = 0x00000008;
+    let source_wide: Vec<u16> = source
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let destination_wide: Vec<u16> = destination
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let result = unsafe {
+        MoveFileExW(
+            source_wide.as_ptr(),
+            destination_wide.as_ptr(),
+            MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+fn move_without_replace(source: &Path, destination: &Path) -> io::Result<()> {
+    if destination.exists() {
+        return Err(already_exists_error(destination.to_string_lossy().as_ref()));
+    }
+    fs::rename(source, destination)
+}
+
+#[cfg(windows)]
+fn windows_file_identity(path: &Path) -> io::Result<(u32, u64)> {
+    use std::ffi::c_void;
+    use std::os::windows::ffi::OsStrExt;
+
+    #[allow(dead_code)]
+    #[repr(C)]
+    struct ByHandleFileInformation {
+        file_attributes: u32,
+        creation_time_low: u32,
+        creation_time_high: u32,
+        last_access_time_low: u32,
+        last_access_time_high: u32,
+        last_write_time_low: u32,
+        last_write_time_high: u32,
+        volume_serial_number: u32,
+        file_size_high: u32,
+        file_size_low: u32,
+        number_of_links: u32,
+        file_index_high: u32,
+        file_index_low: u32,
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateFileW(
+            file_name: *const u16,
+            desired_access: u32,
+            share_mode: u32,
+            security_attributes: *mut c_void,
+            creation_disposition: u32,
+            flags_and_attributes: u32,
+            template_file: isize,
+        ) -> isize;
+        fn GetFileInformationByHandle(
+            file: isize,
+            information: *mut ByHandleFileInformation,
+        ) -> i32;
+        fn CloseHandle(object: isize) -> i32;
+    }
+
+    const INVALID_HANDLE_VALUE: isize = -1;
+    const FILE_SHARE_READ: u32 = 0x00000001;
+    const FILE_SHARE_WRITE: u32 = 0x00000002;
+    const FILE_SHARE_DELETE: u32 = 0x00000004;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x02000000;
+    let path_wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let handle = unsafe {
+        CreateFileW(
+            path_wide.as_ptr(),
+            0,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null_mut(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            0,
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(io::Error::last_os_error());
+    }
+    let mut information: ByHandleFileInformation = unsafe { std::mem::zeroed() };
+    let result = unsafe { GetFileInformationByHandle(handle, &mut information) };
+    let close_result = unsafe { CloseHandle(handle) };
+    if result == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if close_result == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok((
+        information.volume_serial_number,
+        (u64::from(information.file_index_high) << 32) | u64::from(information.file_index_low),
+    ))
+}
+
+#[cfg(windows)]
+fn same_file_identity(source: &Path, destination: &Path) -> io::Result<bool> {
+    Ok(windows_file_identity(source)? == windows_file_identity(destination)?)
+}
+
+#[cfg(not(windows))]
+fn same_file_identity(source: &Path, destination: &Path) -> io::Result<bool> {
+    Ok(fs::canonicalize(source)? == fs::canonicalize(destination)?)
+}
+
+fn case_only_rename(source: &Path, destination: &Path) -> io::Result<()> {
+    let parent = source
+        .parent()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Source has no parent."))?;
+    let temporary = unique_temp_sibling(parent)?;
+    move_without_replace(source, &temporary)?;
+    match move_without_replace(&temporary, destination) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if let Err(restore_err) = move_without_replace(&temporary, source) {
+                return Err(io::Error::other(format!(
+                    "Rename failed and the temporary path could not be restored ({}): {}",
+                    restore_err, err
+                )));
+            }
+            Err(err)
+        }
+    }
+}
+
+fn rename_without_replace(source: &Path, destination: &Path) -> io::Result<()> {
+    if source == destination {
+        return Ok(());
+    }
+    if destination.exists() {
+        // Windows treats paths differing only by case as the same directory entry. Move through
+        // an owned sibling temporary name so a case-only rename does not trip the no-clobber rule.
+        if same_file_identity(source, destination).unwrap_or(false) {
+            return case_only_rename(source, destination);
+        }
+        return Err(already_exists_error(destination.to_string_lossy().as_ref()));
+    }
+    move_without_replace(source, destination)
 }
 
 #[tauri::command]
 fn desktop_rename_file(path: String, new_name: String) -> Result<String, String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(&path)?;
     if !is_valid_child_name(&new_name) {
         return Err("Invalid file name.".to_string());
     }
@@ -345,17 +727,76 @@ fn desktop_rename_file(path: String, new_name: String) -> Result<String, String>
         .parent()
         .ok_or_else(|| "File has no parent directory".to_string())?;
     let new_path = parent.join(new_name.trim());
-    if new_path.exists() {
-        return Err("ALREADY_EXISTS: A file with that name already exists.".to_string());
-    }
-    fs::rename(&old_path, &new_path).map_err(|err| err.to_string())?;
+    rename_without_replace(&old_path, &new_path).map_err(|err| {
+        if is_already_exists_error(&err) {
+            "ALREADY_EXISTS: A file with that name already exists.".to_string()
+        } else {
+            err.to_string()
+        }
+    })?;
     Ok(path_to_string(&new_path))
+}
+
+fn is_cross_device_error(err: &io::Error) -> bool {
+    // Windows: ERROR_NOT_SAME_DEVICE = 17. Linux/macOS: EXDEV = 18.
+    matches!(err.raw_os_error(), Some(17) | Some(18))
+}
+
+fn remove_owned_path(path: &Path, is_dir: bool) {
+    if is_dir {
+        let _ = fs::remove_dir_all(path);
+    } else {
+        let _ = fs::remove_file(path);
+    }
+}
+
+fn move_across_devices(
+    source: &Path,
+    destination: &Path,
+    source_is_dir: bool,
+) -> Result<(), String> {
+    let parent = destination
+        .parent()
+        .ok_or_else(|| "Target path has no parent directory.".to_string())?;
+    let temporary = unique_temp_sibling(parent).map_err(|err| err.to_string())?;
+    let copy_result = if source_is_dir {
+        copy_dir_recursive(source, &temporary)
+    } else {
+        copy_file_no_replace(source, &temporary)
+    };
+    if let Err(err) = copy_result {
+        remove_owned_path(&temporary, source_is_dir);
+        return Err(err);
+    }
+
+    if let Err(err) = move_without_replace(&temporary, destination) {
+        remove_owned_path(&temporary, source_is_dir);
+        if is_already_exists_error(&err) {
+            return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
+        }
+        return Err(format!("Could not finalize the moved item: {}", err));
+    }
+
+    let remove_result = if source_is_dir {
+        fs::remove_dir_all(source)
+    } else {
+        fs::remove_file(source)
+    };
+    if let Err(err) = remove_result {
+        return Err(format!(
+            "Copied to {} but failed to remove the original: {}. The complete copy is at the new location; the original may still exist.",
+            path_to_string(destination),
+            err
+        ));
+    }
+    Ok(())
 }
 
 #[tauri::command]
 fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    reject_symlink_or_reparse(&source_path)?;
     let source = PathBuf::from(source_path);
     let target_dir = PathBuf::from(target_dir_path);
     if !source.exists() {
@@ -386,38 +827,14 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
     if target.exists() {
         return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
     }
-    // Windows ではボリューム跨ぎの rename が ERROR_NOT_SAME_DEVICE (raw_os_error 17) で
-    // 失敗するため、copy + remove フォールバックを試みる。BUG-RS-006。
-    if let Err(err) = fs::rename(&source, &target) {
-        // Windows: ERROR_NOT_SAME_DEVICE = 17。Linux: EXDEV = 18。
-        let is_cross_device =
-            err.raw_os_error() == Some(17) || err.raw_os_error() == Some(18);
-        if !is_cross_device {
-            return Err(err.to_string());
-        }
-        if source.is_dir() {
-            copy_dir_recursive(&source, &target)?;
-            // BUG-RS-103: copy 成功後 remove_dir_all がロック等で部分失敗すると、
-            // source が中途半端に欠け target には完全コピーがある状態になる。
-            // ユーザーがデータ復旧経路を判断できるよう、target 位置と原本残存を明示する。
-            if let Err(e) = fs::remove_dir_all(&source) {
-                return Err(format!(
-                    "Copied to {} but failed to remove the original folder: {}. Original folder may be partially deleted; the full copy is at the new location.",
-                    path_to_string(&target),
-                    e
-                ));
-            }
+    let source_is_dir = source.is_dir();
+    if let Err(err) = move_without_replace(&source, &target) {
+        if is_cross_device_error(&err) {
+            move_across_devices(&source, &target, source_is_dir)?;
+        } else if is_already_exists_error(&err) {
+            return Err("ALREADY_EXISTS: An item with that name already exists.".to_string());
         } else {
-            fs::copy(&source, &target).map_err(|e| e.to_string())?;
-            // BUG-RS-NEW-202: ファイル分岐もディレクトリ分岐 (BUG-RS-103) と整合させ、
-            // remove_file 失敗時に「target にコピー完了 + source 残存」の状況を明示する。
-            if let Err(e) = fs::remove_file(&source) {
-                return Err(format!(
-                    "Copied to {} but failed to remove the original file: {}. The copy at the new location is complete; the original may still exist.",
-                    path_to_string(&target),
-                    e
-                ));
-            }
+            return Err(err.to_string());
         }
     }
     Ok(path_to_string(&target))
@@ -426,6 +843,7 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
 #[tauri::command]
 fn desktop_delete_file(path: String) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(&path)?;
     fs::remove_file(path).map_err(|err| err.to_string())
 }
 
@@ -525,6 +943,7 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
 fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    reject_symlink_or_reparse(&source_path)?;
     let source = PathBuf::from(&source_path);
     let target_dir = PathBuf::from(&target_dir_path);
     if !source.exists() {
@@ -553,7 +972,7 @@ fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<St
     if source.is_dir() {
         copy_dir_recursive(&source, &dest)?;
     } else {
-        fs::copy(&source, &dest).map_err(|err| err.to_string())?;
+        copy_file_no_replace(&source, &dest)?;
     }
     Ok(path_to_string(&dest))
 }
@@ -587,9 +1006,32 @@ fn resolve_unique_name(dir: &Path, name: &str) -> String {
 
 const MAX_COPY_DEPTH: usize = 64;
 
+fn copy_file_no_replace(source: &Path, destination: &Path) -> Result<(), String> {
+    let mut source_file = fs::File::open(source).map_err(|err| err.to_string())?;
+    let mut destination_file = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(destination)
+    {
+        Ok(file) => file,
+        Err(err) => return Err(err.to_string()),
+    };
+    let result = (|| -> Result<(), String> {
+        io::copy(&mut source_file, &mut destination_file).map_err(|err| err.to_string())?;
+        destination_file.sync_all().map_err(|err| err.to_string())?;
+        Ok(())
+    })();
+    drop(destination_file);
+    if result.is_err() {
+        let _ = fs::remove_file(destination);
+    }
+    result
+}
+
 fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
-    // BUG-RS-104: 途中失敗時に部分コピーされた dest が残るとユーザーが「失敗したのにゴミが残った」状態で混乱し、
-    // 再試行で resolve_unique_name によって " (1)" 付きフォルダが増殖する。Err 時は best-effort で dest を掃除する。
+    // The root is claimed with create_dir, so cleanup on failure can only remove a directory
+    // created by this operation. No existing destination is ever replaced.
+    fs::create_dir(dest).map_err(|err| err.to_string())?;
     match copy_dir_recursive_inner(src, dest, 0) {
         Ok(()) => Ok(()),
         Err(e) => {
@@ -603,7 +1045,6 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
     if depth > MAX_COPY_DEPTH {
         return Err("Directory tree is too deep to copy.".to_string());
     }
-    fs::create_dir_all(dest).map_err(|err| err.to_string())?;
     for entry in fs::read_dir(src).map_err(|err| err.to_string())? {
         let entry = entry.map_err(|err| err.to_string())?;
         let src_child = entry.path();
@@ -625,9 +1066,10 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
         }
         let dest_child = dest.join(entry.file_name());
         if meta.is_dir() {
+            fs::create_dir(&dest_child).map_err(|err| err.to_string())?;
             copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;
         } else {
-            fs::copy(&src_child, &dest_child).map_err(|err| err.to_string())?;
+            copy_file_no_replace(&src_child, &dest_child)?;
         }
     }
     Ok(())
@@ -636,6 +1078,7 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
 #[tauri::command]
 fn desktop_delete_directory(path: String, recursive: bool) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    reject_symlink_or_reparse(&path)?;
     let target = PathBuf::from(path);
     if !target.is_dir() {
         return Err("Directory does not exist.".to_string());
@@ -653,6 +1096,8 @@ fn desktop_open_path_in_explorer(path: String) -> Result<(), String> {
         return Err("Invalid path.".to_string());
     }
     reject_nul_in_path(&path)?;
+    // canonicalize は symlink/ジャンクションを辿ってしまうため、辿る前に対象そのものを検査する。
+    reject_symlink_or_reparse(&path)?;
     let target = PathBuf::from(&path);
     let canonical = fs::canonicalize(&target).map_err(|err| err.to_string())?;
     if !canonical.is_dir() {
@@ -690,7 +1135,10 @@ fn desktop_open_external_url(url: String) -> Result<(), String> {
     }
     // SEC-CMD-001: bare "rundll32" 名で起動すると PATH 解決に依存。System32 配下を明示する。
     let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| String::from(r"C:\Windows"));
-    let rundll32_path = format!(r"{}\System32\rundll32.exe", system_root.trim_end_matches('\\'));
+    let rundll32_path = format!(
+        r"{}\System32\rundll32.exe",
+        system_root.trim_end_matches('\\')
+    );
     Command::new(rundll32_path)
         .arg("url.dll,FileProtocolHandler")
         .arg(url)
@@ -718,15 +1166,45 @@ fn desktop_force_close_window<R: tauri::Runtime>(window: tauri::Window<R>) -> Re
 }
 
 #[tauri::command]
-fn desktop_get_file_directory(file_path: String) -> Result<Vec<DesktopFileEntry>, String> {
+fn desktop_frontend_ready(state: tauri::State<'_, CloseGuardState>) -> Result<(), String> {
+    state.frontend_ready.store(true, Ordering::Release);
+    Ok(())
+}
+
+fn should_prevent_close(frontend_ready: bool) -> bool {
+    frontend_ready
+}
+
+#[tauri::command]
+fn desktop_get_file_directory(file_path: String) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&file_path)?;
     let path = PathBuf::from(&file_path);
     let parent = path
         .parent()
         .ok_or_else(|| "File has no parent directory".to_string())?;
-    let mut files = Vec::new();
-    collect_markdown_files(parent, &mut files)?;
-    Ok(files)
+    collect_markdown_files(parent)
+}
+
+fn inspect_drag_drop_path(path: &Path) -> Result<&'static str, String> {
+    let metadata = fs::symlink_metadata(path).map_err(|err| err.to_string())?;
+    if metadata.file_type().is_symlink() {
+        return Err("Symbolic links are not accepted for drag and drop.".to_string());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+        if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+            return Err("Reparse points are not accepted for drag and drop.".to_string());
+        }
+    }
+    if metadata.is_dir() {
+        Ok("dir")
+    } else if metadata.is_file() {
+        Ok("file")
+    } else {
+        Err("The dropped path is not a regular file or directory.".to_string())
+    }
 }
 
 fn configure_portable_userdata() {
@@ -748,6 +1226,7 @@ fn configure_portable_userdata() {
 pub fn run() {
     configure_portable_userdata();
     let run_result = tauri::Builder::default()
+        .manage(CloseGuardState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -777,6 +1256,7 @@ pub fn run() {
             desktop_open_external_url,
             desktop_get_launch_file_path,
             desktop_force_close_window,
+            desktop_frontend_ready,
             desktop_get_file_directory,
             desktop_list_shallow_entries
         ])
@@ -788,33 +1268,57 @@ pub fn run() {
                     let lx = position.x / scale;
                     let ly = position.y / scale;
 
-                    // Collect all valid paths with kind.
-                    let entries: Vec<serde_json::Value> = paths.iter()
-                        .filter(|p| p.exists())
-                        .filter_map(|p| {
-                            let kind = if p.is_dir() { "dir" } else if p.is_file() { "file" } else { return None; };
-                            Some(serde_json::json!({ "path": path_to_string(p), "kind": kind }))
-                        })
-                        .collect();
+                    // Inspect the link itself before any path-following check. Reparse points and
+                    // symlinks are rejected and the reason is sent to the frontend for display.
+                    let mut entries = Vec::new();
+                    let mut rejected = Vec::new();
+                    for path in paths {
+                        match inspect_drag_drop_path(path) {
+                            Ok(kind) => entries.push(
+                                serde_json::json!({ "path": path_to_string(path), "kind": kind }),
+                            ),
+                            Err(reason) => rejected.push(serde_json::json!({
+                                "path": path_to_string(path),
+                                "reason": reason
+                            })),
+                        }
+                    }
 
-                    if entries.is_empty() { return; }
+                    if entries.is_empty() && rejected.is_empty() {
+                        return;
+                    }
 
                     // For backward-compatibility keep "path" / "kind" pointing at the first entry.
-                    let first = &entries[0];
+                    let first_path = entries
+                        .first()
+                        .and_then(|entry| entry.get("path"))
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default();
+                    let first_kind = entries
+                        .first()
+                        .and_then(|entry| entry.get("kind"))
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default();
                     let payload = serde_json::json!({
-                        "path": first["path"],
-                        "kind": first["kind"],
+                        "path": first_path,
+                        "kind": first_kind,
                         "paths": entries,
+                        "rejected": rejected,
                         "position": { "x": lx, "y": ly }
                     });
                     let _ = window.emit("desktop-drag-drop", payload);
                 }
                 tauri::WindowEvent::CloseRequested { api, .. } => {
-                    // BUG-TAURI-CLOSEGUARD-001: Tauri 2 では JS の appWindow.listen('tauri://close-requested')
-                    // は通知のみで close をブロックしない。Rust 側で prevent_close() を呼んで close を保留し、
-                    // JS の async confirm が解決した後に desktop_force_close_window で window.destroy() を呼ぶ。
-                    // この変更により未保存破棄ダイアログが実際に機能する。
-                    api.prevent_close();
+                    // Before frontend readiness, native close remains available even if the webview
+                    // failed to initialize. Only the ready handshake enables the async unsaved guard.
+                    let frontend_ready = window
+                        .app_handle()
+                        .state::<CloseGuardState>()
+                        .frontend_ready
+                        .load(Ordering::Acquire);
+                    if should_prevent_close(frontend_ready) {
+                        api.prevent_close();
+                    }
                 }
                 _ => {}
             }
@@ -831,5 +1335,141 @@ pub fn run() {
             err
         );
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{self, Cursor, Read};
+
+    fn encode_path_header_value(path: &str) -> String {
+        path.as_bytes()
+            .iter()
+            .map(|byte| format!("{:02X}", byte))
+            .collect()
+    }
+
+    struct FailingReader;
+
+    impl Read for FailingReader {
+        fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+            // `ErrorKind::Interrupted` is retried forever by `Read::read_to_end`'s default
+            // implementation, so an always-failing reader must use a non-retried kind or
+            // `bounded_reader_rejects_growth_past_limit` hangs instead of asserting.
+            Err(io::Error::other("injected read error"))
+        }
+    }
+
+    fn test_directory(label: &str) -> PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let path = std::env::temp_dir().join(format!(
+            "offline-md-editor-viewer-{}-{}-{}",
+            label,
+            std::process::id(),
+            nanos
+        ));
+        fs::create_dir_all(&path).expect("create test directory");
+        path
+    }
+
+    #[test]
+    fn bounded_reader_rejects_growth_past_limit() {
+        assert!(read_bounded(Cursor::new(Vec::<u8>::new()), Some(0), 2).is_ok());
+        let bytes = read_bounded(Cursor::new(vec![1u8, 2, 3]), Some(2), 2);
+        assert!(bytes.is_err());
+
+        let bytes = read_bounded(Cursor::new(vec![1u8, 2]), Some(2), 2)
+            .expect("small file should be readable");
+        assert_eq!(bytes, vec![1u8, 2]);
+        assert!(read_bounded(FailingReader, None, 2).is_err());
+    }
+
+    #[test]
+    fn no_clobber_copy_preserves_existing_destination() {
+        let root = test_directory("copy");
+        let source = root.join("source.md");
+        let destination = root.join("destination.md");
+        fs::write(&source, b"source").expect("write source");
+        fs::write(&destination, b"destination").expect("write destination");
+
+        let result = copy_file_no_replace(&source, &destination);
+        assert!(result.is_err());
+        assert_eq!(fs::read(&source).expect("read source"), b"source");
+        assert_eq!(
+            fs::read(&destination).expect("read destination"),
+            b"destination"
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn no_clobber_move_preserves_existing_destination() {
+        let root = test_directory("move");
+        let source = root.join("source.md");
+        let destination = root.join("destination.md");
+        fs::write(&source, b"source").expect("write source");
+        fs::write(&destination, b"destination").expect("write destination");
+
+        let result = move_without_replace(&source, &destination);
+        assert!(result.is_err());
+        assert_eq!(fs::read(&source).expect("read source"), b"source");
+        assert_eq!(
+            fs::read(&destination).expect("read destination"),
+            b"destination"
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn case_only_rename_uses_a_temporary_sibling() {
+        let root = test_directory("case-only");
+        let source = root.join("README.md");
+        let destination = root.join("readme.md");
+        fs::write(&source, b"content").expect("write source");
+
+        rename_without_replace(&source, &destination).expect("case-only rename");
+        assert_eq!(
+            fs::read(&destination).expect("read renamed file"),
+            b"content"
+        );
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn listing_warning_marks_partial_results() {
+        let mut state = DirectoryListingState::default();
+        record_listing_warning(&mut state, Path::new("folder"), "permission denied");
+        assert!(state.truncated);
+        assert_eq!(state.warnings.len(), 1);
+    }
+
+    #[test]
+    fn raw_path_header_codec_round_trips_unicode_and_special_characters() {
+        for path in [
+            r"C:\資料 %25.md",
+            r"C:\folder with spaces\note.md",
+            r"C:\100%\日本語.md",
+        ] {
+            let encoded = encode_path_header_value(path);
+            assert_eq!(
+                decode_path_header_value(&encoded).expect("decode path"),
+                path
+            );
+        }
+        assert!(decode_path_header_value("").is_err());
+        assert!(decode_path_header_value("0").is_err());
+        assert!(decode_path_header_value("GG").is_err());
+        assert!(decode_path_header_value("FF").is_err());
+    }
+
+    #[test]
+    fn close_guard_stays_disabled_until_frontend_ready() {
+        assert!(!should_prevent_close(false));
+        assert!(should_prevent_close(true));
     }
 }

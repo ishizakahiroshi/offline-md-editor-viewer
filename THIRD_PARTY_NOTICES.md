@@ -26,7 +26,7 @@ and release single HTML expose the same texts from the About dialog.
 ## DOMPurify
 
 - Project: https://github.com/cure53/DOMPurify
-- Version: 3.4.12
+- Version: 3.4.14
 - License: Apache License 2.0 or Mozilla Public License 2.0
 - Usage: Sanitizes rendered HTML
 - Source bundle: `apps/browser/lib/purify.min.js`
@@ -46,7 +46,7 @@ and release single HTML expose the same texts from the About dialog.
 ## highlight.js
 
 - Project: https://github.com/highlightjs/highlight.js
-- Version: 11.11.1
+- Version: 11.12.0
 - License: BSD 3-Clause License
 - Usage: Per-language syntax coloring for code blocks in Markdown preview
 - Source bundle: `apps/browser/lib/highlight.min.js`, `apps/browser/lib/hljs-github-dark.min.css`

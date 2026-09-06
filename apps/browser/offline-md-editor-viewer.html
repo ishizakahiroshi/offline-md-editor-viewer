@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; manifest-src 'none'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src blob:; manifest-src 'none'; frame-ancestors 'none'">
   <title>offline-md-editor-viewer</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3Crect width='1024' height='1024' rx='225' fill='%230b1020'/%3E%3Crect x='5' y='5' width='1014' height='1014' rx='220' fill='none' stroke='%232a355f' stroke-width='10'/%3E%3Crect x='72' y='72' width='880' height='880' rx='164' fill='none' stroke='%231d4f7c' stroke-width='5' opacity='.55'/%3E%3Cpath d='M 230 742 L 230 333 L 410 538 L 589 333 L 589 742' fill='none' stroke='%2359b2ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M 758 333 L 758 707 M 655 604 L 758 707 L 860 604' fill='none' stroke='%2384c3ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="lib/hljs-github-dark.min.css">
@@ -4277,8 +4277,8 @@
                 </a>
               </li>
               <li>
-                <a id="aboutDomPurifyLink" class="about-license-link" href="https://github.com/cure53/DOMPurify/releases/tag/3.4.12" target="_blank" rel="noopener noreferrer">
-                  <span class="about-license-name">DOMPurify 3.4.12</span>
+                <a id="aboutDomPurifyLink" class="about-license-link" href="https://github.com/cure53/DOMPurify/releases/tag/3.4.14" target="_blank" rel="noopener noreferrer">
+                  <span class="about-license-name">DOMPurify 3.4.14</span>
                   <span id="aboutDomPurifyLicense" class="about-license-detail"></span>
                 </a>
               </li>
@@ -4289,8 +4289,8 @@
                 </a>
               </li>
               <li>
-                <a id="aboutHighlightJsLink" class="about-license-link" href="https://github.com/highlightjs/highlight.js/releases/tag/11.11.1" target="_blank" rel="noopener noreferrer">
-                  <span class="about-license-name">highlight.js 11.11.1</span>
+                <a id="aboutHighlightJsLink" class="about-license-link" href="https://github.com/highlightjs/highlight.js/releases/tag/11.12.0" target="_blank" rel="noopener noreferrer">
+                  <span class="about-license-name">highlight.js 11.12.0</span>
                   <span id="aboutHighlightJsLicense" class="about-license-detail"></span>
                 </a>
               </li>
@@ -4350,7 +4350,7 @@
               <pre class="license-text" id="licenseMarkedText"><!-- MARKED_LICENSE_PLACEHOLDER --></pre>
             </details>
             <details class="license-details">
-              <summary>DOMPurify 3.4.12 (Apache-2.0 / MPL-2.0)</summary>
+              <summary>DOMPurify 3.4.14 (Apache-2.0 / MPL-2.0)</summary>
               <pre class="license-text" id="licenseDomPurifyText"><!-- DOMPURIFY_LICENSE_PLACEHOLDER --></pre>
             </details>
             <details class="license-details">
@@ -4358,7 +4358,7 @@
               <pre class="license-text" id="licenseEncodingJapaneseText"><!-- ENCODING_JAPANESE_LICENSE_PLACEHOLDER --></pre>
             </details>
             <details class="license-details">
-              <summary>highlight.js 11.11.1 (BSD-3-Clause)</summary>
+              <summary>highlight.js 11.12.0 (BSD-3-Clause)</summary>
               <pre class="license-text" id="licenseHighlightJsText"><!-- HIGHLIGHTJS_LICENSE_PLACEHOLDER --></pre>
             </details>
             <details class="license-details">
@@ -5486,7 +5486,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       let lineDragMoved = false;
       let mirroredSelectionSource = "";
       let mirroredSelectionRaf = 0;
-      const findState = { matches: [], currentIndex: -1, error: "", capped: false };
+      const findState = { matches: [], currentIndex: -1, error: "", capped: false, pending: false };
+      let findGeneration = 0;
+      let regexFindRequestId = 0;
+      let regexFindWorker = null;
+      let regexFindWorkerUrl = "";
+      let regexFindWorkerTimer = 0;
+      let sourceIsComposing = false;
+      let sourceCompositionChanged = false;
+      let sourceCompositionFlushText = null;
+      let sourceProgrammaticChange = false;
       let promptResolver = null;
       let confirmResolver = null;
       let tauriCloseGuardInstalled = false;
@@ -5500,6 +5509,19 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
       function isFileLoadCurrent(gen) {
         return gen === loadGeneration;
+      }
+      // BUG-INIT-002: restore は起動時の一時処理として扱い、明示的な file/folder
+      // 操作または関連付け起動が始まったら失効させる。遅い restore の完了が、後から
+      // 選ばれたファイルやフォルダのUIを前回フォルダで上書きしないようにする。
+      let directoryStartupGeneration = 0;
+      let directoryStartupOwner = "initial";
+      function beginDirectoryStartupIntent(owner) {
+        directoryStartupGeneration += 1;
+        directoryStartupOwner = owner || "user";
+        return directoryStartupGeneration;
+      }
+      function isDirectoryStartupIntentCurrent(generation) {
+        return generation === directoryStartupGeneration;
       }
       const FALLBACK_LANG = "en";
       let currentLang = FALLBACK_LANG;
@@ -5654,6 +5676,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.replaceAll": ["All", "すべて", "全部", "全部", "Todo", "Alle", "모두", "Tudo", "Все", "Tất cả", "Tout", "Tutto", "Semua"],
         "ui.findNoMatches": ["0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0"],
         "ui.findRegexError": ["Invalid regex", "正規表現が不正", "正規表示式無效", "正则表达式无效", "Regex no valida", "Ungueltige Regex", "잘못된 정규식", "Regex invalida", "Неверное regex", "Regex không hợp lệ", "Regex invalide", "Regex non valida", "Regex tidak valid"],
+        "ui.findRegexSearching": ["Searching…", "検索中…", "搜尋中…", "搜索中…", "Buscando…", "Suche…", "검색 중…", "Pesquisando…", "Поиск…", "Đang tìm…", "Recherche…", "Ricerca…", "Mencari…"],
+        "ui.findRegexTimeout": ["Regex search timed out", "正規表現検索がタイムアウト", "正規表示式搜尋逾時", "正则表达式搜索超时", "La búsqueda regex agotó el tiempo", "Regex-Suche Zeitüberschreitung", "정규식 검색 시간 초과", "A pesquisa regex excedeu o tempo", "Время поиска по regex истекло", "Tìm regex quá thời gian", "Recherche regex expirée", "Ricerca regex scaduta", "Pencarian regex habis waktu"],
+        "ui.findRegexUnavailable": ["Regex search unavailable", "正規表現検索を実行できません", "無法執行正規表示式搜尋", "无法执行正则表达式搜索", "La búsqueda regex no está disponible", "Regex-Suche nicht verfügbar", "정규식 검색을 사용할 수 없음", "Pesquisa regex indisponível", "Поиск по regex недоступен", "Không thể tìm regex", "Recherche regex indisponible", "Ricerca regex non disponibile", "Pencarian regex tidak tersedia"],
         "ui.lineCopyTitle": ["Click to select and copy", "クリックで選択＆コピー", "點擊以選取並複製", "点击选择并复制", "Clic para seleccionar y copiar", "Klicken zum Auswaehlen und Kopieren", "클릭하여 선택 및 복사", "Clique para selecionar e copiar", "Нажмите, чтобы выбрать и скопировать", "Bấm để chọn và sao chép", "Cliquer pour sélectionner et copier", "Clicca per selezionare e copiare", "Klik untuk memilih dan menyalin"],
         "ui.allCopyTitle": ["Click to select all and copy", "クリックで全選択＆コピー", "點擊以全選並複製", "点击全选并复制", "Clic para seleccionar todo y copiar", "Klicken zum Alles-Auswaehlen und Kopieren", "클릭하여 전체 선택 및 복사", "Clique para selecionar tudo e copiar", "Нажмите, чтобы выбрать всё и скопировать", "Bấm để chọn tất cả và sao chép", "Cliquer pour tout sélectionner et copier", "Clicca per selezionare tutto e copiare", "Klik untuk memilih semua dan menyalin"],
         "ui.copyCodeTitle": ["Copy code", "コードをコピー", "複製程式碼", "复制代码", "Copiar codigo", "Code kopieren", "코드 복사", "Copiar codigo", "Копировать код", "Sao chép mã", "Copier le code", "Copia codice", "Salin kode"],
@@ -6108,12 +6133,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.chooseMdOnly": ["Cannot open binary file: ", "バイナリファイルは開けません: ", "無法開啟二進位檔案：", "无法打开二进制文件: ", "No se puede abrir un archivo binario: ", "Binaerdatei kann nicht geoeffnet werden: ", "바이너리 파일을 열 수 없습니다: ", "Nao e possivel abrir arquivo binario: ", "Не удается открыть бинарный файл: ", "Không thể mở tệp nhị phân: ", "Impossible d'ouvrir un fichier binaire : ", "Impossibile aprire un file binario: ", "Tidak dapat membuka file biner: "],
         "status.unsupportedFile": ["Cannot open binary file.", "バイナリファイルは開けません。", "無法開啟二進位檔案。", "无法打开二进制文件。", "No se puede abrir un archivo binario.", "Binaerdatei kann nicht geoeffnet werden.", "바이너리 파일을 열 수 없습니다.", "Nao e possivel abrir arquivo binario.", "Не удается открыть бинарный файл.", "Không thể mở tệp nhị phân.", "Impossible d'ouvrir un fichier binaire.", "Impossibile aprire un file binario.", "Tidak dapat membuka file biner."],
         "status.fileReadFailed": ["File read failed: ", "ファイル読み込み失敗: ", "檔案讀取失敗：", "文件读取失败: ", "Error al leer el archivo: ", "Datei konnte nicht gelesen werden: ", "파일 읽기 실패: ", "Falha ao ler arquivo: ", "Не удалось прочитать файл: ", "Đọc tệp thất bại: ", "Échec de la lecture du fichier : ", "Lettura file fallita: ", "Pembacaan file gagal: "],
+        "status.loadFailed": ["Load failed: ", "読み込みに失敗しました: ", "載入失敗：", "加载失败: ", "Error al cargar: ", "Laden fehlgeschlagen: ", "불러오기 실패: ", "Falha ao carregar: ", "Не удалось загрузить: ", "Tải thất bại: ", "Échec du chargement : ", "Caricamento fallito: ", "Pemuatan gagal: "],
         "status.dropReadFailed": ["Drag-and-drop read failed: ", "ドラッグ＆ドロップ読み込み失敗: ", "拖放讀取失敗：", "拖放读取失败: ", "Error al leer al arrastrar y soltar: ", "Lesen per Drag-and-drop fehlgeschlagen: ", "드래그 앤 드롭 읽기 실패: ", "Falha ao ler por arrastar e soltar: ", "Не удалось прочитать при перетаскивании: ", "Đọc bằng kéo thả thất bại: ", "Échec de la lecture par glisser-déposer : ", "Lettura tramite trascinamento fallita: ", "Pembacaan seret-dan-lepas gagal: "],
         "status.permissionDenied": ["Write permission was not granted.", "書き込み権限が許可されなかったため、保存できませんでした。", "未獲得寫入權限。", "未获得写入权限。", "No se concedió permiso de escritura.", "Schreibberechtigung wurde nicht erteilt.", "쓰기 권한이 허용되지 않았습니다.", "A permissao de escrita nao foi concedida.", "Разрешение на запись не предоставлено.", "Quyền ghi chưa được cấp.", "L'autorisation d'écriture n'a pas été accordée.", "Autorizzazione di scrittura non concessa.", "Izin tulis tidak diberikan."],
         "status.saveHint": ["Save will overwrite the target file. Continue?", "元ファイルへ上書き保存します。よろしいですか？", "儲存將覆寫目標檔案，是否繼續？", "将覆盖目标文件,是否继续?", "Guardar sobrescribirá el archivo destino. ¿Continuar?", "Speichern ueberschreibt die Zieldatei. Fortfahren?", "저장하면 대상 파일을 덮어씁니다. 계속할까요?", "Salvar ira sobrescrever o arquivo de destino. Continuar?", "Сохранение перезапишет целевой файл. Продолжить?", "Lưu sẽ ghi đè tệp đích. Tiếp tục?", "L'enregistrement écrasera le fichier cible. Continuer ?", "Il salvataggio sovrascriverà il file di destinazione. Continuare?", "Simpan akan menimpa file target. Lanjutkan?"],
         "status.unsavedNavigationConfirm": ["You have unsaved changes. Leave without saving?", "未保存の編集があります。保存せずに移動しますか？", "您有未儲存的變更，確定要離開嗎？", "存在未保存的更改。要不保存就离开吗?", "Tienes cambios sin guardar. ¿Salir sin guardar?", "Sie haben ungespeicherte Aenderungen. Ohne Speichern verlassen?", "저장하지 않은 변경 사항이 있습니다. 저장하지 않고 나갈까요?", "Voce tem alteracoes nao salvas. Sair sem salvar?", "Есть несохраненные изменения. Выйти без сохранения?", "Bạn có thay đổi chưa lưu. Rời đi mà không lưu?", "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?", "Hai modifiche non salvate. Vuoi uscire senza salvare?", "Ada perubahan yang belum disimpan. Keluar tanpa menyimpan?"],
         "status.unsavedCloseConfirm": ["You have unsaved changes. Closing now will discard them. Close anyway?", "未保存の編集があります。保存せずに閉じると変更は消えます。閉じますか？", "您有未儲存的變更。現在關閉會捨棄這些內容。仍要關閉嗎？", "存在未保存的更改。现在关闭会丢失这些内容。仍要关闭吗?", "Tienes cambios sin guardar. Si cierras ahora se descartaran. ¿Cerrar igualmente?", "Sie haben ungespeicherte Aenderungen. Beim Schliessen werden sie verworfen. Trotzdem schliessen?", "저장하지 않은 변경 사항이 있습니다. 지금 닫으면 내용이 사라집니다. 그래도 닫을까요?", "Voce tem alteracoes nao salvas. Ao fechar agora, elas serao descartadas. Fechar mesmo assim?", "Есть несохраненные изменения. Если закрыть сейчас, они будут потеряны. Все равно закрыть?", "Bạn có thay đổi chưa lưu. Đóng bây giờ sẽ làm mất chúng. Vẫn đóng?", "Vous avez des modifications non enregistrées. Fermer maintenant les supprimera. Fermer quand même ?", "Hai modifiche non salvate. Chiudendo ora verranno scartate. Chiudere comunque?", "Ada perubahan yang belum disimpan. Menutup sekarang akan membuangnya. Tetap tutup?"],
         "status.closeFailed": ["Close failed: ", "終了に失敗: ", "關閉失敗：", "关闭失败: ", "Error al cerrar: ", "Schliessen fehlgeschlagen: ", "닫기 실패: ", "Falha ao fechar: ", "Не удалось закрыть: ", "Đóng thất bại: ", "Échec de la fermeture : ", "Chiusura non riuscita: ", "Gagal menutup: "],
+        "status.closeGuardSetupFailed": ["Desktop close protection is unavailable; native close remains enabled.", "デスクトップの終了保護を有効にできませんでした。通常の終了操作は利用できます。", "桌面關閉保護無法啟用；仍可使用系統關閉。", "无法启用桌面关闭保护；仍可使用系统关闭。", "La protección de cierre de escritorio no está disponible; el cierre nativo sigue habilitado.", "Der Desktop-Schliessschutz ist nicht verfügbar; das normale Schliessen bleibt aktiviert.", "데스크톱 닫기 보호를 사용할 수 없어 기본 닫기 동작을 유지합니다.", "A proteção de fechamento da área de trabalho não está disponível; o fechamento nativo continua habilitado.", "Защита закрытия рабочего стола недоступна; обычное закрытие остается включенным.", "Không thể bật bảo vệ đóng desktop; thao tác đóng gốc vẫn được phép.", "La protection de fermeture du bureau est indisponible ; la fermeture native reste activée.", "La protezione di chiusura desktop non è disponibile; la chiusura nativa resta abilitata.", "Perlindungan penutupan desktop tidak tersedia; penutupan native tetap aktif."],
         "status.localStorageSaveFailed": ["Failed to save local settings (check browser storage).", "ローカル設定の保存に失敗しました（ブラウザのストレージを確認してください）。", "本機設定儲存失敗（請檢查瀏覽器儲存空間）。", "保存本地设置失败（请检查浏览器存储）。", "Error al guardar la configuracion local (revisa el almacenamiento del navegador).", "Lokale Einstellungen konnten nicht gespeichert werden (Browser-Speicher prüfen).", "로컬 설정 저장에 실패했습니다 (브라우저 저장소를 확인하세요).", "Falha ao salvar as configuracoes locais (verifique o armazenamento do navegador).", "Не удалось сохранить локальные настройки (проверьте хранилище браузера).", "Lưu cài đặt cục bộ thất bại (kiểm tra bộ nhớ trình duyệt).", "Échec de l'enregistrement des paramètres locaux (vérifiez le stockage du navigateur).", "Salvataggio impostazioni locali non riuscito (controlla lo storage del browser).", "Gagal menyimpan pengaturan lokal (periksa penyimpanan browser)."],
         "status.dropModeReadOnlyConfirm": ["You have unsaved edits. Switch to read-only mode anyway?", "未保存の編集があります。読み取り専用に切り替えますか？", "您有未儲存的編輯，仍要切換為唯讀模式嗎？", "存在未保存的更改。仍要切换到只读模式吗?", "Tienes ediciones sin guardar. ¿Cambiar a modo solo lectura igualmente?", "Sie haben ungespeicherte Bearbeitungen. Trotzdem in den Lesemodus wechseln?", "저장하지 않은 편집 내용이 있습니다. 그래도 읽기 전용 모드로 전환할까요?", "Voce tem edicoes nao salvas. Mudar para modo somente leitura mesmo assim?", "Есть несохраненные правки. Все равно перейти в режим только чтения?", "Bạn có chỉnh sửa chưa lưu. Vẫn chuyển sang chế độ chỉ đọc?", "Vous avez des modifications non enregistrées. Passer en mode lecture seule quand même ?", "Hai modifiche non salvate. Passare comunque alla modalità sola lettura?", "Ada suntingan yang belum disimpan. Tetap beralih ke mode hanya-baca?"],
         "status.readOnlyBlocked": ["Switch to edit mode before editing.", "編集するには編集モードに切り替えてください。", "請先切換至編輯模式再進行編輯。", "请先切换到编辑模式再编辑。", "Cambia al modo edición antes de editar.", "Wechseln Sie vor dem Bearbeiten in den Bearbeitungsmodus.", "편집하려면 먼저 편집 모드로 전환하세요.", "Mude para o modo de edicao antes de editar.", "Перед редактированием переключитесь в режим правки.", "Hãy chuyển sang chế độ sửa trước khi chỉnh sửa.", "Passez en mode édition avant de modifier.", "Passa alla modalità modifica prima di modificare.", "Beralih ke mode edit sebelum mengedit."],
@@ -6168,6 +6195,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           "Chrome memblokir folder ini karena mungkin dilindungi atau bersifat khusus. Pilih subfolder biasa, atau buka/lepas satu file.",
         ],
         "status.folderOpenFailed": ["Folder open failed: ", "フォルダを開けませんでした: ", "資料夾開啟失敗:", "打开文件夹失败: ", "Error al abrir la carpeta: ", "Ordner konnte nicht geoeffnet werden: ", "폴더 열기 실패: ", "Falha ao abrir pasta: ", "Не удалось открыть папку: ", "Mở thư mục thất bại: ", "Échec de l'ouverture du dossier : ", "Apertura cartella fallita: ", "Pembukaan folder gagal: "],
+        "status.folderExpandFailed": ["Folder expand failed: ", "フォルダの展開に失敗しました: ", "資料夾展開失敗：", "展开文件夹失败: ", "Error al expandir la carpeta: ", "Ordner konnte nicht aufgeklappt werden: ", "폴더 펼치기 실패: ", "Falha ao expandir pasta: ", "Не удалось развернуть папку: ", "Mở rộng thư mục thất bại: ", "Échec du développement du dossier : ", "Espansione cartella fallita: ", "Gagal memperluas folder: "],
+        "status.folderListingPartial": ["Folder listing is partial: ", "フォルダ一覧は一部です: ", "資料夾清單不完整：", "文件夹列表不完整：", "La lista de la carpeta es parcial: ", "Die Ordnerliste ist unvollstaendig: ", "폴더 목록이 일부만 표시되었습니다: ", "A listagem da pasta está incompleta: ", "Список папки неполный: ", "Danh sách thư mục chưa đầy đủ: ", "La liste du dossier est partielle : ", "L'elenco della cartella è parziale: ", "Daftar folder tidak lengkap: "],
+        "status.dropReparseRejected": ["Some dropped paths were rejected: ", "シンボリックリンクまたは再解析ポイントのため、次のドロップを拒否しました: ", "部分拖放項目因符號連結或重新解析點而遭拒絕：", "部分拖放项目因符号链接或重解析点而被拒绝：", "Se rechazaron algunas rutas por ser enlaces simbólicos o puntos de análisis: ", "Einige Pfade wurden als symbolische Links oder Reparse-Punkte abgelehnt: ", "심볼릭 링크 또는 재분석 지점인 일부 경로를 거부했습니다: ", "Alguns caminhos foram rejeitados por serem links simbólicos ou pontos de reparse: ", "Некоторые пути отклонены как символические ссылки или точки повторного анализа: ", "Một số đường dẫn bị từ chối vì là liên kết tượng trưng hoặc reparse point: ", "Certains chemins ont été refusés car ce sont des liens symboliques ou des points de reparse : ", "Alcuni percorsi sono stati rifiutati perché collegamenti simbolici o punti di reparse: ", "Beberapa jalur ditolak karena merupakan tautan simbolik atau titik reparse: "],
         "status.launchFileOpenFailed": ["Failed to open the file passed at launch: ", "起動時に渡されたファイルを開けませんでした: ", "無法開啟啟動時傳入的檔案：", "无法打开启动时传入的文件: ", "No se pudo abrir el archivo pasado al iniciar: ", "Beim Start uebergebene Datei konnte nicht geoeffnet werden: ", "시작 시 전달된 파일을 열 수 없습니다: ", "Falha ao abrir o arquivo passado na inicializacao: ", "Не удалось открыть файл, переданный при запуске: ", "Không thể mở tệp được truyền khi khởi động: ", "Échec de l'ouverture du fichier passé au lancement : ", "Apertura del file passato all'avvio fallita: ", "Gagal membuka file yang diteruskan saat peluncuran: "],
         "status.folderDropFailed": ["Folder drop failed: ", "フォルダのドロップ読み込みに失敗: ", "資料夾拖放失敗:", "文件夹拖放失败: ", "Error al soltar la carpeta: ", "Ordnerablage fehlgeschlagen: ", "폴더 드롭 실패: ", "Falha ao soltar pasta: ", "Не удалось обработать папку: ", "Thả thư mục thất bại: ", "Échec du dépôt du dossier : ", "Trascinamento cartella fallito: ", "Pelepasan folder gagal: "],
         "status.folderLoading": ["Loading folder…", "フォルダを読み込み中…", "正在載入資料夾…", "正在加载文件夹…", "Cargando carpeta…", "Ordner wird geladen…", "폴더 불러오는 중…", "Carregando pasta…", "Загрузка папки…", "Đang tải thư mục…", "Chargement du dossier…", "Caricamento cartella…", "Memuat folder…"],
@@ -6439,6 +6469,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.pasteEntryFailed": ["Paste failed: ", "貼り付けに失敗: ", "貼上失敗：", "粘贴失败: ", "Error al pegar: ", "Einfuegen fehlgeschlagen: ", "붙여넣기 실패: ", "Falha ao colar: ", "Не удалось вставить: ", "Dán thất bại: ", "Échec du collage : ", "Incollaggio fallito: ", "Penempelan gagal: "],
         "status.externalDropCopyDone": ["Copied.", "コピーしました。", "已複製。", "已复制。", "Copiado.", "Kopiert.", "복사했습니다.", "Copiado.", "Скопировано.", "Đã sao chép.", "Copié.", "Copiato.", "Disalin."],
         "status.externalDropCopyFailed": ["Copy failed: ", "コピーに失敗: ", "複製失敗：", "复制失败: ", "Error al copiar: ", "Kopieren fehlgeschlagen: ", "복사 실패: ", "Falha ao copiar: ", "Не удалось скопировать: ", "Sao chép thất bại: ", "Échec de la copie : ", "Copia fallita: ", "Penyalinan gagal: "],
+        "status.externalDropCopyPartial": ["Copied {0} item(s); {1} failed.", "{0}件をコピーしました。{1}件は失敗しました。", "已複製 {0} 個項目；{1} 個失敗。", "已复制 {0} 个项目；{1} 个失败。", "Se copiaron {0} elemento(s); {1} fallaron.", "{0} Eintrag/Einträge kopiert; {1} fehlgeschlagen.", "{0}개 항목을 복사했고 {1}개가 실패했습니다.", "{0} item(ns) copiado(s); {1} falhou(aram).", "Скопировано: {0}; ошибок: {1}.", "Đã sao chép {0} mục; {1} mục thất bại.", "{0} élément(s) copié(s) ; {1} échec(s).", "Copiati {0} elementi; {1} non riusciti.", "{0} item disalin; {1} gagal."],
+        "status.externalDropCopyNone": ["No items were copied.", "コピーできる項目がありませんでした。", "沒有項目被複製。", "没有复制任何项目。", "No se copió ningún elemento.", "Es wurden keine Einträge kopiert.", "복사된 항목이 없습니다.", "Nenhum item foi copiado.", "Элементы не скопированы.", "Không có mục nào được sao chép.", "Aucun élément n'a été copié.", "Nessun elemento copiato.", "Tidak ada item yang disalin."],
         "status.pasteEntryUnsupported": ["Paste is not supported in this environment.", "この環境では貼り付けはサポートされていません。", "此環境不支援貼上。", "此环境不支持粘贴。", "Pegar no es compatible en este entorno.", "Einfuegen wird in dieser Umgebung nicht unterstuetzt.", "이 환경에서는 붙여넣기가 지원되지 않습니다.", "Colar não é suportado neste ambiente.", "Вставка не поддерживается в этой среде.", "Dán không được hỗ trợ trong môi trường này.", "Le collage n'est pas pris en charge dans cet environnement.", "Incolla non è supportato in questo ambiente.", "Tempel tidak didukung di lingkungan ini."],
         "status.pasteSelf": ["Cannot paste an item into itself or its parent.", "自分自身または親フォルダに貼り付けることはできません。", "無法將項目貼上到自身或其父資料夾。", "无法将项目粘贴到自身或其父文件夹。", "No se puede pegar un elemento en sí mismo o en su carpeta padre.", "Ein Element kann nicht in sich selbst oder seinen uebergeordneten Ordner eingefuegt werden.", "항목을 자신이나 상위 폴더에 붙여넣을 수 없습니다.", "Não é possível colar um item em si mesmo ou em sua pasta pai.", "Нельзя вставить элемент в себя или в родительскую папку.", "Không thể dán một mục vào chính nó hoặc thư mục cha của nó.", "Impossible de coller un élément dans lui-même ou dans son dossier parent.", "Impossibile incollare un elemento in se stesso o nella sua cartella padre.", "Tidak dapat menempel item ke dalam dirinya sendiri atau folder induknya."],
         "status.copyAllDone": ["All text copied.", "全文をコピーしました。", "已複製全文。", "已复制全文。", "Todo el texto copiado.", "Gesamten Text kopiert.", "전체 텍스트를 복사했습니다.", "Todo o texto foi copiado.", "Весь текст скопирован.", "Đã sao chép toàn bộ văn bản.", "Tout le texte a été copié.", "Tutto il testo copiato.", "Semua teks disalin."],
@@ -6446,6 +6478,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.copyCodeDone": ["Code copied.", "コードをコピーしました。", "已複製程式碼。", "已复制代码。", "Codigo copiado.", "Code kopiert.", "코드를 복사했습니다.", "Codigo copiado.", "Код скопирован.", "Đã sao chép mã.", "Code copié.", "Codice copiato.", "Kode disalin."],
         "status.copyTableDone": ["Table copied.", "表をコピーしました。", "已複製表格。", "已复制表格。", "Tabla copiada.", "Tabelle kopiert.", "표를 복사했습니다.", "Tabela copiada.", "Таблица скопирована.", "Đã sao chép bảng.", "Tableau copié.", "Tabella copiata.", "Tabel disalin."],
         "status.noFiles": ["No supported files found.", "対応ファイルが見つかりませんでした。", "找不到支援的檔案。", "未找到支持的文件。", "No se encontraron archivos compatibles.", "Keine unterstuetzten Dateien gefunden.", "지원되는 파일이 없습니다.", "Nenhum arquivo compativel encontrado.", "Поддерживаемые файлы не найдены.", "Không tìm thấy tệp được hỗ trợ.", "Aucun fichier pris en charge trouvé.", "Nessun file supportato trovato.", "Tidak ada file yang didukung ditemukan."],
+        "status.noFilesMatchFilter": ["No files match the current tree filter.", "現在のツリー表示フィルターに一致するファイルがありません。", "沒有檔案符合目前的檔案樹篩選條件。", "没有文件符合当前文件树筛选条件。", "Ningún archivo coincide con el filtro actual del árbol.", "Keine Dateien entsprechen dem aktuellen Dateibaumfilter.", "현재 트리 필터와 일치하는 파일이 없습니다.", "Nenhum arquivo corresponde ao filtro atual da árvore.", "Нет файлов, соответствующих текущему фильтру дерева.", "Không có tệp nào khớp với bộ lọc cây hiện tại.", "Aucun fichier ne correspond au filtre actuel de l’arborescence.", "Nessun file corrisponde al filtro attuale dell’albero.", "Tidak ada file yang cocok dengan filter pohon saat ini."],
         "status.encodingChanged": ["Decoded again as {encoding}.", "{encoding} として読み直しました。", "已重新以 {encoding} 解碼。", "已使用 {encoding} 重新解码。", "Decodificado de nuevo como {encoding}.", "Erneut als {encoding} dekodiert.", "{encoding}(으)로 다시 디코딩했습니다.", "Decodificado novamente como {encoding}.", "Снова декодировано как {encoding}.", "Đã giải mã lại bằng {encoding}.", "Décodé à nouveau en {encoding}.", "Decodificato nuovamente come {encoding}.", "Didekode ulang sebagai {encoding}."],
         "status.encodingChanging": ["Changing encoding. Please wait...", "文字コードを変更しています。しばらくお待ちください...", "正在變更編碼。請稍候...", "正在更改编码。请稍候...", "Cambiando codificacion. Espere...", "Kodierung wird geaendert. Bitte warten...", "문자 인코딩을 변경하는 중입니다. 잠시 기다려 주세요...", "Alterando codificacao. Aguarde...", "Изменение кодировки. Подождите...", "Đang đổi mã ký tự. Vui lòng chờ...", "Changement d'encodage. Veuillez patienter...", "Modifica della codifica. Attendere...", "Mengubah encoding. Mohon tunggu..."],
         "status.encodingChangeConfirm": [
@@ -6523,10 +6556,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return FALLBACK_LANG;
       }
 
+      const missingI18nKeys = new Set();
+
       function t(group, key) {
         const id = `${group}.${key}`;
         const arr = STR[id];
-        if (!arr) return "";
+        if (!arr) {
+          if (!missingI18nKeys.has(id)) {
+            missingI18nKeys.add(id);
+            console.warn(`i18n: missing string key ${id}`);
+          }
+          return id;
+        }
         const idx = LANGS.indexOf(currentLang);
         const fbIdx = LANGS.indexOf(FALLBACK_LANG);
         return arr[idx >= 0 ? idx : fbIdx] ?? arr[fbIdx] ?? "";
@@ -6703,11 +6744,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setUiTooltip(aboutMarkedLink, licenseLinkTooltip, { aria: false });
         aboutMarkedLink.setAttribute("aria-label", `marked 18.0.6 — ${licenseLinkTooltip}`);
         setUiTooltip(aboutDomPurifyLink, licenseLinkTooltip, { aria: false });
-        aboutDomPurifyLink.setAttribute("aria-label", `DOMPurify 3.4.12 — ${licenseLinkTooltip}`);
+        aboutDomPurifyLink.setAttribute("aria-label", `DOMPurify 3.4.14 — ${licenseLinkTooltip}`);
         setUiTooltip(aboutEncodingJapaneseLink, licenseLinkTooltip, { aria: false });
         aboutEncodingJapaneseLink.setAttribute("aria-label", `encoding-japanese 2.2.0 — ${licenseLinkTooltip}`);
         setUiTooltip(aboutHighlightJsLink, licenseLinkTooltip, { aria: false });
-        aboutHighlightJsLink.setAttribute("aria-label", `highlight.js 11.11.1 — ${licenseLinkTooltip}`);
+        aboutHighlightJsLink.setAttribute("aria-label", `highlight.js 11.12.0 — ${licenseLinkTooltip}`);
         aboutTauriLicense.textContent = t("about", "tauriLicense");
         setUiTooltip(aboutTauriLink, licenseLinkTooltip, { aria: false });
         aboutTauriLink.setAttribute("aria-label", `Tauri 2.11.5 — ${licenseLinkTooltip}`);
@@ -6831,6 +6872,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (input) input.setAttribute("aria-label", title);
       }
 
+      function updateFileStatusBarVisibility(sourceVisible = !editorPanel.classList.contains("panel-hidden")) {
+        fileStatusBar.style.display = sourceVisible && fileState.hasContent ? "" : "none";
+      }
+
       function updateCardLayout() {
         const hasDirectory = !!dirState.path || hasDirectoryContent();
         let showFileList = hasDirectory && cardVisibility.fileList;
@@ -6856,6 +6901,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         fileListPanel.classList.toggle("panel-hidden", !showFileList);
         editorPanel.classList.toggle("panel-hidden", !showSource);
         previewPanel.classList.toggle("panel-hidden", !showPreview);
+        updateFileStatusBarVisibility(showSource);
+        document.body.classList.toggle("has-zen-preview", document.body.classList.contains("zen-mode") && showPreview);
         document.getElementById("fileListSplitter").classList.toggle("splitter-hidden", !showFileListSplitter);
         document.getElementById("splitter").classList.toggle("splitter-hidden", !showSourcePreviewSplitter);
 
@@ -6912,7 +6959,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         layout.style.setProperty("--preview-width", `${available - newLeft}px`);
       }
 
-      function setCardVisibility(card, visible) {
+      function setCardVisibility(card, visible, options = {}) {
         const next = { ...cardVisibility, [card]: !!visible };
         const hasDirectory = !!dirState.path || hasDirectoryContent();
         const visibleCount = [
@@ -6923,7 +6970,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (visibleCount === 0) return;
         cardVisibility = next;
         if (card === "preview") fileState.previewAutoCollapsed = false;
-        saveCardVisibility();
+        const persist = options.persist !== undefined
+          ? !!options.persist
+          : !document.body.classList.contains("zen-mode");
+        if (persist) saveCardVisibility();
         updateCardLayout();
       }
 
@@ -7945,15 +7995,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return findState.matches.length > 0 && !findState.error;
       }
 
+      function expandFindReplacement(match, replacement) {
+        const captures = Array.isArray(match && match.captures) ? match.captures : [];
+        const groups = match && match.groups && typeof match.groups === "object" ? match.groups : null;
+        return String(replacement).replace(/\$(\$|&|`|'|[0-9]{1,2}|<[^>]+>)/g, (token, key) => {
+          if (key === "$") return "$";
+          if (key === "&") return match.text;
+          if (key === "`" || key === "'") return "";
+          if (key.startsWith("<")) {
+            const name = key.slice(1, -1);
+            return groups && Object.prototype.hasOwnProperty.call(groups, name) ? (groups[name] || "") : token;
+          }
+          const captureNumber = Number(key);
+          if (!captureNumber || captureNumber > captures.length) return token;
+          return captures[captureNumber - 1] || "";
+        });
+      }
+
       function getReplacementPreviewForMatch(match) {
         if (!isReplaceVisible()) return "";
         if (!findRegexToggle.checked) return replaceInput.value;
-        const flags = findCaseToggle.checked ? "" : "i";
-        try {
-          return match.text.replace(new RegExp(findInput.value, flags), replaceInput.value);
-        } catch (err) {
-          return "";
-        }
+        return expandFindReplacement(match, replaceInput.value);
       }
 
       function renderFindDecoratedSource(text) {
@@ -7982,6 +8044,65 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const SOURCE_HIGHLIGHT_SOFT_LIMIT_CHARS = 120000;
       const SOURCE_HIGHLIGHT_SOFT_LIMIT_LINE_CHARS = 4000;
       const FIND_MATCH_RENDER_LIMIT = 2000;
+      const REGEX_FIND_TIMEOUT_MS = 750;
+      const REGEX_FIND_WORKER_SOURCE = `
+        self.onmessage = function (event) {
+          const request = event.data || {};
+          try {
+            const text = String(request.text || "");
+            const flags = request.caseSensitive ? "g" : "gi";
+            const regex = new RegExp(String(request.query || ""), flags);
+            const limit = Math.max(1, Number(request.limit) || 1);
+            const matches = [];
+            let capped = false;
+            let iterations = 0;
+            const isWordChar = (ch) => /[A-Za-z0-9_]/.test(ch || "");
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+              if (++iterations > limit * 1000) {
+                capped = true;
+                break;
+              }
+              const value = match[0];
+              const start = match.index;
+              const end = start + value.length;
+              if (value.length === 0) {
+                if (start >= text.length) break;
+                regex.lastIndex = start + 1;
+                continue;
+              }
+              if (request.wholeWord && (isWordChar(text[start - 1]) || isWordChar(text[end]))) {
+                continue;
+              }
+              matches.push({
+                start,
+                end,
+                text: value,
+                captures: Array.prototype.slice.call(match, 1),
+                groups: match.groups ? Object.assign({}, match.groups) : null
+              });
+              if (matches.length >= limit) {
+                capped = true;
+                break;
+              }
+            }
+            self.postMessage({
+              type: "result",
+              requestId: request.requestId,
+              generation: request.generation,
+              matches,
+              capped
+            });
+          } catch (error) {
+            self.postMessage({
+              type: "error",
+              requestId: request.requestId,
+              generation: request.generation,
+              name: error && error.name ? error.name : "Error"
+            });
+          }
+        };
+      `;
       const PREVIEW_RENDER_SOFT_LIMIT_CHARS = 300000;
       const PREVIEW_RENDER_SOFT_LIMIT_LINE_CHARS = 12000;
       // Keep Browser and Desktop editions on the same fail-fast boundary before
@@ -8086,25 +8207,110 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return /[A-Za-z0-9_]/.test(ch || "");
       }
 
-      function getFindRegex() {
-        const query = findInput.value;
-        if (!query) return null;
-        const flags = findCaseToggle.checked ? "g" : "gi";
+      function disposeRegexFindWorker() {
+        if (regexFindWorkerTimer) {
+          window.clearTimeout(regexFindWorkerTimer);
+          regexFindWorkerTimer = 0;
+        }
+        if (regexFindWorker) {
+          regexFindWorker.onmessage = null;
+          regexFindWorker.onerror = null;
+          regexFindWorker.terminate();
+          regexFindWorker = null;
+        }
+        if (regexFindWorkerUrl && typeof URL !== "undefined" && typeof URL.revokeObjectURL === "function") {
+          try {
+            URL.revokeObjectURL(regexFindWorkerUrl);
+          } catch (err) {
+            // Best effort only: a revoked Blob URL is not user data.
+          }
+        }
+        regexFindWorkerUrl = "";
+      }
+
+      function finishRegexFindRequest(generation, requestId, outcome) {
+        if (generation !== findGeneration || requestId !== regexFindRequestId || !findState.pending) return;
+        disposeRegexFindWorker();
+        findState.pending = false;
+        findState.error = outcome.errorKey ? t("ui", outcome.errorKey) : "";
+        findState.matches = outcome.errorKey ? [] : (Array.isArray(outcome.matches) ? outcome.matches : []);
+        findState.capped = outcome.errorKey ? false : !!outcome.capped;
+        findState.currentIndex = -1;
+        if (findState.error || !findState.matches.length) {
+          updateFindCount();
+          return;
+        }
+        const oldStart = Number.isFinite(outcome.preferredPosition)
+          ? outcome.preferredPosition
+          : source.selectionStart;
+        const nextIndex = findState.matches.findIndex((match) => match.start >= oldStart);
+        selectFindMatch(nextIndex >= 0 ? nextIndex : 0);
+      }
+
+      function startRegexFindWorker(preferredPosition, generation) {
+        if (
+          typeof Worker !== "function"
+          || typeof Blob !== "function"
+          || typeof URL === "undefined"
+          || typeof URL.createObjectURL !== "function"
+        ) {
+          findState.pending = false;
+          findState.error = t("ui", "findRegexUnavailable");
+          updateFindCount();
+          return;
+        }
+        const requestId = ++regexFindRequestId;
         try {
-          return new RegExp(findRegexToggle.checked ? query : escapeRegExp(query), flags);
+          const workerUrl = URL.createObjectURL(new Blob([REGEX_FIND_WORKER_SOURCE], { type: "application/javascript" }));
+          const worker = new Worker(workerUrl);
+          regexFindWorkerUrl = workerUrl;
+          regexFindWorker = worker;
+          worker.onmessage = (event) => {
+            const result = event && event.data ? event.data : {};
+            if (result.requestId !== requestId || result.generation !== generation) return;
+            if (result.type === "error") {
+              finishRegexFindRequest(generation, requestId, { errorKey: "findRegexError" });
+              return;
+            }
+            if (result.type !== "result" || !Array.isArray(result.matches)) {
+              finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
+              return;
+            }
+            finishRegexFindRequest(generation, requestId, {
+              matches: result.matches,
+              capped: result.capped,
+              preferredPosition
+            });
+          };
+          worker.onerror = () => {
+            finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
+          };
+          regexFindWorkerTimer = window.setTimeout(() => {
+            finishRegexFindRequest(generation, requestId, { errorKey: "findRegexTimeout" });
+          }, REGEX_FIND_TIMEOUT_MS);
+          worker.postMessage({
+            requestId,
+            generation,
+            query: findInput.value,
+            text: source.value || "",
+            caseSensitive: findCaseToggle.checked,
+            wholeWord: findWordToggle.checked,
+            limit: FIND_MATCH_RENDER_LIMIT
+          });
         } catch (err) {
-          findState.error = t("ui", "findRegexError");
-          return null;
+          finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
         }
       }
 
-      function collectFindMatches() {
+      function collectLiteralFindMatches() {
         findState.error = "";
         findState.capped = false;
         const text = source.value || "";
-        const regex = getFindRegex();
+        const query = findInput.value;
         const matches = [];
-        if (!regex) return matches;
+        if (!query) return matches;
+        const flags = findCaseToggle.checked ? "g" : "gi";
+        const regex = new RegExp(escapeRegExp(query), flags);
         let match;
         let iterations = 0;
         const ITERATION_LIMIT = FIND_MATCH_RENDER_LIMIT * 1000;
@@ -8133,12 +8339,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function updateFindButtons() {
-        const hasMatch = findState.matches.length > 0 && !findState.error;
+        const hasMatch = findState.matches.length > 0 && !findState.error && !findState.pending;
         findPrevBtn.disabled = !hasMatch;
         findNextBtn.disabled = !hasMatch;
         showReplaceBtn.disabled = fileState.readOnly || isReplaceVisible();
         replaceOneBtn.disabled = !hasMatch || fileState.readOnly;
-        replaceAllBtn.disabled = !hasMatch || fileState.readOnly || findState.capped;
+        replaceAllBtn.disabled = !hasMatch || fileState.readOnly || findState.capped || findState.pending;
       }
 
       function syncFindHighlightState() {
@@ -8162,7 +8368,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function updateFindCount() {
         findCount.classList.toggle("error", !!findState.error);
-        if (findState.error) {
+        if (findState.pending) {
+          findCount.textContent = t("ui", "findRegexSearching");
+        } else if (findState.error) {
           findCount.textContent = findState.error;
         } else if (!findState.matches.length) {
           findCount.textContent = t("ui", "findNoMatches");
@@ -8243,9 +8451,22 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function refreshFindMatches(preferredPosition = source.selectionStart) {
         const oldStart = Number.isFinite(preferredPosition) ? preferredPosition : source.selectionStart;
-        findState.matches = collectFindMatches();
+        findGeneration += 1;
+        const generation = findGeneration;
+        disposeRegexFindWorker();
+        findState.pending = false;
+        findState.error = "";
+        findState.capped = false;
+        findState.matches = [];
+        findState.currentIndex = -1;
+        if (findRegexToggle.checked && findInput.value) {
+          findState.pending = true;
+          updateFindCount();
+          startRegexFindWorker(oldStart, generation);
+          return;
+        }
+        findState.matches = collectLiteralFindMatches();
         if (findState.error || !findState.matches.length) {
-          findState.currentIndex = -1;
           updateFindCount();
           return;
         }
@@ -8297,12 +8518,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function closeFindBar() {
+        findGeneration += 1;
+        regexFindRequestId += 1;
+        disposeRegexFindWorker();
         findReplaceBar.classList.add("hidden");
         replaceRow.classList.add("hidden");
         findState.error = "";
         findState.matches = [];
         findState.currentIndex = -1;
         findState.capped = false;
+        findState.pending = false;
         updateFindHighlight();
         source.focus({ preventScroll: true });
         updateFindLauncherButtons();
@@ -8310,8 +8535,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function moveFindSelection(direction) {
         if (!isFindBarOpen()) return;
-        findState.matches = collectFindMatches();
-        if (findState.error || !findState.matches.length) {
+        if (findState.pending || findState.error || !findState.matches.length) {
           findState.currentIndex = -1;
           updateFindCount();
           return;
@@ -8331,39 +8555,83 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         selectFindMatch(previousIndex >= 0 ? previousIndex : findState.matches.length - 1);
       }
 
-      function applySourceTextChange(nextText, selectionStart, selectionEnd) {
-        // BUG-ED-001: source.value 代入は textarea の undo スタックを破壊するため、
-        // setRangeText で全文置換 → undo を保てる。input イベントが自動発火し、
-        // setDirtyState / updateEditorMetrics / renderContent(debounce) は同 listener が処理する。
-        if (typeof source.setRangeText === "function") {
-          source.setRangeText(nextText, 0, source.value.length, "end");
-          source.setSelectionRange(selectionStart, selectionEnd);
-          return;
+      function prepareSourceChange() {
+        if (fileState.readOnly) {
+          setStatus(t("status", "readOnlyBlocked"), true);
+          return false;
         }
-        source.value = nextText;
-        source.setSelectionRange(selectionStart, selectionEnd);
+        if (!fileState.hasContent) {
+          fileState.hasContent = true;
+          fileState.handle = null;
+          fileState.encoding = "utf-8";
+          fileState.buffer = null;
+          fileState.bom = false;
+          fileState.lineEnding = "lf";
+          setEncodingSelectValue(fileState.encoding);
+          encodingSelect.disabled = false;
+          bomCheckbox.disabled = false;
+          lineEndingSelect.disabled = false;
+          bomCheckbox.checked = fileState.bom;
+          lineEndingSelect.value = fileState.lineEnding;
+          updateFileStatusBarVisibility();
+          setReadOnlyMode(false);
+          setAppDocumentTitle();
+        }
         setDirtyState(true);
-        updateEditorMetrics();
+        return true;
+      }
+
+      function scheduleSourceRender() {
         clearTimeout(renderDebounceTimer);
-        renderContent(source.value);
+        renderDebounceTimer = setTimeout(() => {
+          renderContent(source.value);
+        }, RENDER_DEBOUNCE_MS);
+      }
+
+      function runSourceChangePipeline(options = {}) {
+        const { defer = false } = options;
+        if (!prepareSourceChange()) return false;
+        if (defer || sourceIsComposing) {
+          sourceCompositionChanged = true;
+          return true;
+        }
+        sourceCompositionChanged = false;
+        updateEditorMetrics();
+        if (isFindBarOpen()) refreshFindMatches(source.selectionStart);
+        scheduleMirroredSelectionUpdate();
+        scheduleSourceRender();
+        return true;
+      }
+
+      function applySourceTextChange(nextText, selectionStart, selectionEnd) {
+        // setRangeText で全文置換すると textarea の undo スタックを保てる。
+        // setRangeText は input 後処理を保証しないため、ここで共通pipelineを明示的に通す。
+        sourceProgrammaticChange = true;
+        try {
+          if (typeof source.setRangeText === "function") {
+            source.setRangeText(nextText, 0, source.value.length, "end");
+          } else {
+            source.value = nextText;
+          }
+          source.setSelectionRange(selectionStart, selectionEnd);
+        } finally {
+          sourceProgrammaticChange = false;
+        }
+        runSourceChangePipeline();
       }
 
       function getReplacementForMatch(match) {
         if (!findRegexToggle.checked) return replaceInput.value;
-        const flags = findCaseToggle.checked ? "" : "i";
-        try {
-          const regex = new RegExp(findInput.value, flags);
-          return match.text.replace(regex, replaceInput.value);
-        } catch (err) {
-          findState.error = t("ui", "findRegexError");
-          updateFindCount();
-          return null;
-        }
+        return expandFindReplacement(match, replaceInput.value);
       }
 
       function replaceCurrentMatch() {
         if (fileState.readOnly) return;
-        if (!findState.matches.length || findState.currentIndex < 0) refreshFindMatches(source.selectionStart);
+        if (findState.pending) return;
+        if (!findState.matches.length || findState.currentIndex < 0) {
+          refreshFindMatches(source.selectionStart);
+          if (findState.pending) return;
+        }
         const match = findState.matches[findState.currentIndex];
         if (!match) return;
         const replacement = getReplacementForMatch(match);
@@ -8371,12 +8639,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const nextText = source.value.slice(0, match.start) + replacement + source.value.slice(match.end);
         const nextCursor = match.start + replacement.length;
         applySourceTextChange(nextText, match.start, nextCursor);
-        refreshFindMatches(nextCursor);
       }
 
       function replaceAllMatches() {
         if (fileState.readOnly) return;
-        refreshFindMatches(0);
+        if (findState.pending) return;
+        if (!findState.matches.length && findInput.value && !findState.error) {
+          refreshFindMatches(0);
+          if (findState.pending) return;
+        }
         if (!findState.matches.length || findState.error || findState.capped) return;
         const sourceText = source.value;
         const chunks = [];
@@ -8393,7 +8664,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         chunks.push(sourceText.slice(cursor));
         const nextText = chunks.join("");
         applySourceTextChange(nextText, 0, 0);
-        refreshFindMatches(0);
         setStatus(t("status", "replaceAllDone").replace("{count}", replaced.toLocaleString()), false);
       }
 
@@ -8615,6 +8885,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           : "auto";
       }
 
+      function setEncodingControlsBusy(busy) {
+        const disabled = !!busy || !fileState.hasContent;
+        encodingSelect.disabled = disabled;
+        bomCheckbox.disabled = disabled;
+        lineEndingSelect.disabled = disabled;
+      }
+
       function setLoadedMarkdown(text, encoding, options = {}) {
         if (options.viewMode === "markdown" || options.viewMode === "plain") {
           fileState.viewMode = options.viewMode;
@@ -8636,13 +8913,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         renderContent(text);
         preview.scrollTop = 0;
         setEncodingSelectValue(encoding);
-        encodingSelect.disabled = !fileState.buffer;
-        bomCheckbox.disabled = !fileState.buffer;
-        lineEndingSelect.disabled = !fileState.buffer;
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
-        fileStatusBar.style.display = "";
         fileState.hasContent = true;
+        setEncodingControlsBusy(false);
+        updateFileStatusBarVisibility();
         fileState.unsaved = false;
         setBaselineText(text);
         setReadOnlyMode(false);
@@ -8693,13 +8968,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         fileState.bom = false;
         fileState.lineEnding = "lf";
         setEncodingSelectValue(fileState.encoding);
-        encodingSelect.disabled = true;
-        bomCheckbox.disabled = true;
-        lineEndingSelect.disabled = true;
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
-        fileStatusBar.style.display = "";
         fileState.hasContent = false;
+        setEncodingControlsBusy(false);
+        updateFileStatusBarVisibility();
         source.value = "";
         source.scrollTop = 0;
         source.scrollLeft = 0;
@@ -9194,7 +9467,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const appWindow = tauriWindowApi && typeof tauriWindowApi.getCurrentWindow === "function"
           ? tauriWindowApi.getCurrentWindow()
           : null;
-        if (!appWindow || typeof appWindow.listen !== "function") return;
+        if (!appWindow || typeof appWindow.listen !== "function") {
+          if (typeof console !== "undefined" && console.warn) {
+            console.warn("Tauri close guard setup unavailable: window listener API missing");
+          }
+          setStatus(t("status", "closeGuardSetupFailed"), "warning");
+          return;
+        }
 
         const tauriEventApi = window.__TAURI__ && window.__TAURI__.event;
         const closeRequestedEvent = tauriEventApi && tauriEventApi.TauriEvent
@@ -9221,11 +9500,17 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
               setStatus(t("status", "closeFailed") + message, true);
             }
           });
+          await invokeTauri("desktop_frontend_ready");
           tauriCloseGuardInstalled = true;
         } catch (err) {
           if (typeof console !== "undefined" && console.warn) {
             console.warn("Tauri close guard setup failed", err);
           }
+          setStatus(
+            t("status", "closeGuardSetupFailed")
+              + (err && err.message ? ` ${err.message}` : ""),
+            "warning"
+          );
         }
       }
 
@@ -9422,6 +9707,24 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return tauriCore.invoke(command, args);
         }
         return tauriInternals.invoke(command, args);
+      }
+
+      const TAURI_RAW_PATH_HEADER = "x-offline-md-editor-path";
+
+      function encodeTauriPathHeader(path) {
+        const bytes = new TextEncoder().encode(String(path || ""));
+        let encoded = "";
+        for (const byte of bytes) encoded += byte.toString(16).padStart(2, "0");
+        return encoded;
+      }
+
+      function invokeTauriRaw(command, bytes, headers = {}) {
+        if (!isTauri) throw new Error("Tauri runtime is not available.");
+        const options = { headers };
+        if (tauriCore && typeof tauriCore.invoke === "function") {
+          return tauriCore.invoke(command, bytes, options);
+        }
+        return tauriInternals.invoke(command, bytes, options);
       }
 
       // Extract structured error code from Tauri error strings.
@@ -9668,7 +9971,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function bytesToArrayBuffer(bytes) {
-        return new Uint8Array(bytes).buffer;
+        if (bytes instanceof ArrayBuffer) return bytes;
+        if (ArrayBuffer.isView(bytes)) {
+          return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        }
+        throw new Error("Tauri returned a non-binary file response.");
       }
 
       async function readTauriMarkdownFile(path) {
@@ -9678,6 +9985,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function loadTauriFilePath(path, options = {}) {
+        beginDirectoryStartupIntent("open-file");
         const gen = beginFileLoad();
         const fileName = getPathFileName(path);
         const loaded = await readTauriMarkdownFile(path);
@@ -9714,6 +10022,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setStatus(t("status", "noFsOpen"), true);
           return;
         }
+        beginDirectoryStartupIntent("open-file");
         const gen = beginFileLoad();
         if (isTauri) {
           const path = await invokeTauri("desktop_open_file_dialog");
@@ -9826,6 +10135,23 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return saveFile({ forcePick: true });
       }
 
+      async function writeFileHandleBytes(targetHandle, data) {
+        const writable = await targetHandle.createWritable();
+        try {
+          await writable.write(data);
+          await writable.close();
+        } catch (err) {
+          if (writable && typeof writable.abort === "function") {
+            try {
+              await writable.abort();
+            } catch (_abortErr) {
+              // The original write error is more useful to the caller.
+            }
+          }
+          throw err;
+        }
+      }
+
       async function saveFile(options = {}) {
         if (fileState.readOnly) {
           setStatus(t("status", "readOnlyBlocked"), true);
@@ -9847,9 +10173,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const encoding = encodingSelect.value === "auto" ? "utf-8" : encodingSelect.value;
           const hasBom = bomCheckbox.checked;
           const bytes = encodeFileContent(source.value, encoding, hasBom);
-          await invokeTauri("desktop_write_file_bytes", {
-            path: fileState.handle.tauriPath,
-            bytes: Array.from(bytes)
+          await invokeTauriRaw("desktop_write_file_bytes", bytes, {
+            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(fileState.handle.tauriPath)
           });
           fileState.encoding = encoding;
           fileState.buffer = bytes.buffer;
@@ -9869,9 +10194,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const encoding = encodingSelect.value === "auto" ? "utf-8" : encodingSelect.value;
         const hasBom = bomCheckbox.checked;
         const bytes = encodeFileContent(source.value, encoding, hasBom);
-        const writable = await fileState.handle.createWritable();
-        await writable.write(bytes);
-        await writable.close();
+        await writeFileHandleBytes(fileState.handle, bytes);
         fileState.encoding = encoding;
         fileState.buffer = bytes.buffer;
         fileState.bom = hasBom;
@@ -10230,13 +10553,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
         }
 
-        if (!dirState.files.length || !visibleNodes.length) {
+        if (!dirState.files.length) {
           const empty = document.createElement("div");
           empty.className = "file-list-empty";
           empty.textContent = t("status", "noFiles");
           fileList.appendChild(empty);
           return;
         }
+        const allFiles = flattenTreeFiles(visibleNodes);
+        const visibleFiles = allFiles.filter((entry) => shouldShowFileTreeNode(entry));
+        const hasFilterNoMatch = allFiles.length > 0 && visibleFiles.length === 0 && !fileTreeShowAll;
         const renderTreeNode = (entry, depth, parentElement = fileList) => {
           if (entry.kind === "dir") {
             const isExpanded = dirState.expandedDirs.has(entry.path);
@@ -10326,6 +10652,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           parentElement.appendChild(button);
         };
         visibleNodes.forEach((entry) => renderTreeNode(entry, 0));
+        if (hasFilterNoMatch) {
+          const empty = document.createElement("div");
+          empty.className = "file-list-empty";
+          empty.textContent = t("status", "noFilesMatchFilter");
+          fileList.appendChild(empty);
+        }
       }
 
       function expandToPath(path) {
@@ -10448,12 +10780,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           await parentHandle.getFileHandle(name, { create: false });
           return true;
         } catch (err) {
+          if (err && err.name === "TypeMismatchError") return true;
           if (!err || err.name !== "NotFoundError") throw err;
         }
         try {
           await parentHandle.getDirectoryHandle(name, { create: false });
           return true;
         } catch (err) {
+          if (err && err.name === "TypeMismatchError") return true;
           if (!err || err.name !== "NotFoundError") throw err;
         }
         return false;
@@ -10481,10 +10815,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       async function copyFileHandleToDirectory(sourceHandle, targetParentHandle, name) {
         const destName = await resolveUniqueWebName(targetParentHandle, name);
         const sourceFile = await sourceHandle.getFile();
+        const sourceBytes = await sourceFile.arrayBuffer();
         const targetHandle = await targetParentHandle.getFileHandle(destName, { create: true });
-        const writable = await targetHandle.createWritable();
-        await writable.write(await sourceFile.arrayBuffer());
-        await writable.close();
+        try {
+          await writeFileHandleBytes(targetHandle, sourceBytes);
+        } catch (err) {
+          try {
+            await targetParentHandle.removeEntry(destName);
+          } catch (_cleanupErr) {
+            // Only the just-created unique destination is eligible for cleanup.
+          }
+          throw err;
+        }
         return targetHandle;
       }
 
@@ -10493,10 +10835,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         for await (const child of sourceHandle.values()) {
           if (child.kind === "file") {
             const childFile = await child.getFile();
+            const childBytes = await childFile.arrayBuffer();
             const childDest = await targetHandle.getFileHandle(child.name, { create: true });
-            const writable = await childDest.createWritable();
-            await writable.write(await childFile.arrayBuffer());
-            await writable.close();
+            await writeFileHandleBytes(childDest, childBytes);
           } else if (child.kind === "directory") {
             const subDir = await targetHandle.getDirectoryHandle(child.name, { create: true });
             await copyDirectoryContents(child, subDir);
@@ -10526,22 +10867,39 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (entry.isFile) {
           const file = await getFileFromEntry(entry);
           const destName = await resolveUniqueWebName(targetParentHandle, entry.name);
+          const sourceBytes = await file.arrayBuffer();
           const targetHandle = await targetParentHandle.getFileHandle(destName, { create: true });
-          const writable = await targetHandle.createWritable();
-          await writable.write(await file.arrayBuffer());
-          await writable.close();
+          try {
+            await writeFileHandleBytes(targetHandle, sourceBytes);
+          } catch (err) {
+            try {
+              await targetParentHandle.removeEntry(destName);
+            } catch (_cleanupErr) {
+              // Only the just-created unique destination is eligible for cleanup.
+            }
+            throw err;
+          }
           return { kind: "file", name: destName, fileHandle: targetHandle };
         }
         if (entry.isDirectory) {
           const destName = await resolveUniqueWebName(targetParentHandle, entry.name);
           const targetHandle = await targetParentHandle.getDirectoryHandle(destName, { create: true });
-          const reader = entry.createReader();
-          while (true) {
-            const children = await readEntriesBatch(reader);
-            if (!children.length) break;
-            for (const child of children) {
-              await copyWebkitEntryToHandle(child, targetHandle);
+          try {
+            const reader = entry.createReader();
+            while (true) {
+              const children = await readEntriesBatch(reader);
+              if (!children.length) break;
+              for (const child of children) {
+                await copyWebkitEntryToHandle(child, targetHandle);
+              }
             }
+          } catch (err) {
+            try {
+              await targetParentHandle.removeEntry(destName, { recursive: true });
+            } catch (_cleanupErr) {
+              // Only the just-created unique destination is eligible for cleanup.
+            }
+            throw err;
           }
           return { kind: "dir", name: destName, directoryHandle: targetHandle };
         }
@@ -10693,8 +11051,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const createdPath = await invokeTauri("desktop_create_file", { parentPath, name });
           return { tauriPath: createdPath, parentPath };
         }
-        // BUG-WEB-CREATE-TOCTOU-001: create:true + createWritable は既存ファイルを truncate するため、
-        // 先に create:false で存在確認し、作成後も size>0 なら書き込まず ALREADY_EXISTS で fail-closed。
+        // BUG-WEB-CREATE-TOCTOU-001: create:true は既存ファイルを返し得るため、
+        // 先に create:false で存在確認し、作成後も size>0 なら ALREADY_EXISTS で fail-closed。
         // FS Access API に OS 級 create_new が無いため空ファイル同士の極小レースは残るが、
         // 内容のあるファイルを消す経路は塞ぐ（Rust desktop_create_file の create_new と意図を揃える）。
         const parentHandle = parentEntry && parentEntry.directoryHandle ? parentEntry.directoryHandle : dirState.handle;
@@ -10723,9 +11081,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (existing.size > 0) {
           throw new Error("ALREADY_EXISTS: A file with that name already exists.");
         }
-        const writable = await createdHandle.createWritable();
-        await writable.write("");
-        await writable.close();
         return { handle: createdHandle, parentHandle };
       }
 
@@ -10737,10 +11092,23 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const parentHandle = entry.parentDirectoryHandle;
         const oldHandle = entry.fileHandle;
         const oldFile = await oldHandle.getFile();
+        // Recheck immediately before create:true. File System Access has no
+        // create-new/atomic-rename primitive; the remaining empty-file race is
+        // deliberately fail-closed by the post-create size check below.
+        if (await webDirectoryEntryExists(parentHandle, newName)) {
+          const error = new Error("ALREADY_EXISTS: An item with that name already exists.");
+          error.code = "ALREADY_EXISTS";
+          throw error;
+        }
         const newHandle = await parentHandle.getFileHandle(newName, { create: true });
-        const writable = await newHandle.createWritable();
-        await writable.write(await oldFile.arrayBuffer());
-        await writable.close();
+        const targetAfterCreate = await newHandle.getFile();
+        if (targetAfterCreate.size > 0) {
+          const error = new Error("ALREADY_EXISTS: An item with that name already exists.");
+          error.code = "ALREADY_EXISTS";
+          throw error;
+        }
+        const sourceBytes = await oldFile.arrayBuffer();
+        await writeFileHandleBytes(newHandle, sourceBytes);
         await parentHandle.removeEntry(entry.name);
         return { handle: newHandle };
       }
@@ -11213,7 +11581,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const oldTauriPath = entry.tauriPath;
         const oldDisplayPath = entry.path;
         const oldHandle = entry.fileHandle;
-        const result = await fsRenameEntry(entry, trimmedName);
+        let result;
+        try {
+          result = await fsRenameEntry(entry, trimmedName);
+        } catch (err) {
+          if (err && (err.code === "ALREADY_EXISTS" || /ALREADY_EXISTS:/.test(String(err.message || err)))) {
+            setStatus(t("status", "renameExists"), true);
+            return;
+          }
+          throw err;
+        }
 
         if (result.tauriPath) {
           if (entry.kind === "dir") {
@@ -11443,8 +11820,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         for await (const handle of directoryHandle.values()) {
           const path = basePath ? `${basePath}/${handle.name}` : handle.name;
           if (handle.kind === "file") {
-            // modified は展開後に取得するため 0 で初期化
-            nodes.push({ kind: "file", name: handle.name, path, fileHandle: handle, parentDirectoryHandle, modified: 0 });
+            let modified = 0;
+            try {
+              const file = await handle.getFile();
+              modified = Number(file.lastModified) || 0;
+            } catch (err) {
+              // Metadata is advisory; retain the file even if it cannot be read during listing.
+            }
+            nodes.push({ kind: "file", name: handle.name, path, fileHandle: handle, parentDirectoryHandle, modified });
           } else if (handle.kind === "directory") {
             // children: null = 未展開（遅延読み込み対象）
             nodes.push({ kind: "dir", name: handle.name, path, directoryHandle: handle, parentDirectoryHandle, children: null });
@@ -11453,14 +11836,50 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return nodes;
       }
 
+      function normalizeTauriDirectoryListing(result) {
+        if (Array.isArray(result)) {
+          return { entries: result, truncated: false, warnings: [] };
+        }
+        return {
+          entries: result && Array.isArray(result.entries) ? result.entries : [],
+          truncated: !!(result && result.truncated),
+          warnings: result && Array.isArray(result.warnings) ? result.warnings.filter(Boolean) : []
+        };
+      }
+
+      function reportTauriListingWarning(listing) {
+        if (!listing || (!listing.truncated && (!listing.warnings || listing.warnings.length === 0))) return;
+        const detail = listing.warnings && listing.warnings.length > 0
+          ? listing.warnings.join(" / ")
+          : "Some entries could not be read.";
+        setStatus(t("status", "folderListingPartial") + detail, "warning");
+      }
+
+      function getTauriDropRejectionMessage(payload) {
+        const rejected = payload && Array.isArray(payload.rejected) ? payload.rejected : [];
+        if (rejected.length === 0) return "";
+        const detail = rejected.slice(0, 8).map((item) => {
+          const path = item && item.path ? String(item.path) : "(unknown path)";
+          const reason = item && item.reason ? String(item.reason) : "rejected by desktop security policy";
+          return `${path} (${reason})`;
+        }).join(" / ");
+        return t("status", "dropReparseRejected") + detail;
+      }
+
       async function collectTauriShallowFiles(dirPath, rootPath) {
         const root = rootPath !== undefined ? rootPath : dirState.handle;
-        const entries = await invokeTauri("desktop_list_shallow_entries", { dirPath });
-        return (entries || [])
+        const listing = normalizeTauriDirectoryListing(
+          await invokeTauri("desktop_list_shallow_entries", { dirPath })
+        );
+        return {
+          files: listing.entries
           .map((e) => e.kind === "file"
-            ? { kind: "file", name: e.name, path: getTauriDisplayPath(e.path, root), tauriPath: e.path, modified: 0 }
-            : { kind: "dir", name: e.name, path: getTauriDisplayPath(e.path, root), tauriPath: e.path, children: null }
-          );
+            ? { kind: "file", name: e.name, path: getTauriDisplayPath(e.path, root), tauriPath: e.path, modified: Number(e.modified || 0) }
+            : { kind: "dir", name: e.name, path: getTauriDisplayPath(e.path, root), tauriPath: e.path, modified: Number(e.modified || 0), children: null }
+          ),
+          truncated: listing.truncated,
+          warnings: listing.warnings
+        };
       }
 
       function buildTreeFromFlat(entries, rootPath) {
@@ -11473,6 +11892,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           path: getTauriDisplayPath(entry.path, rootKey),
           tauriPath: entry.path,
           tauriParentPath: entry.parent_path,
+          modified: Number(entry.modified || 0),
           children: []
         }))).forEach((dir) => {
           dirsByPath.set(dir.tauriPath, dir);
@@ -11545,12 +11965,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         };
 
         if (isTauri) {
-          const files = await collectTauriShallowFiles(dirState.handle);
-          dirState.files = getSortedDirectoryFiles(files);
+          const listing = await collectTauriShallowFiles(dirState.handle);
+          dirState.files = getSortedDirectoryFiles(listing.files);
           restoreSelectionState();
           updateCardLayout();
           renderFileList();
           setStatus(t("status", "folderRescanned"));
+          reportTauriListingWarning(listing);
           return;
         }
         // ブラウザ版：FileSystemDirectoryHandle から再収集
@@ -11567,18 +11988,22 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setStatus(t("status", "noDirectoryAccess"), true);
           return;
         }
+        const intent = beginDirectoryStartupIntent("open-folder");
         if (isTauri) {
           const directoryPath = await pickDirectory();
           if (!directoryPath) return;
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
           setStatus(t("status", "folderLoading"), "loading");
           storeLastDirectoryHandle(directoryPath);
           showDirectoryFiles([], directoryPath, directoryPath, { revealFileList: true });
-          const files = await collectTauriShallowFiles(directoryPath);
-          dirState.files = getSortedDirectoryFiles(files);
+          const listing = await collectTauriShallowFiles(directoryPath);
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
+          dirState.files = getSortedDirectoryFiles(listing.files);
           updateCardLayout();
           renderFileList();
           const fileCount = flattenTreeFiles(dirState.files).length;
           setStatus(t("status", "folderLoaded"));
+          reportTauriListingWarning(listing);
           return;
         }
         const hintKey = "folderSelectHint";
@@ -11586,6 +12011,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const acknowledged = await showFolderHint(t("status", "folderSelectHint"), hintKey);
           if (!acknowledged) return;
         }
+        if (!isDirectoryStartupIntentCurrent(intent)) return;
         let handle;
         try {
           handle = await pickDirectory();
@@ -11596,11 +12022,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           throw err;
         }
         try {
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
           setStatus(t("status", "folderLoading"), "loading");
           const files = await collectDirectoryHandleFiles(handle);
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
           storeLastDirectoryHandle(handle);
           showDirectoryFiles(files, handle.name, handle, { revealFileList: true });
         } catch (err) {
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
           storeLastDirectoryHandle(null);
           if (isChromeBlockedFolderError(err)) {
             undismissHint(hintKey);
@@ -11622,7 +12051,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function openDirectoryDb() {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
           if (!window.indexedDB) {
             resolve(null);
             return;
@@ -11632,8 +12061,57 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             request.result.createObjectStore(DIRECTORY_STORE_NAME);
           };
           request.onsuccess = () => resolve(request.result);
-          request.onerror = () => resolve(null);
-          request.onblocked = () => resolve(null);
+          request.onerror = () => reject(request.error || new Error("IndexedDB open failed."));
+          request.onblocked = () => reject(new Error("IndexedDB open was blocked."));
+        });
+      }
+
+      async function withDirectoryDb(operation) {
+        const db = await openDirectoryDb();
+        if (!db) return null;
+        try {
+          return await operation(db);
+        } finally {
+          db.close();
+        }
+      }
+
+      function readDirectoryStore(db) {
+        return new Promise((resolve, reject) => {
+          let value = null;
+          let tx;
+          try {
+            tx = db.transaction(DIRECTORY_STORE_NAME, "readonly");
+            const request = tx.objectStore(DIRECTORY_STORE_NAME).get(LAST_DIRECTORY_KEY);
+            request.onsuccess = () => { value = request.result || null; };
+            request.onerror = () => reject(request.error || new Error("IndexedDB read failed."));
+          } catch (err) {
+            reject(err);
+            return;
+          }
+          tx.oncomplete = () => resolve(value);
+          tx.onerror = () => reject(tx.error || new Error("IndexedDB read transaction failed."));
+          tx.onabort = () => reject(tx.error || new Error("IndexedDB read transaction aborted."));
+        });
+      }
+
+      function writeDirectoryStore(db, handle) {
+        return new Promise((resolve, reject) => {
+          let tx;
+          try {
+            tx = db.transaction(DIRECTORY_STORE_NAME, "readwrite");
+            const store = tx.objectStore(DIRECTORY_STORE_NAME);
+            const request = handle
+              ? store.put(handle, LAST_DIRECTORY_KEY)
+              : store.delete(LAST_DIRECTORY_KEY);
+            request.onerror = () => reject(request.error || new Error("IndexedDB write failed."));
+          } catch (err) {
+            reject(err);
+            return;
+          }
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error || new Error("IndexedDB write transaction failed."));
+          tx.onabort = () => reject(tx.error || new Error("IndexedDB write transaction aborted."));
         });
       }
 
@@ -11652,14 +12130,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return value || null;
         }
         try {
-          const db = await openDirectoryDb();
-          if (!db) return null;
-          return await new Promise((resolve) => {
-            const tx = db.transaction(DIRECTORY_STORE_NAME, "readonly");
-            const request = tx.objectStore(DIRECTORY_STORE_NAME).get(LAST_DIRECTORY_KEY);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => resolve(null);
-          });
+          return await withDirectoryDb(readDirectoryStore);
         } catch (err) {
           return null;
         }
@@ -11676,15 +12147,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
         try {
-          const db = await openDirectoryDb();
-          if (!db) return;
-          const tx = db.transaction(DIRECTORY_STORE_NAME, "readwrite");
-          const store = tx.objectStore(DIRECTORY_STORE_NAME);
-          if (handle) {
-            store.put(handle, LAST_DIRECTORY_KEY);
-          } else {
-            store.delete(LAST_DIRECTORY_KEY);
-          }
+          await withDirectoryDb((db) => writeDirectoryStore(db, handle));
         } catch (err) {
           // Remembering the folder is a convenience only.
         }
@@ -11707,23 +12170,32 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         await storeLastDirectoryHandle(null);
       }
 
+      function isTerminalDirectoryHandleError(err) {
+        return !!err && (err.name === "NotFoundError" || err.name === "InvalidStateError");
+      }
+
       async function restoreLastDirectory() {
         if (!supportsDirectoryAccess) return;
+        const intent = beginDirectoryStartupIntent("restore-last-directory");
         const handle = await getLastDirectoryHandle();
+        if (!isDirectoryStartupIntentCurrent(intent)) return;
         if (isTauri) {
           if (!handle) return;
           setStatus(t("status", "folderLoading"), "loading");
-          showDirectoryFiles([], handle, handle);
           try {
             // BUG-INIT-001: 復元失敗時に stale な絶対パスを localStorage から消し、
             // 起動のたびに同じエラーが続かないようにする。
-            const files = await collectTauriShallowFiles(handle);
-            dirState.files = getSortedDirectoryFiles(files);
+            const listing = await collectTauriShallowFiles(handle);
+            if (!isDirectoryStartupIntentCurrent(intent)) return;
+            dirState.files = getSortedDirectoryFiles(listing.files);
+            showDirectoryFiles(dirState.files, handle, handle);
             updateCardLayout();
             renderFileList();
             // MAINT-INIT-002: 未使用の fileCount 算出を削除。flattenTreeFiles の O(N) を避ける。
             setStatus(t("status", "folderLoaded"));
+            reportTauriListingWarning(listing);
           } catch (err) {
+            if (!isDirectoryStartupIntentCurrent(intent)) return;
             await storeLastDirectoryHandle(null);
             throw err;
           }
@@ -11731,17 +12203,28 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         if (!handle || handle.kind !== "directory") return;
 
-        if (handle.queryPermission) {
-          const permission = await handle.queryPermission({ mode: "read" });
-          if (permission !== "granted") {
-            setStatus(t("status", "folderRestorePermission"), false);
+        try {
+          if (handle.queryPermission) {
+            const permission = await handle.queryPermission({ mode: "read" });
+            if (!isDirectoryStartupIntentCurrent(intent)) return;
+            if (permission !== "granted") {
+              setStatus(t("status", "folderRestorePermission"), false);
+              return;
+            }
+          }
+
+          setStatus(t("status", "folderLoading"), "loading");
+          const files = await collectDirectoryHandleFiles(handle);
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
+          showDirectoryFiles(files, handle.name, handle);
+        } catch (err) {
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
+          if (isTerminalDirectoryHandleError(err)) {
+            await storeLastDirectoryHandle(null);
             return;
           }
+          throw err;
         }
-
-        setStatus(t("status", "folderLoading"), "loading");
-        const files = await collectDirectoryHandleFiles(handle);
-        showDirectoryFiles(files, handle.name, handle);
       }
 
       function isChromeBlockedFolderError(err) {
@@ -11793,18 +12276,67 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return [{ kind: "dir", name: entry.name, path, children }];
       }
 
+      // DataTransfer の protected mode は drop handler の最初の await 後に item を
+      // 参照できなくする。getter、entry、File、handle promise を同期的に確保し、以後は
+      // この snapshot だけを使う。
+      function snapshotDataTransfer(dataTransfer) {
+        const items = dataTransfer && dataTransfer.items
+          ? Array.from(dataTransfer.items).map((item) => {
+              let file = null;
+              let fileError = null;
+              let entry = null;
+              let entryError = null;
+              let handlePromise = null;
+              try {
+                file = typeof item.getAsFile === "function" ? item.getAsFile() : null;
+              } catch (err) {
+                fileError = err;
+              }
+              try {
+                entry = typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null;
+              } catch (err) {
+                entryError = err;
+              }
+              if (typeof item.getAsFileSystemHandle === "function") {
+                try {
+                  handlePromise = Promise.resolve(item.getAsFileSystemHandle()).then(
+                    (handle) => ({ handle }),
+                    (error) => ({ error })
+                  );
+                } catch (err) {
+                  handlePromise = Promise.resolve({ error: err });
+                }
+              }
+              return {
+                kind: item.kind || "",
+                type: item.type || "",
+                name: item.name || (file && file.name) || "",
+                file,
+                fileError,
+                entry,
+                entryError,
+                handlePromise,
+              };
+            })
+          : [];
+        return {
+          items,
+          files: dataTransfer && dataTransfer.files ? Array.from(dataTransfer.files) : [],
+          types: dataTransfer && dataTransfer.types ? Array.from(dataTransfer.types) : [],
+        };
+      }
+
       async function getDroppedDirectoryFiles(item) {
-        if (item.getAsFileSystemHandle) {
-          const handle = await item.getAsFileSystemHandle();
+        if (item && item.handlePromise) {
+          const handleResult = await item.handlePromise;
+          const handle = handleResult && handleResult.handle;
           if (handle && handle.kind === "directory") {
             return { name: handle.name, files: await collectDirectoryHandleFiles(handle), handle };
           }
         }
-        if (item.webkitGetAsEntry) {
-          const entry = item.webkitGetAsEntry();
-          if (entry && entry.isDirectory) {
-            return { name: entry.name, files: await collectWebkitEntryFiles(entry) };
-          }
+        const entry = item && item.entry;
+        if (entry && entry.isDirectory) {
+          return { name: entry.name, files: await collectWebkitEntryFiles(entry) };
         }
         return null;
       }
@@ -11812,8 +12344,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       async function tryGetDroppedFileParentDirectory(item) {
         if (!item) return null;
         try {
-          if (item.getAsFileSystemHandle) {
-            const handle = await item.getAsFileSystemHandle();
+          if (item.handlePromise) {
+            const handleResult = await item.handlePromise;
+            const handle = handleResult && handleResult.handle;
             if (handle && handle.kind === "directory") {
               return { name: handle.name, files: await collectDirectoryHandleFiles(handle), handle };
             }
@@ -11822,11 +12355,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           console.warn("tryGetDroppedFileParentDirectory: getAsFileSystemHandle failed", err);
         }
         try {
-          if (item.webkitGetAsEntry) {
-            const entry = item.webkitGetAsEntry();
-            if (entry && entry.isDirectory) {
-              return { name: entry.name, files: await collectWebkitEntryFiles(entry) };
-            }
+          const entry = item.entry;
+          if (entry && entry.isDirectory) {
+            return { name: entry.name, files: await collectWebkitEntryFiles(entry) };
           }
         } catch (err) {
           console.warn("tryGetDroppedFileParentDirectory: webkitGetAsEntry failed", err);
@@ -11836,37 +12367,36 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       let renderDebounceTimer = null;
       const RENDER_DEBOUNCE_MS = 150;
-      source.addEventListener("input", () => {
-        if (fileState.readOnly) {
-          setStatus(t("status", "readOnlyBlocked"), true);
-          return;
+      function handleSourceCompositionStart() {
+        sourceIsComposing = true;
+        sourceCompositionChanged = false;
+        sourceCompositionFlushText = null;
+      }
+
+      function handleSourceCompositionEnd() {
+        sourceIsComposing = false;
+        if (!sourceCompositionChanged) return;
+        sourceCompositionFlushText = source.value;
+        runSourceChangePipeline();
+        window.setTimeout(() => {
+          if (sourceCompositionFlushText === source.value) sourceCompositionFlushText = null;
+        }, 0);
+      }
+
+      function handleSourceInput(event) {
+        if (sourceProgrammaticChange) return;
+        const composing = sourceIsComposing || event.isComposing === true;
+        if (!composing && sourceCompositionFlushText !== null) {
+          const flushedText = sourceCompositionFlushText;
+          sourceCompositionFlushText = null;
+          if (source.value === flushedText) return;
         }
-        if (!fileState.hasContent) {
-          fileState.hasContent = true;
-          fileState.handle = null;
-          fileState.encoding = "utf-8";
-          fileState.buffer = null;
-          fileState.bom = false;
-          fileState.lineEnding = "lf";
-          setEncodingSelectValue(fileState.encoding);
-          encodingSelect.disabled = false;
-          bomCheckbox.disabled = false;
-          lineEndingSelect.disabled = false;
-          bomCheckbox.checked = fileState.bom;
-          lineEndingSelect.value = fileState.lineEnding;
-          fileStatusBar.style.display = "";
-          setReadOnlyMode(false);
-          setAppDocumentTitle();
-        }
-        setDirtyState(true);
-        updateEditorMetrics();
-        if (isFindBarOpen()) refreshFindMatches(source.selectionStart);
-        scheduleMirroredSelectionUpdate();
-        clearTimeout(renderDebounceTimer);
-        renderDebounceTimer = setTimeout(() => {
-          renderContent(source.value);
-        }, RENDER_DEBOUNCE_MS);
-      });
+        runSourceChangePipeline({ defer: composing });
+      }
+
+      source.addEventListener("compositionstart", handleSourceCompositionStart);
+      source.addEventListener("compositionend", handleSourceCompositionEnd);
+      source.addEventListener("input", handleSourceInput);
 
       source.addEventListener("select", scheduleMirroredSelectionUpdate);
       source.addEventListener("keyup", scheduleMirroredSelectionUpdate);
@@ -12004,9 +12534,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       const handleDroppedTransfer = async (e) => {
-        const item = e.dataTransfer && e.dataTransfer.items && e.dataTransfer.items[0];
-        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        const looksLikeFile = file && file.size > 0 && isViewableFile(file.name || "");
+        const intent = beginDirectoryStartupIntent("drop-open");
+        const transfer = snapshotDataTransfer(e.dataTransfer);
+        const item = transfer.items[0];
+        const file = transfer.files[0] || (item && item.file);
+        const looksLikeFile = file && isViewableFile(file.name || "");
         if (item && !looksLikeFile) {
           if (isTauri) {
             setStatus(t("status", "folderLoading"), "loading");
@@ -12019,6 +12551,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           setStatus(t("status", "folderLoading"), "loading");
           const droppedDirectory = await getDroppedDirectoryFiles(item);
+          if (!isDirectoryStartupIntentCurrent(intent)) return;
           if (droppedDirectory) {
             if (droppedDirectory.handle) {
               storeLastDirectoryHandle(droppedDirectory.handle);
@@ -12030,11 +12563,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         if (file && !confirmDiscardUnsavedChanges()) return;
         await loadFileReadOnly(file);
+        if (!isDirectoryStartupIntentCurrent(intent)) return;
 
         if (item && looksLikeFile) {
           try {
             const parentDir = await tryGetDroppedFileParentDirectory(item);
-            if (parentDir && parentDir.files) {
+            if (isDirectoryStartupIntentCurrent(intent) && parentDir && parentDir.files) {
               showDirectoryFiles(parentDir.files, parentDir.name || t("ui", "fileListTitle"), null, { revealFileList: true });
             }
           } catch (err) {
@@ -12284,54 +12818,81 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return { onMouseDown };
       })();
 
-      // Helper: copy all items from a drop event into a FileSystemDirectoryHandle (Web external DnD).
+      function appendExternalDropResult(targetEntry, targetHandle, result) {
+        if (!result) return false;
+        const newPath = targetEntry && targetEntry.path ? `${targetEntry.path}/${result.name}` : result.name;
+        if (result.kind === "dir") {
+          appendDirectoryNode(targetEntry, {
+            kind: "dir",
+            name: result.name,
+            path: newPath,
+            directoryHandle: result.directoryHandle,
+            parentDirectoryHandle: targetHandle,
+            children: null
+          });
+        } else {
+          appendDirectoryNode(targetEntry, {
+            kind: "file",
+            name: result.name,
+            path: newPath,
+            fileHandle: result.fileHandle,
+            parentDirectoryHandle: targetHandle,
+            modified: Date.now()
+          });
+        }
+        return true;
+      }
+
+      // Helper: copy a synchronous DataTransfer snapshot into a directory handle.
       async function copyExternalDropItemsToHandle(items, targetHandle, targetEntry) {
         const permission = await targetHandle.requestPermission({ mode: "readwrite" });
         if (permission !== "granted") {
           setStatus(t("status", "permissionDenied"), true);
-          return;
+          return { processed: 0, failed: 0, skipped: 0, permissionDenied: true };
         }
-        const itemList = Array.from(items);
-        let anyFailed = false;
+        const itemList = Array.from(items || []);
+        let processed = 0;
+        let failed = 0;
+        let skipped = 0;
+        let firstError = null;
         for (const item of itemList) {
-          if (!item.webkitGetAsEntry) continue;
-          const fsEntry = item.webkitGetAsEntry();
-          if (!fsEntry) continue;
+          const fsEntry = item && item.entry;
+          if (!fsEntry) {
+            skipped += 1;
+            continue;
+          }
           try {
             const result = await copyWebkitEntryToHandle(fsEntry, targetHandle);
-            if (result) {
-              const newPath = targetEntry && targetEntry.path ? `${targetEntry.path}/${result.name}` : result.name;
-              if (result.kind === "dir") {
-                appendDirectoryNode(targetEntry, {
-                  kind: "dir",
-                  name: result.name,
-                  path: newPath,
-                  directoryHandle: result.directoryHandle,
-                  parentDirectoryHandle: targetHandle,
-                  children: null
-                });
-              } else {
-                appendDirectoryNode(targetEntry, {
-                  kind: "file",
-                  name: result.name,
-                  path: newPath,
-                  fileHandle: result.fileHandle,
-                  parentDirectoryHandle: targetHandle,
-                  modified: Date.now()
-                });
-              }
-            }
+            if (appendExternalDropResult(targetEntry, targetHandle, result)) processed += 1;
+            else skipped += 1;
           } catch (err) {
-            anyFailed = true;
-            setStatus(t("status", "externalDropCopyFailed") + (err && err.message ? err.message : String(err)), true);
-            break;
+            failed += 1;
+            if (!firstError) firstError = err;
           }
         }
-        if (!anyFailed) {
+        if (processed > 0) {
           sortDirectoryFiles();
           renderFileList();
-          setStatus(t("status", "externalDropCopyDone"), false);
+          if (failed > 0) {
+            setStatus(
+              t("status", "externalDropCopyPartial")
+                .replace("{0}", String(processed))
+                .replace("{1}", String(failed)),
+              true
+            );
+          } else {
+            setStatus(t("status", "externalDropCopyDone"), false);
+          }
+        } else if (failed > 0) {
+          setStatus(
+            t("status", "externalDropCopyFailed")
+              + (firstError && firstError.message ? firstError.message : String(firstError || "")),
+            true
+          );
+        } else {
+          setStatus(t("status", "externalDropCopyNone"), true);
         }
+        return { processed, failed, skipped, permissionDenied: false };
       }
 
       function isExternalFileDrag(e) {
@@ -12397,7 +12958,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             e.preventDefault();
             e.stopPropagation();
             fileList.classList.remove("drag-root-target");
-            copyExternalDropItemsToHandle(e.dataTransfer.items, dirState.handle, null).catch((err) => {
+            copyExternalDropItemsToHandle(snapshotDataTransfer(e.dataTransfer).items, dirState.handle, null).catch((err) => {
               setStatus(t("status", "externalDropCopyFailed") + (err && err.message ? err.message : String(err)), true);
             });
           }
@@ -12450,7 +13011,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             e.preventDefault();
             e.stopPropagation();
             fileList.classList.remove("drag-root-target");
-            copyExternalDropItemsToHandle(e.dataTransfer.items, dirState.handle, null).catch((err) => {
+            copyExternalDropItemsToHandle(snapshotDataTransfer(e.dataTransfer).items, dirState.handle, null).catch((err) => {
               setStatus(t("status", "externalDropCopyFailed") + (err && err.message ? err.message : String(err)), true);
             });
           }
@@ -12464,6 +13025,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         input.addEventListener("change", () => {
           const file = input.files && input.files[0];
           if (!file) return;
+          beginDirectoryStartupIntent("open-file");
           const gen = beginFileLoad();
           readMarkdownFile(file).then((loaded) => {
             if (!isFileLoadCurrent(gen)) return;
@@ -12704,7 +13266,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       closeSourceBtn.addEventListener("click", () => {
         setCardVisibility("source", false);
-        fileStatusBar.style.display = "none";
       });
 
       closePreviewBtn.addEventListener("click", () => {
@@ -12844,13 +13405,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         fileState.bom = false;
         fileState.lineEnding = "lf";
         setEncodingSelectValue(fileState.encoding);
-        encodingSelect.disabled = false;
-        bomCheckbox.disabled = false;
-        lineEndingSelect.disabled = false;
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
-        fileStatusBar.style.display = "";
         fileState.hasContent = true;
+        setEncodingControlsBusy(false);
+        updateFileStatusBarVisibility();
         setReadOnlyMode(false);
         source.value = "";
         source.scrollTop = 0;
@@ -12915,18 +13474,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           updateEditorMetrics();
           return;
         }
-        if (fileState.unsaved) {
-          const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
-          if (!ok) {
-            setEncodingSelectValue(fileState.encoding);
-            updateEditorMetrics();
-            return;
-          }
-        }
-        encodingSelect.disabled = true;
-        setStatus(t("status", "encodingChanging"), "loading");
-        await waitForPaint();
+        setEncodingControlsBusy(true);
         try {
+          if (fileState.unsaved) {
+            const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
+            if (!ok) {
+              setEncodingSelectValue(fileState.encoding);
+              updateEditorMetrics();
+              return;
+            }
+          }
+          setStatus(t("status", "encodingChanging"), "loading");
+          await waitForPaint();
           const decoded = encoding === "auto"
             ? decodeMarkdownBuffer(fileState.buffer)
             : { text: decodeBuffer(fileState.buffer, encoding), encoding, hasBom: fileState.bom };
@@ -12947,7 +13506,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setEncodingSelectValue(fileState.encoding);
           setStatus(t("status", "loadFailed") + (err && err.message ? err.message : String(err)), true);
         } finally {
-          encodingSelect.disabled = !fileState.buffer;
+          setEncodingControlsBusy(false);
         }
       });
 
@@ -13122,14 +13681,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
       }
 
-      function setOutlineVisible(visible) {
+      function setOutlineVisible(visible, options = {}) {
         outlineVisible = !!visible && fileState.hasContent;
         if (outlinePanel) outlinePanel.classList.toggle("hidden", !outlineVisible);
         if (outlineToggleBtn) {
           outlineToggleBtn.setAttribute("aria-pressed", outlineVisible ? "true" : "false");
           outlineToggleBtn.classList.toggle("active", outlineVisible);
         }
-        safeLocalStorageSet(STORAGE_OUTLINE_VISIBLE_KEY, outlineVisible ? "true" : "false");
+        if (options.persist !== false) {
+          safeLocalStorageSet(STORAGE_OUTLINE_VISIBLE_KEY, outlineVisible ? "true" : "false");
+        }
         if (outlineVisible) renderOutline();
       }
 
@@ -13148,7 +13709,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         document.body.classList.toggle("has-zen-preview", !!cardVisibility.preview && !fileState.previewAutoCollapsed);
         // Force source visible; hide file list via CSS; keep preview if was on
         cardVisibility = { fileList: false, source: true, preview: !!cardVisibility.preview };
-        setOutlineVisible(false);
+        setOutlineVisible(false, { persist: false });
         updateCardLayout();
         closeAppMenu();
         closeCommandPalette();
@@ -13162,8 +13723,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         document.body.classList.remove("zen-mode", "has-zen-preview");
         if (zenSnapshot) {
           cardVisibility = { ...zenSnapshot.cardVisibility };
-          saveCardVisibility();
-          setOutlineVisible(!!zenSnapshot.outlineVisible);
+          setOutlineVisible(!!zenSnapshot.outlineVisible, { persist: false });
         }
         zenSnapshot = null;
         updateCardLayout();
@@ -13523,9 +14083,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (!commandPaletteOverlay.hidden) { closeCommandPalette(); return; }
           if (!diffOverlay.hidden) { closeDiffView(); return; }
           if (!recentOverlay.hidden) { closeRecentFiles(); return; }
-          if (!licenseTextsOverlay.hidden) { closeLicenseTextsDialog(); }
+          if (!licenseTextsOverlay.hidden) { closeLicenseTextsDialog(); return; }
           if (isFindBarOpen()) { closeFindBar(); return; }
-          if (!aboutOverlay.hidden) { closeAboutDialog(); }
+          if (!aboutOverlay.hidden) { closeAboutDialog(); return; }
+          if (!readmeOverlay.hidden) { closeReadmeDialog(); return; }
           if (zenActive) { exitZenMode(); return; }
           closeAppMenu();
           hideFileContextMenu();
@@ -13770,11 +14331,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             try {
               let children;
               if (isTauri) {
-                children = await collectTauriShallowFiles(entry.tauriPath || entry.path, dirState.handle);
+                const listing = await collectTauriShallowFiles(entry.tauriPath || entry.path, dirState.handle);
+                children = listing.files;
+                reportTauriListingWarning(listing);
               } else {
                 children = await collectDirectoryHandleFiles(entry.directoryHandle, entry.path, entry.directoryHandle);
               }
               entry.children = children;
+            } catch (err) {
+              // Keep children null so the next click retries the lazy read.
+              setStatus(
+                t("status", "folderExpandFailed")
+                  + (err && err.message ? err.message : String(err)),
+                true
+              );
+              return;
             } finally {
               btn.disabled = false;
             }
@@ -13945,57 +14516,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           // 外部ドラッグ → dir ノードへコピー
           if (isDir && isExternalFileDrag(e)) {
             const targetEntry = resolveNodeByPath(btn.dataset.path, "dir");
-            if (targetEntry && targetEntry.directoryHandle && e.dataTransfer && e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            const transfer = snapshotDataTransfer(e.dataTransfer);
+            if (targetEntry && targetEntry.directoryHandle && transfer.items.length > 0) {
               e.preventDefault();
               e.stopPropagation();
               btn.classList.remove("drop-target");
-              const targetHandle = targetEntry.directoryHandle;
-              const permission = await targetHandle.requestPermission({ mode: "readwrite" });
-              if (permission !== "granted") {
-                setStatus(t("status", "permissionDenied"), true);
-                return;
-              }
-              const items = Array.from(e.dataTransfer.items);
-              let anyFailed = false;
-              for (const item of items) {
-                if (!item.webkitGetAsEntry) continue;
-                const fsEntry = item.webkitGetAsEntry();
-                if (!fsEntry) continue;
-                try {
-                  const result = await copyWebkitEntryToHandle(fsEntry, targetHandle);
-                  if (result) {
-                    const newPath = targetEntry.path ? `${targetEntry.path}/${result.name}` : result.name;
-                    if (result.kind === "dir") {
-                      appendDirectoryNode(targetEntry, {
-                        kind: "dir",
-                        name: result.name,
-                        path: newPath,
-                        directoryHandle: result.directoryHandle,
-                        parentDirectoryHandle: targetHandle,
-                        children: null
-                      });
-                    } else {
-                      appendDirectoryNode(targetEntry, {
-                        kind: "file",
-                        name: result.name,
-                        path: newPath,
-                        fileHandle: result.fileHandle,
-                        parentDirectoryHandle: targetHandle,
-                        modified: Date.now()
-                      });
-                    }
-                  }
-                } catch (err) {
-                  anyFailed = true;
-                  setStatus(t("status", "externalDropCopyFailed") + (err && err.message ? err.message : String(err)), true);
-                  break;
-                }
-              }
-              if (!anyFailed) {
-                sortDirectoryFiles();
-                renderFileList();
-                setStatus(t("status", "externalDropCopyDone"), false);
-              }
+              await copyExternalDropItemsToHandle(transfer.items, targetEntry.directoryHandle, targetEntry);
             }
           }
         });
@@ -14033,21 +14559,25 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         invokeTauri("desktop_get_launch_file_path")
           .then(async (path) => {
             if (!path) return;
+            const intent = beginDirectoryStartupIntent("associated-file");
             const gen = beginFileLoad();
             try {
               const loaded = await readTauriMarkdownFile(path);
-              if (!isFileLoadCurrent(gen)) return;
+              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
               const fileHandle = getTauriFileHandle(path);
               if (!applyLoadedContent(getPathFileName(path), loaded, fileHandle, { viewModeKey: path })) return;
-              if (!isFileLoadCurrent(gen)) return;
+              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
 
-              const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: path });
-              if (!isFileLoadCurrent(gen)) return;
-              if (filesInDir && filesInDir.length > 0) {
+              const listing = normalizeTauriDirectoryListing(
+                await invokeTauri("desktop_get_file_directory", { filePath: path })
+              );
+              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+              if (listing.entries.length > 0) {
                 const sepIdx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
                 const dirPath = sepIdx >= 0 ? path.substring(0, sepIdx) : "";
-                showTauriParentDirectoryFromFlat(filesInDir, dirPath, path);
+                showTauriParentDirectoryFromFlat(listing.entries, dirPath, path);
               }
+              reportTauriListingWarning(listing);
             } catch (err) {
               setStatus(t("status", "launchFileOpenFailed") + (err && err.message ? err.message : String(err)), true);
             }
@@ -14061,7 +14591,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
               dirState.tauriDropPendingTimer = 0;
             }
             const payload = e && e.payload;
-            if (!payload || !payload.path) return;
+            if (!payload) return;
+            const dropRejectionMessage = getTauriDropRejectionMessage(payload);
+            if (!payload.path) {
+              if (dropRejectionMessage) setStatus(dropRejectionMessage, "warning");
+              return;
+            }
 
             // Determine if the drop landed on a tree folder node.
             const pos = payload.position;
@@ -14117,7 +14652,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
               if (!anyFailed) {
                 sortDirectoryFiles();
                 renderFileList();
-                setStatus(t("status", "externalDropCopyDone"), false);
+                setStatus(
+                  dropRejectionMessage || t("status", "externalDropCopyDone"),
+                  dropRejectionMessage ? "warning" : false
+                );
               }
               return;
             }
@@ -14164,7 +14702,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
                 if (!anyFailed) {
                   sortDirectoryFiles();
                   renderFileList();
-                  setStatus(t("status", "externalDropCopyDone"), false);
+                  setStatus(
+                    dropRejectionMessage || t("status", "externalDropCopyDone"),
+                    dropRejectionMessage ? "warning" : false
+                  );
                 }
                 return;
               }
@@ -14172,33 +14713,40 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
             // Default: open folder or file.
             if (!confirmDiscardUnsavedChanges()) return;
+            const intent = beginDirectoryStartupIntent("tauri-drop-open");
             const gen = beginFileLoad();
             try {
               if (payload.kind === "dir") {
                 storeLastDirectoryHandle(payload.path);
                 showDirectoryFiles([], payload.path, payload.path, { revealFileList: true });
-                const files = await collectTauriShallowFiles(payload.path);
-                if (!isFileLoadCurrent(gen)) return;
-                dirState.files = getSortedDirectoryFiles(files);
+                const listing = await collectTauriShallowFiles(payload.path);
+                if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+                dirState.files = getSortedDirectoryFiles(listing.files);
                 updateCardLayout();
                 renderFileList();
                 setStatus(t("status", "folderLoaded"));
+                reportTauriListingWarning(listing);
+                if (dropRejectionMessage) setStatus(dropRejectionMessage, "warning");
               } else if (payload.kind === "file") {
                 const filePath = payload.path;
                 const fileBaseName = String(filePath).split(/[\\/]/).pop() || "";
                 const loaded = await readTauriMarkdownFile(filePath);
-                if (!isFileLoadCurrent(gen)) return;
+                if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
                 const fileHandle = getTauriFileHandle(filePath);
                 if (!applyLoadedContent(fileBaseName, loaded, fileHandle, { viewModeKey: fileBaseName })) return;
                 if (!isFileLoadCurrent(gen)) return;
 
-                const filesInDir = await invokeTauri("desktop_get_file_directory", { filePath: filePath });
-                if (!isFileLoadCurrent(gen)) return;
-                if (filesInDir && filesInDir.length > 0) {
+                const listing = normalizeTauriDirectoryListing(
+                  await invokeTauri("desktop_get_file_directory", { filePath: filePath })
+                );
+                if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+                if (listing.entries.length > 0) {
                   const sepIdx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
                   const dirPath = sepIdx >= 0 ? filePath.substring(0, sepIdx) : "";
-                  showTauriParentDirectoryFromFlat(filesInDir, dirPath, filePath);
+                  showTauriParentDirectoryFromFlat(listing.entries, dirPath, filePath);
                 }
+                reportTauriListingWarning(listing);
+                if (dropRejectionMessage) setStatus(dropRejectionMessage, "warning");
               }
             } catch (err) {
               setStatus(t("status", "dropReadFailed") + (err && err.message ? err.message : String(err)), true);

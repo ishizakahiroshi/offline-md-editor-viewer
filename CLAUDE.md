@@ -1,221 +1,67 @@
-# CLAUDE.md
+# offline-md-editor-viewer 開発ガイド
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> このファイルは常時ロードする入口と正典索引。詳細本文は [`docs/reference_offline-md-editor-viewer-operating-rules.md`](docs/reference_offline-md-editor-viewer-operating-rules.md)、コード、CI、作者環境の manual で管理する。
 
 ## プロジェクト概要
 
-ブラウザ版はビルドツール・パッケージマネージャ不使用のHTMLアプリ。`apps/browser/` ディレクトリをそのままブラウザで開くだけで動作する（ビルド不要）。デスクトップ版は `apps/desktop/` の Tauri プロジェクトで、同じHTMLをWebViewで読み込む。
+- ブラウザ版は `apps/browser/` の単一 HTML、デスクトップ版は同じ HTML を Tauri WebView で読む Windows アプリ。
+- ビルド不要のオフライン動作が主思想。配信例外、runtime safety、ライブラリの同梱方針は [`docs/reference_offline-md-editor-viewer-operating-rules.md`](docs/reference_offline-md-editor-viewer-operating-rules.md) を読む。
+- ユーザー向け仕様と使い方は [`README.md`](README.md) / [`README.ja.md`](README.ja.md) に同期する。
 
-## サーバー配信について（例外運用）
+## アーキテクチャの正本
 
-本アプリはオフライン動作を主思想とするが、リリース ZIP に含まれる単一 HTML `offline-md-editor-viewer.html` を Web サーバーへ配置することも可能（例外運用）。`<meta http-equiv="Content-Security-Policy">` で `connect-src 'none'` を強制し、サーバー配信下でも外部通信ゼロを担保する。
+| 領域 | 正本 / 強制層 |
+|---|---|
+| 単一 HTML と同梱ライブラリ | `apps/browser/offline-md-editor-viewer.html`、`apps/browser/lib/` |
+| Browser / Tauri 分岐 | `window.__TAURI__` 判定、`apps/desktop/src-tauri/src/lib.rs` |
+| Markdown pipeline | marked → DOMPurify → `preview.innerHTML` |
+| runtime safety | `scripts/ci/check-browser-runtime-safety.mjs` |
+| browser HTML 検査 | `scripts/ci/check-html-inline-js.mjs`、`scripts/release/build-browser-single-html.ps1` |
+| desktop | `apps/desktop/src-tauri/tauri.conf.json` / `tauri.release.conf.json` |
 
-オフラインファースト思想自体は維持しており、サーバー配信は「上げても動く」という事実を許容する位置づけ。実例 URL と具体的なデプロイ手順は `docs/local/manual/manual_deploy-sakuravps.md`（git 管理外）を参照。
+ファイル・フォルダ機能の変更は Browser / Tauri の両実装、state、context menu、keyboard shortcut、README 英日、HTML 内蔵英日を一組で確認する。単一 backend の修正だけで対応済みとしない。
 
-## アーキテクチャ
+## サーバー配信の例外
 
-### ファイル構成
+単一 HTML を Web サーバーへ置くことは許容するが、CSP の `connect-src 'none'` で外部通信ゼロを維持する。作者環境固有の URL・手順は git 管理外の `docs/local/manual/` に置き、公開ファイルへ移さない。
 
-- `apps/browser/offline-md-editor-viewer.html` — アプリ本体。HTML/CSS/JSがすべて1ファイルに収まっている
-- `apps/browser/lib/marked.min.js` — Markdownパーサー（v18.0.6、ローカル同梱）
-- `apps/browser/lib/purify.min.js` — XSSサニタイザー（DOMPurify v3.4.12、ローカル同梱）
-- `apps/browser/lib/encoding.min.js` — 文字コード変換ライブラリ（encoding-japanese v2.2.0、ローカル同梱）
-- `apps/browser/lib/highlight.min.js` — コードブロックのシンタックスハイライト（highlight.js v11.11.1、ローカル同梱）
-- `apps/browser/lib/hljs-github-dark.min.css` — highlight.js 用 GitHub Dark テーマ（ローカル同梱）
-- `apps/browser/docs/syntax-sample.md` / `apps/browser/docs/syntax-sample.ja.md` — Markdown記法サンプル
-- `apps/desktop/` — Windowsデスクトップ版の Tauri プロジェクト。`src-tauri/tauri.conf.json` の `build.frontendDist` は `../../browser` を参照し、既存HTMLをWebViewで読み込む
-- `apps/npm/` — npm ランチャーパッケージ（`bin/offline-md-editor-viewer.js` が同梱の単一 HTML を既定ブラウザで開く）。同梱 HTML（`apps/npm/offline-md-editor-viewer.html`）はビルド生成物のため git 管理外
+## Desktop ビルド
 
-### 主要な設計ポイント
+- Windows 限定。前提は Node.js、Rust stable、Microsoft C++ Build Tools、WebView2 Runtime。
+- `cd apps/desktop; npm ci; npm run dev; npm run build`。portable userdata の配置は `src-tauri/src/lib.rs` を正本とする。
+- Store 版は Windows 11 以降の MSIX、GitHub Releases の portable exe / ZIP は Windows 10・USB 運用の受け皿。npm は browser launcher のみ。
 
-**ライブラリ**：CDNは使用しない。`marked`、`DOMPurify`、`encoding-japanese` は `apps/browser/lib/` に同梱済み。バージョンアップはセキュリティパッチ等のタイミングで手動で差し替える。
+## バージョンと README 同期
 
-**レンダリングパイプライン**：`marked.parse()` → `DOMPurify.sanitize()` → `preview.innerHTML` の順。`marked.use()` による設定変更はしていない（デフォルト値 `gfm: true, breaks: false` をそのまま使用）。
-
-**多言語対応**：`i18n` オブジェクト（`en`/`ja`）にすべてのUI文字列を集約。`currentLang` 変数で切り替え、`t(group, key)` 関数で参照する。
-
-**環境判定**：HTML側で `window.__TAURI__` と `@tauri-apps/api/core` の `invoke` 有無から `isTauri` を判定する。Tauri環境では Rust 側の app-owned invoke command を使い、ブラウザ環境では File System Access API を使う。
-
-**保存機能**：ブラウザ版は File System Access API（`window.showOpenFilePicker`）が使えるChrome限定。Tauri版は `desktop_open_file_dialog` / `desktop_save_file_dialog` / `desktop_write_file_text` などの invoke command へ分岐する。非対応ブラウザでも閲覧・編集・プレビューは動作する。
-
-**フォルダツリー表示**：`directoryFiles` は `{ kind: "dir" | "file", ... }` のツリーノード配列として保持し、検索・rename/delete などの周辺処理では `flattenTreeFiles()` でファイルノードを抽出する。フォルダ開閉状態は `expandedDirs`（pathキーの `Set`）で管理し、File System Access / webkitGetAsEntry / Tauri の収集結果を同じツリー構造に揃える。
-
-**単体ファイル drop / open 時の親フォルダ展開**：Web 版は File System Access API の制約により、単体ファイルの `showOpenFilePicker` / drop からは親 `FileSystemDirectoryHandle` を取得できないため、左側フォルダツリーは描画しない（仕様。バグではない）。Tauri 版は `src-tauri/src/lib.rs` の `DragDropEvent::Drop` で絶対パスを受け取り、Rust 側で親ディレクトリを列挙して同じツリー構造に整える。ユーザー向け説明は `README.md` / `README.ja.md` の Drag & drop 節に同期済み。
-
-**スクロール同期**：左右パネルのスクロール比率を合わせる簡易実装。`syncingScroll` フラグで無限ループを防止。
-
-**ローカル設定の永続化**：UI設定は `localStorage`、フォルダハンドルのみ IndexedDB に保存する。キーはすべて `offline_md_editor_viewer_` プレフィックス。ユーザー向けの説明は `README.md` / `README.ja.md` の `Local Settings` / `ローカル設定` 節を参照。
-
-| キー（定数名） | localStorage キー | 用途 |
-|---------------|-------------------|------|
-| `STORAGE_LANG_KEY` | `offline_md_editor_viewer_lang` | UI言語コード（未保存時は `navigator.languages` から `i18n[*].meta.bcp47Match` で判定し、未マッチなら `en`） |
-| `STORAGE_THEME_KEY` | `offline_md_editor_viewer_theme` | テーマ（`dark`/`light`） |
-| `STORAGE_FONT_SCALE_KEY` | `offline_md_editor_viewer_font_scale` | 文字サイズ（`FONT_SCALE_OPTIONS` のキー） |
-| `STORAGE_FILE_SORT_KEY` | `offline_md_editor_viewer_file_sort` | ファイル一覧の並び順 |
-| `STORAGE_FILE_TOOLS_VISIBLE_KEY` | `offline_md_editor_viewer_file_tools_visible` | ファイルツール行の表示/非表示（`"true"`/`"false"`） |
-| `STORAGE_CARD_VISIBILITY_KEY` | `offline_md_editor_viewer_card_visibility` | 各カード（fileList/source/preview）の表示/非表示（JSON） |
-| `STORAGE_CARD_WIDTH_KEY` | `offline_md_editor_viewer_card_width` | 各カード幅（JSON） |
-| `STORAGE_LAST_DIRECTORY_TAURI_KEY` | `offline_md_editor_viewer_last_directory_tauri_path` | Tauri 環境の直近選択フォルダ（絶対パス文字列）。旧キー `lastDirectory_tauri_path` は読み取り時に自動移行する |
-
-IndexedDB（`DIRECTORY_DB_NAME = "offline_md_editor_viewer_directory"` / store `handles` / key `lastDirectory`）には、直近に選択したフォルダの `FileSystemDirectoryHandle` を保存する。次回利用時にハンドルからアクセス許可を再要求するため、permission state は別途 `requestPermission()` で確認する。
-
-Tauri環境では直近フォルダを絶対パス文字列として `localStorage`（`STORAGE_LAST_DIRECTORY_TAURI_KEY`）に保存し、Chrome の保護フォルダ判定や IndexedDB のハンドル再許可には依存しない。
-
-### Browser/Tauri runtime safety の不変条件
-
-- Browser の全量ファイル読み込みは、Desktop と同じ 64 MiB 上限を使い、`arrayBuffer()` で全量を確保する前に拒否する。
-- Browser の `localStorage` 操作は `safeLocalStorageGet` / `safeLocalStorageSet` / `safeLocalStorageRemove` 経由に限定する。読み取り不能時は既存の既定値へフォールバックし、storage key と JSON 形式は変更しない。
-- ファイル・フォルダ機能を変更するときは、Browser / Tauri を分けて backend → state 更新 → context menu → keyboard shortcut → README 英日 2 ファイルと HTML 内蔵英日 2 コピーまで確認する。backend 実装だけで「対応済み」と判断しない。
-- 上記領域を変更したら `node scripts/ci/check-browser-runtime-safety.mjs` を更新・実行し、実装と回帰契約を同期する。
-
-## デスクトップ版ビルド
-
-スコープは Windows 限定。macOS / Linux のデスクトップ配布は将来対応で、現時点ではブラウザ版を使う。
-
-前提：Node.js、Rust stable、Microsoft C++ Build Tools、Windows WebView2 Runtime。
-
-```powershell
-cd apps/desktop
-npm ci
-npm run dev
-npm run build
-```
-
-`npm run dev` は `cargo tauri dev` 相当で開発ウィンドウを起動する。`npm run build` は `cargo tauri build` 相当で、`apps/desktop/src-tauri/target/release/offline-md-editor-viewer.exe` をポータブル実行ファイルとして生成する（`tauri.conf.json` の `bundle.active = false` によりインストーラ生成は抑止）。
-
-WebView2 のユーザーデータは Rust 側 `configure_portable_userdata()` が exe と同階層の `offline-md-editor-viewer-userdata/` ディレクトリへ強制する（`WEBVIEW2_USER_DATA_FOLDER` 環境変数を設定）。exe 配置先が書き込み不可の場合は環境変数を設定せず、Tauri 既定の `%LOCALAPPDATA%\<identifier>\` にフォールバックする。これにより exe と `offline-md-editor-viewer-userdata/` を一緒に別 PC・USB へ移動すると設定が引き継がれる。
-
-## バージョン管理ルール
-
-- バージョン表記箇所: `CHANGELOG.md`、`apps/browser/offline-md-editor-viewer.html` の `APP_VERSION`、`apps/desktop/package.json`、`apps/desktop/package-lock.json`、`apps/desktop/src-tauri/Cargo.toml`、`apps/desktop/src-tauri/Cargo.lock`
-- セマンティックバージョニング（`0.x.x` は安定版前）
-
-### Tauri バージョンの二重管理
-
-Tauri のバージョン文字列は `apps/desktop/src-tauri/Cargo.toml` が source of truth だが、About ダイアログ表示用に `apps/browser/offline-md-editor-viewer.html` にもハードコードされている。Tauri を上げたら必ず両方を同期すること。
-
-| 編集箇所 | 対応する更新先 |
-|---------|--------------|
-| `apps/desktop/src-tauri/Cargo.toml` の `tauri = { version = "X.Y.Z" }` | HTML 内 `<span class="about-license-name">Tauri X.Y.Z</span>` と `aria-label` の `Tauri X.Y.Z` の2箇所 |
-
-`grep -n "Tauri " apps/browser/offline-md-editor-viewer.html` で確認すれば該当行が出る。Cargo.lock に書かれた resolved バージョンと一致させる。
-
-## README の二重管理ルール
-
-`README.md` / `README.ja.md` の内容は、`apps/browser/offline-md-editor-viewer.html` 内の定数 `README_EN` / `README_JA` にも埋め込まれている（アプリ内「使い方」ダイアログ用）。
-
-**どちらか一方を更新したら、必ずもう一方も同じ内容に合わせること。文言修正だけでなく、セクション追加・削除・順序変更などの構造変更時は、英語版（`README.md` / `README_EN`）と日本語版（`README.ja.md` / `README_JA`）の4箇所すべてを同時に揃えること。** 片方の言語だけ修正すると言語間でセクション構成がずれて、後で再同期が必要になる。
-
-| 編集箇所 | 対応する更新先（同時に揃える） |
-|---------|--------------|
-| `README.md` | `README_EN`（HTML内定数）／ 構造変更なら `README.ja.md` と `README_JA` も |
-| `README.ja.md` | `README_JA`（HTML内定数）／ 構造変更なら `README.md` と `README_EN` も |
-| `README_EN`（HTML内定数） | `README.md` ／ 構造変更なら `README.ja.md` と `README_JA` も |
-| `README_JA`（HTML内定数） | `README.ja.md` ／ 構造変更なら `README.md` と `README_EN` も |
-
-なお、HTML内定数ではバッジ画像（shields.io）・GitHub README 用スクリーンショット（`docs/assets/`）・GitHub Releases への Quick Download 導線・相互言語リンク行・mermaid図・外部リンク URL は除外している（オフライン表示のため）。Security / Privacy 節はアプリ内READMEにも同期する。それ以外の本文・セクション順序は4箇所すべてで同期を保つこと。
+- Tauri の source of truth は `apps/desktop/src-tauri/Cargo.toml`。About 表示 HTML と `Cargo.lock` を同時に確認する。
+- `README.md` / `README.ja.md` と HTML 内の `README_EN` / `README_JA` は常に同時更新する。Security / Privacy 節も含める。
+- version 表記は `CHANGELOG*`、browser HTML、desktop package / Cargo files。変更後は `scripts/ci/check-consistency.ps1` を実行する。
 
 ## リリース運用
 
-**Windows デスクトップ版の第一の入手経路は Microsoft Store**（MSIX 経路・2026-08-03 公開・掲載 URL は `https://apps.microsoft.com/detail/9N9FDS8BB2F6`・初版 v0.3.1）。2026-08-05 に導線の主従を見直し、README の入手案内も Store を先頭に置く構成へ変更した。Store 版は Microsoft が再署名するため SmartScreen 警告が出ず、更新もストア経由で届く。
-
-ただし Store 版は MSIX のため **Windows 11（build 22000）以降が対象**で、**ポータブル運用（exe と userdata を USB で持ち歩く）は成立しない**。この 2 条件に当てはまる利用者向けに、GitHub Releases のポータブル exe を代替として維持する（廃止しない）。README でポータブル exe を案内するときは、この「USB 持ち歩き用・Windows 10 向け」という位置づけを落とさないこと。
-
-配布チャネルは次の 3 本。主従の見直しは記述上のものであり、成果物・CI・リリース手順そのものは変更していない。
-
-| チャネル | 配布物 | 位置づけ |
-|---------|-------|---------|
-| Microsoft Store | Windows デスクトップ版（MSIX） | Windows デスクトップ版の第一の入手経路 |
-| GitHub Releases | ブラウザ版 ZIP・単体 HTML・デスクトップ版ポータブル ZIP・単体 exe | 正本のリリース生成元。ポータブル運用と Windows 10 の受け皿 |
-| npm | ブラウザ版のランチャー | ブラウザ版の手軽な入口（デスクトップ版は含まない） |
-
-MSIX 生成処理は `scripts/release/build-msix.ps1` と `scripts/release/msix/AppxManifest.xml`、提出手順は `docs/local/manual/manual_release.md`、経緯と判断ログは `docs/local/archive/v0.3.1/plan_ms-store-submission.md`（手順書と判断ログは git 管理外）を参照。
-
-`v0.1.0` のようなバージョンタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が Release を自動作成し、ブラウザ版 ZIP と Windows デスクトップ版ポータブル ZIP（`offline-md-editor-viewer-desktop-<tag>-win-x64-portable.zip`）を添付する。
-詳細なリリース手順やブランチ運用が必要な場合は `docs/local/manual/manual_release.md` を参照すること。
-
-Release notes には、アプリ概要、Downloads、GitHub 自動生成ノート、SHA-256 Checksums が自動で入る。既存 Release へ再実行する場合も assets は `--clobber` で更新し、SHA-256 Checksums セクションは差し替える。
-
-タグ push は、必ず release commit と `.github/workflows/release.yml` が `origin/main` に反映された後に行う。タグを先に push すると、GitHub 側に workflow が存在せず Release が作成されないことがある。
-
-```bash
-git push origin main
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-タグ push 後は Actions 起動と Release 作成を確認する。
-
-```bash
-gh run list --repo ishizakahiroshi/offline-md-editor-viewer --workflow Release --limit 5
-gh release view v0.1.0 --repo ishizakahiroshi/offline-md-editor-viewer
-```
-
-タグだけ push 済みで Release が作成されなかった場合は、workflow が `origin/main` に存在することを確認してから remote tag を削除し、同じタグを push し直す。
-
-### リリース前のローカル確認（ブラウザ単一HTML）
-
-タグ push 前に、CI が生成するのと同一内容の単一 HTML をローカルで生成して動作確認できる。
-
-```powershell
-.\scripts\release\build-browser-single-html.ps1 -Clean -Verify
-```
-
-- 出力: `dist/browser/offline-md-editor-viewer.html`（`apps/browser/lib/*.js` をインライン化、`LICENSE` / `LICENSES/` 配下のライセンス本文を placeholder に埋め込み済み）
-- **動作チェック対象:** 必ず `dist/browser/offline-md-editor-viewer.html` を使う（正式版）。`apps/browser/offline-md-editor-viewer.html` はソース版のため、最終確認対象にしない
-- `-Verify` は placeholder 未置換、`<script src=` 残り、ライセンス文言の存在を機械チェック
-- 改行は LF 正規化されるため、Windows / Linux いずれで生成しても CI 成果物と SHA-256 が一致する
-- 配布 ZIP まで作る場合は `-Package -Version v0.1.0` を追加（`dist/offline-md-editor-viewer-browser-v0.1.0.zip` も生成）
-- 目視確認のポイント: アプリ起動 → About →「ライセンス本文を表示」で MIT / Apache 等の本文が埋まっていること（ソース版の `apps/browser/offline-md-editor-viewer.html` 直開きでは空になる）
-
-### リリース前の最終確認（Web / Desktop 配布物）
-
-Web / Desktop 両方の配布候補をローカルでまとめて作る場合は、次の PowerShell スクリプトを使う。
-
-```powershell
-.\scripts\release\build-final-dist.ps1
-```
-
-バージョンを明示する場合:
-
-```powershell
-.\scripts\release\build-final-dist.ps1 v0.1.0
-```
-
-- 出力先: `dist/release-assets/`
-- 生成物: `offline-md-editor-viewer.html`、`offline-md-editor-viewer.exe`、ブラウザ版 ZIP、Windows デスクトップ版ポータブル ZIP、`SHA256SUMS.txt`
-- 内部処理: ブラウザ単一 HTML 生成・検証、Desktop 用 frontend stage、Tauri release build、Desktop ZIP 作成、SHA-256 生成、Desktop ZIP 内 exe と単体 exe のハッシュ一致検証
-- `build-final-dist.ps1` は PowerShell 単体で完結する（bash / cygpath 非依存）。
-- 既存の `dist/offline-md-editor-viewer-desktop-*-win-x64-portable/` は手動確認で `offline-md-editor-viewer-userdata/` が作られロックされることがあるため、このスクリプトは作業用ステージに `dist/.build-final-dist/` を使う
+- タグを push する前に release commit と `.github/workflows/release.yml` が `origin/main` に反映済みであることを確認する。タグ後は Actions と Release 作成を確認する。
+- GitHub Releases は browser ZIP / single HTML / desktop portable ZIP / exe、npm は browser 配布物、Microsoft Store は `msstore-publish.yml` の workflow_dispatch という分離を保つ。
+- 配布物は `scripts/release/build-browser-single-html.ps1` / `build-final-dist.ps1` で生成・検証し、standalone と ZIP 内成果物の SHA-256 を照合する。
+- 詳細手順・Store 初回提出・作者環境の手動操作は `docs/local/manual/` と `docs/local/archive/`（git 管理外）を読む。
 
 ## コーディング規約
 
-- **文字コード:** UTF-8
-- **インデント:** スペース2文字（既存 `apps/browser/offline-md-editor-viewer.html` に合わせる）
-- **ファイル名:** ケバブケース or スネークケース（例: `offline-md-editor-viewer.html`, `syntax-sample.md`）
-- **プログラム内識別子:** 言語慣習に従う（JS: キャメルケース、CSSクラス: ケバブケース、定数: アッパースネークケース）
+文字コードは UTF-8、インデントはスペース 2 文字。ファイル名はケバブケース / スネークケース、JS 識別子は camelCase、CSS クラスは kebab-case、定数は UPPER_SNAKE_CASE とする。
 
 ## AI 作業共通ルール
 
-ビルド・コミット禁止、secrets-scan 責務、plan/bugfix/pending md の作成ルール等の AI 作業共通ルールは、各利用者のグローバル AI 設定に従う（作者環境の例: `~/.claude/CLAUDE.md` および `~/.claude/guides/`）。本ファイルへは再掲しない。
+build・commit 禁止、secrets-scan 責務、plan / bugfix / pending の共通規約は各 AI の global settings を正本とする。このファイルへ再掲しない。
 
-## plan_*.md 作成ルール（プロジェクト固有分のみ）
+## plan と docs
 
-共通ルールは上記「AI 作業共通ルール」参照（正本: `~/.claude/guides/plan_rules.md`）。本プロジェクト固有の追加は以下のみ：
+- repo 固有の plan 追加条件は `docs/local/` に記録する。停止条件と Tauri build 環境の致命的破損、既配布版への退行リスクを明記する。
+- `docs/` の公開 Markdown を変更するときは、H1 直後に `> 最終更新: YYYY-MM-DD(曜) HH:MM:SS` を記載する。
+- 製品・配布・runtime の詳細は [`docs/reference_offline-md-editor-viewer-operating-rules.md`](docs/reference_offline-md-editor-viewer-operating-rules.md) に集約し、ここへ本文を戻さない。
 
-- 停止条件の 2 番目「外部依存の致命的障害」には Tauri ビルド環境の致命的破損を含む
-- 停止条件の 3 番目（プロジェクト固有）: 重大なリリース済み版への退行リスク（既にタグ付けして配布済みのバージョンと挙動が大きく変わる懸念）
+## 文書変更時の検査
 
-## docs/.md 編集ルール（必須）
-
-`docs/` 配下の `.md` を新規作成・更新するとき、H1見出しの直後に必ず最終更新日時を記載する。
-
-```
-> 最終更新: YYYY-MM-DD(曜) HH:MM:SS
+```text
+node scripts/check-claude-md.mjs
 ```
 
-記入直前に PowerShell で日時を取得してそのまま使う：
-
-```powershell
-$d = Get-Date; "{0}({1}) {2}" -f $d.ToString("yyyy-MM-dd"), "日月火水木金土"[$d.DayOfWeek.value__], $d.ToString("HH:mm:ss")
-```
+行数・節長・正本リンクを検査する。予算を上げる前に詳細本文を正本側へ降格する。

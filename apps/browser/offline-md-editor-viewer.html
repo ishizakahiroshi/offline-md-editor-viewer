@@ -11177,7 +11177,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
         if (handleState === "existing" && !forcePick) {
-          const confirmed = window.confirm(t("status", "saveHint"));
+          // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
+          // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
+          // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと
+          // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
+          // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
+          const confirmed = await openConfirmDialog("", t("status", "saveHint"));
           if (!confirmed) {
             if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
             return;

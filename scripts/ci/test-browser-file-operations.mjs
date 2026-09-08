@@ -337,7 +337,7 @@ const saveContext = {
   bomCheckbox: { checked: false },
   lineEndingSelect: { value: "lf" },
   isTauri: false,
-  window: { confirm: () => true },
+  openConfirmDialog: async () => true,
   t: (_group, key) => key,
   setStatus: () => {},
   setEncodingSelectValue: () => {},
@@ -362,6 +362,23 @@ assert.equal(savedWrites[0].handle, saveHandleA, "a pending save keeps A's handl
 assert.equal(savedWrites[0].text, "A edited", "a pending save keeps A's captured text");
 assert.equal(saveContext.documentStates.get("document-a").unsaved, false, "saved A becomes clean");
 assert.equal(saveContext.documentStates.get("document-b").unsaved, true, "saving A does not mark B clean");
+
+// BUG-SAVE-SYNC-CONFIRM-001: 保存の上書き確認は同期 window.confirm へ戻さないこと。
+// Tauri webview ではネイティブモーダルとして出て webview と IPC を止めるため、
+// close guard と同じ openConfirmDialog へ統一してある（BUG-CLOSEGUARD-SYNC-CONFIRM-002 と同方針）。
+{
+  const saveSource = extractFunction("saveFile");
+  assert.match(
+    saveSource,
+    /await openConfirmDialog\(/,
+    "the overwrite confirmation uses the project dialog"
+  );
+  assert.doesNotMatch(
+    saveSource,
+    /window\.confirm\s*\(/,
+    "the overwrite confirmation does not fall back to the synchronous native confirm"
+  );
+}
 
 assert.match(html, /catch \(err\) \{[\s\S]*folderExpandFailed/);
 assert.match(html, /snapshotDataTransfer\(e\.dataTransfer\)\.items/);

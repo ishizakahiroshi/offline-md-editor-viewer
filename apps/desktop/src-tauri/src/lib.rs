@@ -1684,6 +1684,46 @@ mod tests {
     }
 
     #[test]
+    fn atomic_write_preserves_a_read_only_target_and_leaves_no_temp_file() {
+        // C8-C3 の障害注入: 保存先が書けない状態でも原本を壊さず、一時ファイルも残さない。
+        // Windows では読み取り専用の対象へ rename すると ACCESS_DENIED になる。
+        let root = test_directory("atomic-write-readonly");
+        let target = root.join("locked.md");
+        let original = b"# original\n".to_vec();
+        fs::write(&target, &original).expect("write target");
+        let mut perms = fs::metadata(&target).expect("metadata").permissions();
+        perms.set_readonly(true);
+        fs::set_permissions(&target, perms).expect("set readonly");
+
+        let result = atomic_write(&target, b"# replaced\n");
+        assert!(result.is_err(), "writing to a read-only target must fail");
+
+        let after = fs::read(&target).expect("read target");
+        assert_eq!(after, original, "the original file must be preserved");
+
+        let leftovers: Vec<_> = fs::read_dir(&root)
+            .expect("read dir")
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .filter(|name| name.contains(".tmp."))
+            .collect();
+        assert!(
+            leftovers.is_empty(),
+            "no temporary file may be left behind: {leftovers:?}"
+        );
+
+        // 後始末。Windows では読み取り専用属性を落とさないと削除できない。
+        // 本アプリは Windows 専用で、対象は temp 配下のテスト用ファイルに限られる。
+        #[allow(clippy::permissions_set_readonly_false)]
+        {
+            let mut perms = fs::metadata(&target).expect("metadata").permissions();
+            perms.set_readonly(false);
+            let _ = fs::set_permissions(&target, perms);
+        }
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn json_body_to_bytes_accepts_a_byte_array_and_rejects_anything_else() {
         // BUG-TAURI-RAW-REQUEST-001: JSON 経路で届いたバイト列を受けられること。
         let value = serde_json::json!([0, 1, 254, 255]);

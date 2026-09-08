@@ -2,10 +2,27 @@
 
 ## Unreleased
 
+### Added
+
+- Documents now open as tabs above the editor instead of replacing what you are editing. Each tab keeps its own text, undo/redo history, cursor position and scroll, encoding, BOM, line ending, read-only state and unsaved-diff baseline, so switching tabs never mixes one document's settings into another. `+` opens a new untitled tab; `New` still creates a file inside the opened folder when a folder is open. A tab with unsaved changes is marked (in text and in its accessible name, not by color alone) and closing it asks whether to save, discard, or go back.
+- Desktop edition: opening another `.md` from Explorer while the app is running now adds it as a tab in the existing window and brings that window to the front, instead of starting a second copy of the app. A file that is already open just gets its tab selected. Copies of the app placed in different folders stay independent, so a portable copy on a USB drive and an installed copy do not merge into one window. This is implemented with `tauri-plugin-single-instance`, whose exclusion key is derived only from the app identifier; because every edition of this app ships the same identifier, the identifier is extended at startup with a hash of the directory the exe runs from so that different placements do not collide.
+- Tabs, and empty space in the tab row, now have a right-click context menu: new tab, close this tab / other tabs / tabs to the right (a multi-close confirms each unsaved document in turn and stops on the first cancel, the same as closing the window), and copy file name / path. Items that need a save location (path, and open in Explorer) are hidden for untitled tabs, and the Explorer item only appears in the desktop edition.
+
 ### Security
 
 - Added `SECURITY.md` describing how to report a vulnerability privately (GitHub Security Advisories).
 - Desktop edition: reject a symlink or Windows reparse point (junction) as the direct target of a filesystem command (read, write, rename, delete, move/copy source, open in Explorer). Directory listing and recursive copy already excluded such entries; this closes the remaining gap where a planted link at the exact path a command operates on could redirect the operation to an unintended file, including the narrow window between listing a folder and later acting on one of its entries.
+
+### Changed
+
+- Closing the window now confirms each unsaved document in turn, offering save / discard / go back per document, and stops the exit as soon as one of them is cancelled or a save fails. Previously a single prompt covered every unsaved document at once. The Browser edition keeps the standard `beforeunload` prompt, because a page cannot show its own dialog and wait for it there.
+- Desktop edition: the WebView2 user-data location is now pinned explicitly instead of being derived from the app identifier. Behavior is unchanged for existing installs — this keeps the Microsoft Store edition pointing at the same folder it has always used, so language, theme, recent files and the last opened folder survive the identifier change described above.
+
+### Fixed
+
+- Changing the character encoding or toggling read-only while a confirmation dialog was open could apply the result to whichever document was active when the dialog closed, rather than the document the question was asked about. Both paths now pin the target document and do nothing if the user switched tabs in the meantime.
+- Opening a file through the file association no longer skips the parent-folder tree when another document operation starts while the file is loading. The guard was checking a generation token that belonged to the startup untitled tab rather than to the document being opened. The same defect in the drag-and-drop file path is fixed as well.
+- A `.md` handed to an already-running instance can no longer be dropped in the window between the frontend signalling readiness and its listener being registered.
 
 ## 0.3.3 - 2026-08-17
 

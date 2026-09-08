@@ -90,7 +90,16 @@ assert.strictEqual(context.bytesToArrayBuffer(buffer), buffer);
 const viewSource = new Uint8Array([9, 8, 7, 6]);
 const view = viewSource.subarray(1, 3);
 assert.deepEqual(Array.from(new Uint8Array(context.bytesToArrayBuffer(view))), [8, 7]);
-assert.throws(() => context.bytesToArrayBuffer([1, 2, 3]), /non-binary/);
+// BUG-TAURI-RAW-RESPONSE-001: ここは以前「素の配列は拒否する」を期待値にしていたが、
+// それは実機の挙動と逆だった。desktop_read_file_bytes が tauri::ipc::Response を返しても、
+// この IPC 経路では ArrayBuffer ではなく数値の配列として届く（実測で確認）。拒否する実装だと
+// Desktop 版でファイルを 1 つも開けない。配列は受け入れ、バイト列でないものだけ拒否する。
+assert.deepEqual(
+  Array.from(new Uint8Array(context.bytesToArrayBuffer([1, 2, 3]))),
+  [1, 2, 3]
+);
+assert.throws(() => context.bytesToArrayBuffer("not bytes"), /non-binary/);
+assert.throws(() => context.bytesToArrayBuffer(null), /non-binary/);
 
 assert.match(html, /invokeTauriRaw\("desktop_write_file_bytes", bytes/);
 assert.doesNotMatch(html.slice(html.indexOf('invokeTauriRaw("desktop_write_file_bytes"'), html.indexOf('invokeTauriRaw("desktop_write_file_bytes"') + 500), /Array\.from\(bytes\)/);
@@ -107,5 +116,19 @@ assert.match(rust, /if should_prevent_close\(frontend_ready\)/);
 assert.match(rust, /close_guard_stays_disabled_until_frontend_ready/);
 assert.match(html, /await invokeTauri\("desktop_frontend_ready"\)/);
 assert.match(html, /closeGuardSetupFailed/);
+
+// LAUNCH-RS-001..004: 2 本目の exe 起動を既存ウィンドウへ渡す配線（plan_document-tabs.md C3）。
+assert.match(rust, /\.plugin\(tauri_plugin_single_instance::init\(/);
+assert.match(rust, /fn desktop_take_pending_launch_paths/);
+assert.match(rust, /desktop_take_pending_launch_paths,/);
+assert.match(rust, /"desktop-open-launch-paths"/);
+assert.match(rust, /fn placement_scoped_identifier\(base: &str, exe_dir: &str\) -> String/);
+assert.match(rust, /let mut context = tauri::generate_context!\(\);/);
+assert.match(rust, /context\.config_mut\(\)\.identifier = scoped_identifier;/);
+assert.match(rust, /\.run\(context\);/);
+assert.match(rust, /struct PendingLaunchPathsState/);
+assert.match(rust, /fn placement_scoped_identifier_is_deterministic_and_placement_sensitive/);
+assert.match(rust, /fn secondary_instance_launch_paths_filters_and_dedupes/);
+assert.match(rust, /fn pending_launch_queue_drops_new_entries_once_full/);
 
 console.log("OK Tauri IPC and lifecycle contracts");

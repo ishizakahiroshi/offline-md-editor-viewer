@@ -269,6 +269,7 @@
     }
 
     .current-document-bar {
+      display: block;
       min-width: 0;
       padding: 5px 16px;
       border-bottom: 1px solid var(--line);
@@ -281,6 +282,161 @@
 
     [data-density="compact"] .current-document-bar {
       padding: 3px 12px;
+    }
+
+    .document-tabs-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .document-tabs {
+      display: flex;
+      align-items: stretch;
+      flex: 1 1 auto;
+      min-width: 0;
+      gap: 4px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line) transparent;
+    }
+
+    .document-tab {
+      display: flex;
+      align-items: stretch;
+      flex: 0 0 auto;
+      min-width: 100px;
+      max-width: 260px;
+      min-height: 34px;
+      border: 1px solid transparent;
+      border-radius: 7px 7px 0 0;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .document-tab.is-active {
+      border-color: var(--line);
+      border-bottom-color: var(--toolbar-bg);
+      background: var(--panel-bg);
+      color: var(--text);
+      margin-bottom: -1px;
+    }
+
+    .document-tab-select,
+    .document-tab-close {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .document-tab-select {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      flex: 1 1 auto;
+      padding: 6px 7px 6px 10px;
+      text-align: left;
+    }
+
+    .document-tab-select:hover,
+    .document-tab-select:focus-visible,
+    .document-tab-close:hover,
+    .document-tab-close:focus-visible {
+      color: var(--text);
+      outline: none;
+    }
+
+    .document-tab-select:focus-visible,
+    .document-tab-close:focus-visible {
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .document-tab-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--mono-font);
+      font-size: calc(0.78rem * var(--app-font-scale));
+      font-weight: 700;
+    }
+
+    .document-tab-dirty {
+      flex: 0 0 auto;
+      color: var(--accent);
+      font-size: 0.85em;
+    }
+
+    .document-tab-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 28px;
+      margin: 4px 3px 4px 0;
+      border-radius: 5px;
+      color: var(--muted);
+    }
+
+    .document-tab-close svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .document-tab-list {
+      flex: 0 1 min(240px, 32vw);
+      min-width: 120px;
+      max-width: 240px;
+      height: var(--control-height);
+      padding: 0 28px 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--text);
+      font: inherit;
+      font-size: calc(0.78rem * var(--app-font-scale));
+      text-overflow: ellipsis;
+    }
+
+    .icon-btn.document-tab-add {
+      flex: 0 0 var(--control-height);
+      width: var(--control-height);
+      min-width: var(--control-height);
+      padding: 0;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .document-path-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      margin-top: 2px;
+    }
+
+    .document-path-row[hidden] {
+      display: none;
+    }
+
+    .document-path-row .current-document-copy {
+      width: auto;
+      max-width: 100%;
+      flex: 0 1 auto;
+    }
+
+    .document-path {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-family: var(--mono-font);
+      font-size: calc(0.72rem * var(--app-font-scale));
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .current-document-copy {
@@ -1321,6 +1477,28 @@
       display: none;
     }
 
+    .document-close-overlay {
+      z-index: 62;
+    }
+
+    .document-close-dialog {
+      width: min(560px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-bg);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .document-close-actions {
+      flex-wrap: wrap;
+    }
+
+    .document-close-actions #documentCloseSaveBtn {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
     .confirm-dialog {
       width: min(520px, 100%);
       border: 1px solid var(--line);
@@ -2310,6 +2488,11 @@
     [data-density="compact"] .context-menu button {
       min-height: 30px;
       padding: 5px 8px;
+    }
+
+    /* .context-menu button の display:block が UA の [hidden]{display:none} に勝つため、per-item hidden 切替を使う documentTabContextMenu だけ明示的に打ち消す */
+    #documentTabContextMenu button[hidden] {
+      display: none;
     }
 
     .context-menu button:hover {
@@ -3578,6 +3761,10 @@
         padding-left: 10px;
       }
 
+      .document-tab-list {
+        flex-basis: 150px;
+      }
+
       .view-toggle-text {
         display: none;
       }
@@ -4096,25 +4283,43 @@
       </div>
     </div>
 
-    <div id="currentDocumentBar" class="current-document-bar" hidden>
-      <button id="copyCurrentDocumentNameBtn" class="current-document-copy" type="button">
-        <span class="current-document-file-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-        </span>
-        <span id="currentDocumentName" class="current-document-name"></span>
-        <span class="current-document-action" aria-hidden="true">
-          <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </span>
-      </button>
+    <div id="currentDocumentBar" class="current-document-bar">
+      <div class="document-tabs-row">
+        <div id="documentTabs" class="document-tabs" role="tablist" aria-label="Open documents"></div>
+        <button id="newDocumentTabBtn" class="icon-btn document-tab-add" type="button" aria-label="New document" data-ui-tooltip="New document">+</button>
+        <select id="documentTabList" class="document-tab-list" aria-label="Document list"></select>
+      </div>
+      <div id="currentDocumentPathRow" class="document-path-row" hidden>
+        <button id="copyCurrentDocumentNameBtn" class="current-document-copy" type="button">
+          <span class="current-document-file-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </span>
+          <span id="currentDocumentName" class="current-document-name"></span>
+          <span class="current-document-action" aria-hidden="true">
+            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </span>
+        </button>
+        <span id="currentDocumentPath" class="document-path"></span>
+      </div>
+    </div>
+
+    <div id="documentTabContextMenu" class="context-menu hidden" role="menu">
+      <button id="newDocumentTabMenuBtn" type="button" role="menuitem"></button>
+      <button id="closeDocumentTabMenuBtn" type="button" role="menuitem"></button>
+      <button id="closeOtherDocumentTabsMenuBtn" type="button" role="menuitem"></button>
+      <button id="closeDocumentTabsToRightMenuBtn" type="button" role="menuitem"></button>
+      <button id="tabCopyFileNameMenuBtn" type="button" role="menuitem"></button>
+      <button id="tabCopyPathMenuBtn" type="button" role="menuitem"></button>
+      <button id="tabOpenInExplorerMenuBtn" type="button" role="menuitem"></button>
     </div>
 
     <div id="appMenuPanel" class="app-menu hidden" role="dialog" aria-modal="false" aria-labelledby="appMenuTitle">
@@ -4405,6 +4610,22 @@
           <div class="confirm-actions">
             <button id="confirmCancelBtn" class="btn" type="button">Cancel</button>
             <button id="confirmOkBtn" class="btn" type="button">OK</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="documentCloseOverlay" class="document-close-overlay modal-overlay" hidden>
+      <section class="document-close-dialog" role="dialog" aria-modal="true" aria-labelledby="documentCloseTitle">
+        <div class="confirm-header">
+          <h2 id="documentCloseTitle" class="confirm-title"></h2>
+        </div>
+        <div class="confirm-body">
+          <p id="documentCloseMessage" class="confirm-message"></p>
+          <div class="confirm-actions document-close-actions">
+            <button id="documentCloseCancelBtn" class="btn" type="button"></button>
+            <button id="documentCloseDiscardBtn" class="btn" type="button"></button>
+            <button id="documentCloseSaveBtn" class="btn" type="button"></button>
           </div>
         </div>
       </section>
@@ -4705,7 +4926,20 @@
     (() => {
       const appTitle = document.getElementById("appTitle");
       const currentDocumentBar = document.getElementById("currentDocumentBar");
+      const documentTabs = document.getElementById("documentTabs");
+      const newDocumentTabBtn = document.getElementById("newDocumentTabBtn");
+      const documentTabList = document.getElementById("documentTabList");
+      const documentTabContextMenu = document.getElementById("documentTabContextMenu");
+      const newDocumentTabMenuBtn = document.getElementById("newDocumentTabMenuBtn");
+      const closeDocumentTabMenuBtn = document.getElementById("closeDocumentTabMenuBtn");
+      const closeOtherDocumentTabsMenuBtn = document.getElementById("closeOtherDocumentTabsMenuBtn");
+      const closeDocumentTabsToRightMenuBtn = document.getElementById("closeDocumentTabsToRightMenuBtn");
+      const tabCopyFileNameMenuBtn = document.getElementById("tabCopyFileNameMenuBtn");
+      const tabCopyPathMenuBtn = document.getElementById("tabCopyPathMenuBtn");
+      const tabOpenInExplorerMenuBtn = document.getElementById("tabOpenInExplorerMenuBtn");
+      const currentDocumentPathRow = document.getElementById("currentDocumentPathRow");
       const currentDocumentName = document.getElementById("currentDocumentName");
+      const currentDocumentPath = document.getElementById("currentDocumentPath");
       const copyCurrentDocumentNameBtn = document.getElementById("copyCurrentDocumentNameBtn");
       const newBtn = document.getElementById("newBtn");
       const openBtn = document.getElementById("openBtn");
@@ -4793,6 +5027,12 @@
       const confirmMessage = document.getElementById("confirmMessage");
       const confirmCancelBtn = document.getElementById("confirmCancelBtn");
       const confirmOkBtn = document.getElementById("confirmOkBtn");
+      const documentCloseOverlay = document.getElementById("documentCloseOverlay");
+      const documentCloseTitle = document.getElementById("documentCloseTitle");
+      const documentCloseMessage = document.getElementById("documentCloseMessage");
+      const documentCloseCancelBtn = document.getElementById("documentCloseCancelBtn");
+      const documentCloseDiscardBtn = document.getElementById("documentCloseDiscardBtn");
+      const documentCloseSaveBtn = document.getElementById("documentCloseSaveBtn");
       const resetSettingsBtn = document.getElementById("resetSettingsBtn");
       const resetSettingsText = document.getElementById("resetSettingsText");
       const sourceExtBadge = document.getElementById("sourceExtBadge");
@@ -4983,6 +5223,9 @@ Edits on the left source pane update the right preview pane in real time. \`Save
 In edit mode, use \`Ctrl/Cmd+F\` to open the floating find bar and \`Ctrl/Cmd+H\` or \`Ctrl/Cmd+R\` to expand replace controls. \`Enter\` moves to the next match, \`Shift+Enter\` moves to the previous match, and \`Esc\` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. \`(?<=foo)bar\`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 Press \`Ctrl/Cmd+K\` (or \`Ctrl/Cmd+Shift+P\`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press \`Esc\` to exit.
+Open documents are listed as tabs above the editor. Click a tab to switch. Each document keeps its own text, undo history, cursor position, encoding, BOM, line ending and read-only state, so switching tabs never mixes one document's settings into another. \`+\` opens a new untitled tab. \`New\` creates a file in the opened folder when a folder is open, and otherwise opens an untitled tab; either way it no longer replaces what you are currently editing. A tab with unsaved changes is marked, and closing it asks whether to save, discard, or go back. Closing the window asks the same for each unsaved document in turn, and cancelling any one of them stops the exit.
+
+Right-clicking a tab, or an empty area of the tab row, opens a context menu for creating a new tab, closing tabs (this one, others, or those to the right), and copying the file name or path. The desktop app also adds an item there to open the file's folder in Explorer.
 
 ## Use in the Browser
 
@@ -5043,6 +5286,9 @@ Editing, rendering, and preview share the same HTML on both editions, so **the c
 | Rename folders in the tree | | ✓ |
 | Moving files and folders inside the tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 | Copy external files/folders into the opened tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Opening a file from Explorer adds a tab to the running window instead of starting another copy | | ✓ |
+
+On the Desktop edition, opening another \`.md\` from Explorer while the app is running adds it as a tab in the existing window and brings that window to the front, instead of starting a second copy of the app. A file that is already open just gets its tab selected. Copies of the app placed in different folders stay independent of each other, so a portable copy on a USB drive and an installed copy do not merge into one window.
 
 ## Build the Windows Desktop App
 
@@ -5205,6 +5451,9 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 編集モードでは \`Ctrl/Cmd+F\` でフローティング検索バーを開き、\`Ctrl/Cmd+H\` または \`Ctrl/Cmd+R\` で置換操作まで展開できます。\`Enter\` で次の一致、\`Shift+Enter\` で前の一致へ移動し、\`Esc\` で閉じます。大小文字区別、単語単位、正規表現検索に対応しています。なお正規表現置換では、前後の文脈に依存する後読み/先読み（例: \`(?<=foo)bar\`）は、置換が一致した部分文字列ごとに適用される都合上、正しく置換されない場合があります。
 
 \`Ctrl/Cmd+K\`（または \`Ctrl/Cmd+Shift+P\`）でコマンドパレットを開き、主要な操作をキーボードから実行できます。Zen モードは周囲のパネルを隠して執筆に集中でき、\`Esc\` で終了します。
+開いている文書はエディタ上部にタブとして並びます。タブをクリックすると切り替わります。本文・アンドゥ履歴・カーソル位置・文字コード・BOM・改行コード・読み取り専用は文書ごとに保持されるので、タブを切り替えても別の文書の設定が混ざることはありません。\`+\` は無題のタブを新しく開きます。\`新規\` はフォルダを開いているときはそのフォルダ内にファイルを作り、開いていないときは無題のタブを開きます。どちらの場合も、いま編集中の内容を置き換えることはなくなりました。未保存のタブには印が付き、閉じるときに「保存して閉じる／破棄／戻る」を確認します。ウィンドウを閉じるときも未保存の文書を 1 件ずつ同じ形で確認し、どれか 1 つでも取り消すと終了しません。
+
+タブ、またはタブ列の空きを右クリックすると、新しいタブ・閉じる系（このタブ／他のタブ／右側のタブ）・コピー系（ファイル名／パス）のメニューが出ます。Desktop 版では、ファイルの場所をエクスプローラーで開く項目も出ます。
 
 ## ブラウザだけで使う
 
@@ -5259,6 +5508,9 @@ macOS / Linux 版のデスクトップアプリは将来対応予定です。そ
 | ツリー内でのフォルダ名変更 | | ✓ |
 | ツリー内でのファイル/フォルダのドラッグ&ドロップ移動 | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
 | 外部からドラッグ&ドロップしたファイル/フォルダを開いているツリーへコピー | ✓（Chrome 標準の File System Access API 利用時） | ✓ |
+| エクスプローラーからファイルを開くと、別のコピーを起動せず実行中のウィンドウにタブが増える | | ✓ |
+
+デスクトップ版では、アプリの起動中にエクスプローラーから別の \`.md\` を開くと、アプリがもう 1 つ起動するのではなく、既存のウィンドウにタブが増えてそのウィンドウが前面に出ます。すでに開いているファイルなら、そのタブが選択されるだけです。別のフォルダに置いたコピー同士は独立したままなので、USB メモリのポータブル版とインストール済みの版が 1 つのウィンドウにまとまってしまうことはありません。
 
 ## Windows デスクトップアプリのビルド
 
@@ -5464,19 +5716,146 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const MIN_CONTENT_W = 220;
       const STACKED_LAYOUT_QUERY = "(max-width: 1100px)";
       let syncingScroll = false;
-      const fileState = {
-        handle: null,                    // 旧: currentFileHandle
-        encoding: "utf-8",              // 旧: currentFileEncoding
-        bom: false,                     // 旧: currentFileBom
-        lineEnding: "lf",               // 旧: currentFileLineEnding
-        buffer: null,                   // 旧: currentFileBuffer
-        unsaved: false,                 // 旧: hasUnsavedChanges
-        readOnly: false,                // 旧: isReadOnlyMode
-        hasContent: false,              // 旧: hasContent（true after new/open/file load）
-        viewMode: "markdown",           // 旧: currentFileViewMode（"markdown" | "plain"）
-        previewAutoCollapsed: false,    // 旧: previewAutoCollapsed（true while a non-Markdown file is loaded）
-        baselineText: "",               // last loaded/saved text for unsaved diff
-      };
+      function createDocumentState(id, overrides = {}) {
+        return {
+          id,
+          untitledNumber: 0,
+          name: "",
+          handle: null,                    // 旧: currentFileHandle
+          directoryRootHandle: null,       // folder handle/path used to open this document
+          directoryRootPath: "",
+          directoryRootName: "",
+          directoryEntryPath: "",
+          directoryEntryTauriPath: "",
+          encoding: "utf-8",              // 旧: currentFileEncoding
+          bom: false,                     // 旧: currentFileBom
+          lineEnding: "lf",               // 旧: currentFileLineEnding
+          buffer: null,                   // 旧: currentFileBuffer
+          unsaved: false,                 // 旧: hasUnsavedChanges
+          readOnly: false,                // 旧: isReadOnlyMode
+          hasContent: false,              // 旧: hasContent（true after new/open/file load）
+          viewMode: "markdown",           // 旧: currentFileViewMode（"markdown" | "plain"）
+          previewAutoCollapsed: false,    // 旧: previewAutoCollapsed（true while a non-Markdown file is loaded）
+          baselineText: "",               // last loaded/saved text for unsaved diff
+          text: "",
+          selectionStart: 0,
+          selectionEnd: 0,
+          sourceScrollTop: 0,
+          sourceScrollLeft: 0,
+          previewScrollTop: 0,
+          loadGeneration: 0,
+          renderGeneration: 0,
+          undoStack: [],
+          redoStack: [],
+          compositionSnapshot: null,
+          closed: false,
+          ...overrides,
+        };
+      }
+      const documentStates = new Map();
+      let nextDocumentId = 1;
+      let nextUntitledNumber = 1;
+      let activeDocumentId = `document-${nextDocumentId++}`;
+      let tabContextMenuDocumentId = null;
+      documentStates.set(activeDocumentId, createDocumentState(activeDocumentId, {
+        untitledNumber: nextUntitledNumber++
+      }));
+      const fileState = new Proxy({}, {
+        get(_target, property) {
+          const state = documentStates.get(activeDocumentId);
+          return state ? state[property] : undefined;
+        },
+        set(_target, property, value) {
+          const state = documentStates.get(activeDocumentId);
+          if (!state) return false;
+          state[property] = value;
+          return true;
+        },
+        ownKeys() {
+          const state = documentStates.get(activeDocumentId);
+          return state ? Reflect.ownKeys(state) : [];
+        },
+        getOwnPropertyDescriptor() {
+          return { configurable: true, enumerable: true };
+        },
+      });
+      function getDocumentState(documentId = activeDocumentId) {
+        return documentStates.get(documentId) || null;
+      }
+      function addDocumentState(overrides = {}) {
+        const id = `document-${nextDocumentId++}`;
+        const state = createDocumentState(id, {
+          untitledNumber: nextUntitledNumber++,
+          ...overrides,
+        });
+        documentStates.set(id, state);
+        return state;
+      }
+      function captureActiveDocumentState() {
+        const state = getDocumentState();
+        if (!state) return null;
+        state.text = source.value;
+        state.selectionStart = source.selectionStart || 0;
+        state.selectionEnd = source.selectionEnd || 0;
+        state.sourceScrollTop = source.scrollTop || 0;
+        state.sourceScrollLeft = source.scrollLeft || 0;
+        state.previewScrollTop = preview.scrollTop || 0;
+        return state;
+      }
+      function activateDocumentState(documentId) {
+        const next = getDocumentState(documentId);
+        if (!next || next.closed) return false;
+        captureActiveDocumentState();
+        clearTimeout(renderDebounceTimer);
+        renderDebounceTimer = null;
+        findGeneration += 1;
+        regexFindRequestId += 1;
+        disposeRegexFindWorker();
+        findState.matches = [];
+        findState.currentIndex = -1;
+        findState.error = "";
+        findState.capped = false;
+        findState.pending = false;
+        sourceIsComposing = false;
+        sourceCompositionChanged = false;
+        sourceCompositionFlushText = null;
+        activeDocumentId = documentId;
+        source.value = next.text;
+        source.setSelectionRange(next.selectionStart, next.selectionEnd);
+        source.scrollTop = next.sourceScrollTop;
+        source.scrollLeft = next.sourceScrollLeft;
+        setEncodingSelectValue(next.encoding);
+        bomCheckbox.checked = next.bom;
+        lineEndingSelect.value = next.lineEnding;
+        setReadOnlyMode(next.readOnly);
+        updateCardLayout();
+        updateEditorMetrics();
+        renderContent(next.text);
+        preview.scrollTop = next.previewScrollTop;
+        if (isFindBarOpen()) refreshFindMatches(next.selectionStart);
+        setDirtyState(next.unsaved);
+        setAppDocumentTitle(next.name || (next.handle && next.handle.name) || null);
+        if (typeof syncDirectorySelectionForDocument === "function") syncDirectorySelectionForDocument(next);
+        if (typeof renderDocumentTabs === "function") renderDocumentTabs();
+        return true;
+      }
+      function closeDocumentState(documentId) {
+        const state = getDocumentState(documentId);
+        if (!state) return false;
+        state.closed = true;
+        state.loadGeneration += 1;
+        state.renderGeneration += 1;
+        state.buffer = null;
+        state.undoStack.length = 0;
+        state.redoStack.length = 0;
+        documentStates.delete(documentId);
+        if (activeDocumentId === documentId) {
+          const fallback = documentStates.keys().next().value;
+          if (fallback) activateDocumentState(fallback);
+        }
+        renderDocumentTabs();
+        return true;
+      }
       let wrapEnabled = safeLocalStorageGet(STORAGE_WRAP_ENABLED_KEY) !== "false";
       let eofMarkerEnabled = safeLocalStorageGet(STORAGE_EOF_MARKER_KEY) === "true";
       let lineRanges = [{ start: 0, end: 0, text: "" }];
@@ -5498,17 +5877,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       let sourceProgrammaticChange = false;
       let promptResolver = null;
       let confirmResolver = null;
+      let documentCloseResolver = null;
       let tauriCloseGuardInstalled = false;
       let closingAfterUnsavedConfirm = false;
       // BUG-LOAD-RACE-001: 並行 load の完了順序逆転を防ぐ世代トークン。
       // beginFileLoad() で採番し、await 後に isFileLoadCurrent(gen) が false なら apply しない。
-      let loadGeneration = 0;
-      function beginFileLoad() {
-        loadGeneration += 1;
-        return loadGeneration;
+      function beginFileLoad(documentId = activeDocumentId) {
+        const state = getDocumentState(documentId);
+        if (!state || state.closed) return null;
+        state.loadGeneration += 1;
+        return { documentId, generation: state.loadGeneration };
       }
-      function isFileLoadCurrent(gen) {
-        return gen === loadGeneration;
+      function isFileLoadCurrent(token) {
+        if (!token) return false;
+        const state = getDocumentState(token.documentId);
+        return !!state && !state.closed && state.loadGeneration === token.generation;
       }
       // BUG-INIT-002: restore は起動時の一時処理として扱い、明示的な file/folder
       // 操作または関連付け起動が始まったら失効させる。遅い restore の完了が、後から
@@ -5589,6 +5972,19 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         // ===== ui group =====
         "ui.appTitle": [APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME],
         "ui.newBtn": ["New", "新規作成", "新增", "新建", "Nuevo", "Neu", "새로 만들기", "Novo", "Новый", "Mới", "Nouveau", "Nuovo", "Baru"],
+        "ui.documentTabs": ["Open documents", "開いている文書", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents", "Open documents"],
+        "ui.documentTabList": ["Document list", "文書一覧", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list", "Document list"],
+        "ui.newDocumentTab": ["New document", "新しい文書", "New document", "New document", "New document", "New document", "New document", "New document", "New document", "New document", "New document", "New document", "New document"],
+        "ui.closeDocumentTab": ["Close {name}", "{name}を閉じる", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}", "Close {name}"],
+        "ui.closeThisDocumentTab": ["Close this tab", "このタブを閉じる", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab", "Close this tab"],
+        "ui.closeOtherDocumentTabs": ["Close other tabs", "他のタブを閉じる", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs", "Close other tabs"],
+        "ui.closeDocumentTabsToRight": ["Close tabs to the right", "右側のタブを閉じる", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right", "Close tabs to the right"],
+        "ui.copyDocumentPath": ["Copy path", "パスをコピー", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path", "Copy path"],
+        "ui.openDocumentInExplorer": ["Open in Explorer", "エクスプローラーで開く", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer", "Open in Explorer"],
+        "ui.untitledDocument": ["Untitled", "無題", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled", "Untitled"],
+        "ui.unsavedDocument": ["Unsaved", "未保存", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved", "Unsaved"],
+        "ui.saveAndClose": ["Save and close", "保存して閉じる", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close", "Save and close"],
+        "ui.discardAndClose": ["Discard and close", "破棄して閉じる", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close", "Discard and close"],
         "ui.githubLink": ["Check for updates", "更新を確認", "檢查更新", "检查更新", "Buscar actualizaciones", "Nach Updates suchen", "업데이트 확인", "Verificar atualizacoes", "Проверить обновления", "Kiểm tra cập nhật", "Vérifier les mises à jour", "Verifica aggiornamenti", "Periksa pembaruan"],
         "ui.githubVersion": ["{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}", "{version}"],
         "ui.githubTitle": ["Open GitHub for updates", "最新版をGitHubで確認", "開啟 GitHub 查看更新", "在 GitHub 上查看最新版本", "Abrir GitHub para actualizaciones", "GitHub fuer Updates oeffnen", "GitHub에서 업데이트 열기", "Abrir GitHub para atualizacoes", "Открыть GitHub для обновлений", "Mở GitHub để cập nhật", "Ouvrir GitHub pour les mises à jour", "Apri GitHub per gli aggiornamenti", "Buka GitHub untuk pembaruan"],
@@ -6138,6 +6534,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.permissionDenied": ["Write permission was not granted.", "書き込み権限が許可されなかったため、保存できませんでした。", "未獲得寫入權限。", "未获得写入权限。", "No se concedió permiso de escritura.", "Schreibberechtigung wurde nicht erteilt.", "쓰기 권한이 허용되지 않았습니다.", "A permissao de escrita nao foi concedida.", "Разрешение на запись не предоставлено.", "Quyền ghi chưa được cấp.", "L'autorisation d'écriture n'a pas été accordée.", "Autorizzazione di scrittura non concessa.", "Izin tulis tidak diberikan."],
         "status.saveHint": ["Save will overwrite the target file. Continue?", "元ファイルへ上書き保存します。よろしいですか？", "儲存將覆寫目標檔案，是否繼續？", "将覆盖目标文件,是否继续?", "Guardar sobrescribirá el archivo destino. ¿Continuar?", "Speichern ueberschreibt die Zieldatei. Fortfahren?", "저장하면 대상 파일을 덮어씁니다. 계속할까요?", "Salvar ira sobrescrever o arquivo de destino. Continuar?", "Сохранение перезапишет целевой файл. Продолжить?", "Lưu sẽ ghi đè tệp đích. Tiếp tục?", "L'enregistrement écrasera le fichier cible. Continuer ?", "Il salvataggio sovrascriverà il file di destinazione. Continuare?", "Simpan akan menimpa file target. Lanjutkan?"],
         "status.unsavedNavigationConfirm": ["You have unsaved changes. Leave without saving?", "未保存の編集があります。保存せずに移動しますか？", "您有未儲存的變更，確定要離開嗎？", "存在未保存的更改。要不保存就离开吗?", "Tienes cambios sin guardar. ¿Salir sin guardar?", "Sie haben ungespeicherte Aenderungen. Ohne Speichern verlassen?", "저장하지 않은 변경 사항이 있습니다. 저장하지 않고 나갈까요?", "Voce tem alteracoes nao salvas. Sair sem salvar?", "Есть несохраненные изменения. Выйти без сохранения?", "Bạn có thay đổi chưa lưu. Rời đi mà không lưu?", "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?", "Hai modifiche non salvate. Vuoi uscire senza salvare?", "Ada perubahan yang belum disimpan. Keluar tanpa menyimpan?"],
+        "status.unsavedTabCloseMessage": ["{name} has unsaved changes. Save before closing?", "{name}には未保存の編集があります。閉じる前に保存しますか？", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?"],
+        "status.documentTabClosed": ["Document closed", "文書を閉じました", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed"],
         "status.unsavedCloseConfirm": ["You have unsaved changes. Closing now will discard them. Close anyway?", "未保存の編集があります。保存せずに閉じると変更は消えます。閉じますか？", "您有未儲存的變更。現在關閉會捨棄這些內容。仍要關閉嗎？", "存在未保存的更改。现在关闭会丢失这些内容。仍要关闭吗?", "Tienes cambios sin guardar. Si cierras ahora se descartaran. ¿Cerrar igualmente?", "Sie haben ungespeicherte Aenderungen. Beim Schliessen werden sie verworfen. Trotzdem schliessen?", "저장하지 않은 변경 사항이 있습니다. 지금 닫으면 내용이 사라집니다. 그래도 닫을까요?", "Voce tem alteracoes nao salvas. Ao fechar agora, elas serao descartadas. Fechar mesmo assim?", "Есть несохраненные изменения. Если закрыть сейчас, они будут потеряны. Все равно закрыть?", "Bạn có thay đổi chưa lưu. Đóng bây giờ sẽ làm mất chúng. Vẫn đóng?", "Vous avez des modifications non enregistrées. Fermer maintenant les supprimera. Fermer quand même ?", "Hai modifiche non salvate. Chiudendo ora verranno scartate. Chiudere comunque?", "Ada perubahan yang belum disimpan. Menutup sekarang akan membuangnya. Tetap tutup?"],
         "status.closeFailed": ["Close failed: ", "終了に失敗: ", "關閉失敗：", "关闭失败: ", "Error al cerrar: ", "Schliessen fehlgeschlagen: ", "닫기 실패: ", "Falha ao fechar: ", "Не удалось закрыть: ", "Đóng thất bại: ", "Échec de la fermeture : ", "Chiusura non riuscita: ", "Gagal menutup: "],
         "status.closeGuardSetupFailed": ["Desktop close protection is unavailable; native close remains enabled.", "デスクトップの終了保護を有効にできませんでした。通常の終了操作は利用できます。", "桌面關閉保護無法啟用；仍可使用系統關閉。", "无法启用桌面关闭保护；仍可使用系统关闭。", "La protección de cierre de escritorio no está disponible; el cierre nativo sigue habilitado.", "Der Desktop-Schliessschutz ist nicht verfügbar; das normale Schliessen bleibt aktiviert.", "데스크톱 닫기 보호를 사용할 수 없어 기본 닫기 동작을 유지합니다.", "A proteção de fechamento da área de trabalho não está disponível; o fechamento nativo continua habilitado.", "Защита закрытия рабочего стола недоступна; обычное закрытие остается включенным.", "Không thể bật bảo vệ đóng desktop; thao tác đóng gốc vẫn được phép.", "La protection de fermeture du bureau est indisponible ; la fermeture native reste activée.", "La protezione di chiusura desktop non è disponibile; la chiusura nativa resta abilitata.", "Perlindungan penutupan desktop tidak tersedia; penutupan native tetap aktif."],
@@ -6582,6 +6980,143 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return t("ui", uiKey).replace(/^([^\s（(]+)/, "$1*");
       }
 
+      function getDocumentTabLabel(state) {
+        if (!state) return t("ui", "untitledDocument");
+        const name = state.name || (state.handle && state.handle.name) || "";
+        if (name) return name;
+        const base = t("ui", "untitledDocument");
+        return state.untitledNumber > 1 ? `${base} ${state.untitledNumber}` : base;
+      }
+
+      function getDocumentPathLabel(state) {
+        if (!state) return "";
+        if (state.handle && state.handle.tauriPath) return String(state.handle.tauriPath);
+        if (state.directoryEntryPath) {
+          const root = state.directoryRootName || state.directoryRootPath || "";
+          return root ? `${String(root).replace(/[\\/]+$/, "")}/${state.directoryEntryPath}` : state.directoryEntryPath;
+        }
+        return "";
+      }
+
+      function renderDocumentTabs() {
+        if (!documentTabs || !documentTabList) return;
+        documentTabs.replaceChildren();
+        documentTabList.replaceChildren();
+        documentTabs.setAttribute("aria-label", t("ui", "documentTabs"));
+        documentTabList.setAttribute("aria-label", t("ui", "documentTabList"));
+        const states = Array.from(documentStates.values()).filter((state) => !state.closed);
+        states.forEach((state) => {
+          const label = getDocumentTabLabel(state);
+          const path = getDocumentPathLabel(state);
+          const tab = document.createElement("div");
+          tab.className = `document-tab${state.id === activeDocumentId ? " is-active" : ""}`;
+          tab.dataset.documentId = state.id;
+          if (path) tab.title = path;
+
+          const select = document.createElement("button");
+          select.type = "button";
+          select.className = "document-tab-select";
+          select.setAttribute("role", "tab");
+          select.setAttribute("aria-selected", String(state.id === activeDocumentId));
+          select.tabIndex = state.id === activeDocumentId ? 0 : -1;
+          const ariaParts = [label];
+          if (state.unsaved) ariaParts.push(t("ui", "unsavedDocument"));
+          if (path) ariaParts.push(path);
+          select.setAttribute("aria-label", ariaParts.join(", "));
+          const name = document.createElement("span");
+          name.className = "document-tab-name";
+          name.textContent = label;
+          select.appendChild(name);
+          if (state.unsaved) {
+            const dirty = document.createElement("span");
+            dirty.className = "document-tab-dirty";
+            dirty.textContent = "●";
+            dirty.setAttribute("aria-hidden", "true");
+            select.appendChild(dirty);
+          }
+          select.addEventListener("click", () => selectDocumentTab(state.id, { focus: true }));
+          select.addEventListener("keydown", (event) => {
+            const index = states.findIndex((item) => item.id === state.id);
+            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+              event.preventDefault();
+              let nextIndex = index;
+              if (event.key === "ArrowLeft") nextIndex = (index - 1 + states.length) % states.length;
+              if (event.key === "ArrowRight") nextIndex = (index + 1) % states.length;
+              if (event.key === "Home") nextIndex = 0;
+              if (event.key === "End") nextIndex = states.length - 1;
+              selectDocumentTab(states[nextIndex].id, { focus: true });
+              return;
+            }
+            if (event.key === "Delete" || event.key === "Backspace") {
+              event.preventDefault();
+              requestCloseDocument(state.id).catch((err) => {
+                setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+              });
+              return;
+            }
+            if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+              event.preventDefault();
+              const rect = select.getBoundingClientRect();
+              showDocumentTabContextMenu(state.id, rect.left, rect.bottom);
+            }
+          });
+          tab.appendChild(select);
+
+          const close = document.createElement("button");
+          close.type = "button";
+          close.className = "document-tab-close";
+          close.textContent = "×";
+          const closeLabel = t("ui", "closeDocumentTab").replace("{name}", label);
+          close.setAttribute("aria-label", closeLabel);
+          setUiTooltip(close, closeLabel);
+          close.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            requestCloseDocument(state.id).catch((err) => {
+              setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+            });
+          });
+          tab.appendChild(close);
+          documentTabs.appendChild(tab);
+
+          const option = document.createElement("option");
+          option.value = state.id;
+          option.textContent = `${state.unsaved ? "● " : ""}${label}${path ? ` — ${path}` : ""}`;
+          documentTabList.appendChild(option);
+        });
+        documentTabList.value = activeDocumentId;
+        newDocumentTabBtn.setAttribute("aria-label", t("ui", "newDocumentTab"));
+        setUiTooltip(newDocumentTabBtn, t("ui", "newDocumentTab"));
+      }
+
+      function selectDocumentTab(documentId, options = {}) {
+        const state = getDocumentState(documentId);
+        if (!state || state.closed) return false;
+        if (activeDocumentId !== documentId) activateDocumentState(documentId);
+        renderDocumentTabs();
+        if (options.focus) {
+          const button = documentTabs.querySelector(`[data-document-id="${CSS.escape(documentId)}"] .document-tab-select`);
+          if (button) {
+            button.focus();
+            button.scrollIntoView({ block: "nearest", inline: "nearest" });
+          }
+        }
+        return true;
+      }
+
+      function createUntitledDocument() {
+        const state = addDocumentState({ hasContent: false, name: "" });
+        activateDocumentState(state.id);
+        setStatus(t("status", "newCreated"), false);
+        renderDocumentTabs();
+        source.focus();
+        return state;
+      }
+
+      function hasUnsavedDocuments() {
+        return Array.from(documentStates.values()).some((state) => !state.closed && state.unsaved);
+      }
+
       let uiHoverTooltipEl = null;
       let uiHoverTooltipTarget = null;
       let uiHoverTooltipShowTimer = null;
@@ -6978,9 +7513,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function setAppDocumentTitle(fileName) {
-        if (fileName) {
-          document.title = `${fileName} - ${APP_NAME}`;
-          setCurrentFileName(fileName);
+        const state = getDocumentState();
+        const explicitName = arguments.length > 0;
+        const name = explicitName
+          ? (fileName || "")
+          : (state && (state.name || (state.handle && state.handle.name))) || "";
+        if (state && explicitName) state.name = name;
+        if (name) {
+          document.title = `${name} - ${APP_NAME}`;
+          setCurrentFileName(name);
           return;
         }
         document.title = tRoot("title");
@@ -6994,7 +7535,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           copyFileNameBtn.style.display = "inline-flex";
           setUiTooltip(copyFileNameBtn, t("ui", "copyFileName"));
           currentDocumentName.textContent = fileName;
-          currentDocumentBar.hidden = false;
+          currentDocumentPathRow.hidden = false;
+          const state = getDocumentState();
+          currentDocumentPath.textContent = getDocumentPathLabel(state);
+          setUiTooltip(currentDocumentPath, currentDocumentPath.textContent, { aria: false });
           setUiTooltip(copyCurrentDocumentNameBtn, fileName, { aria: false });
           copyCurrentDocumentNameBtn.setAttribute("aria-label", `${t("ui", "copyFileName")}: ${fileName}`);
         } else {
@@ -7002,12 +7546,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           delete currentFileName.dataset.uiTooltip;
           copyFileNameBtn.style.display = "none";
           currentDocumentName.textContent = "";
-          currentDocumentBar.hidden = true;
+          currentDocumentPath.textContent = "";
+          delete currentDocumentPath.dataset.uiTooltip;
+          currentDocumentPathRow.hidden = true;
           delete copyCurrentDocumentNameBtn.dataset.uiTooltip;
           copyCurrentDocumentNameBtn.removeAttribute("aria-label");
         }
         updateSourceExtBadge(fileName);
         updateModeLabelLayout();
+        renderDocumentTabs();
       }
 
       function updateSourceExtBadge(fileName) {
@@ -7078,6 +7625,95 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         copyFileNameText(currentDocumentName.textContent, copyCurrentDocumentNameBtn);
       });
 
+      newDocumentTabBtn.addEventListener("click", () => {
+        hideFileContextMenu();
+        createUntitledDocument();
+      });
+
+      documentTabs.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        const tabEl = e.target.closest(".document-tab");
+        showDocumentTabContextMenu(tabEl ? tabEl.dataset.documentId : null, e.clientX, e.clientY);
+      });
+
+      newDocumentTabMenuBtn.addEventListener("click", () => {
+        hideDocumentTabContextMenu();
+        createUntitledDocument();
+      });
+
+      closeDocumentTabMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        requestCloseDocument(targetId).catch((err) => {
+          setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+        });
+      });
+
+      closeOtherDocumentTabsMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        const ids = Array.from(documentStates.values())
+          .filter((state) => !state.closed && state.id !== targetId)
+          .map((state) => state.id);
+        closeDocumentTabsInOrder(ids).catch((err) => {
+          setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+        });
+      });
+
+      closeDocumentTabsToRightMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        const openStates = Array.from(documentStates.values()).filter((state) => !state.closed);
+        const targetIndex = openStates.findIndex((state) => state.id === targetId);
+        const ids = targetIndex === -1 ? [] : openStates.slice(targetIndex + 1).map((state) => state.id);
+        closeDocumentTabsInOrder(ids).catch((err) => {
+          setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+        });
+      });
+
+      tabCopyFileNameMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        const state = documentStates.get(targetId);
+        if (!state) return;
+        copyFileNameText(getDocumentTabLabel(state));
+      });
+
+      tabCopyPathMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        const state = documentStates.get(targetId);
+        if (!state) return;
+        const pathLabel = getDocumentPathLabel(state);
+        if (!pathLabel) return;
+        copyFileNameText(pathLabel);
+      });
+
+      tabOpenInExplorerMenuBtn.addEventListener("click", () => {
+        const targetId = tabContextMenuDocumentId;
+        hideDocumentTabContextMenu();
+        if (!targetId) return;
+        const state = documentStates.get(targetId);
+        if (!isTauri || !state || !state.handle || !state.handle.tauriPath) return;
+        const path = String(state.handle.tauriPath);
+        // desktop_open_path_in_explorer はディレクトリのみ受け付けるため親ディレクトリを渡す
+        const sepIdx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+        const dirPath = sepIdx >= 0 ? path.substring(0, sepIdx) : "";
+        if (!dirPath) return;
+        invokeTauri("desktop_open_path_in_explorer", { path: dirPath }).catch((err) => {
+          setStatus(t("status", "folderOpenFailed") + (err && err.message ? err.message : String(err)), true);
+        });
+      });
+
+      documentTabList.addEventListener("change", () => {
+        selectDocumentTab(documentTabList.value, { focus: false });
+      });
+
       function setBtnLabel(btn, labelText, titleText) {
         const labelSpan = btn.querySelector(".btn-label");
         if (labelSpan) {
@@ -7116,6 +7752,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         densityLabel.textContent = t("ui", "densityLabel");
         densitySelect.setAttribute("aria-label", t("ui", "densityLabel"));
         setBtnLabel(newBtn, t("ui", "newBtn"), t("ui", "newBtn"));
+        documentTabs.setAttribute("aria-label", t("ui", "documentTabs"));
+        documentTabList.setAttribute("aria-label", t("ui", "documentTabList"));
+        setUiTooltip(newDocumentTabBtn, t("ui", "newDocumentTab"));
         githubLinkText.textContent = t("ui", "githubLink");
         githubLinkVersion.textContent = "";
         setUiTooltip(githubLink, t("ui", "githubTitle"));
@@ -7181,6 +7820,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         renderFileSortOptions();
         renderFontSizeOptions();
         renderDensityOptions();
+        newDocumentTabMenuBtn.textContent = t("ui", "newDocumentTab");
+        closeDocumentTabMenuBtn.textContent = t("ui", "closeThisDocumentTab");
+        closeOtherDocumentTabsMenuBtn.textContent = t("ui", "closeOtherDocumentTabs");
+        closeDocumentTabsToRightMenuBtn.textContent = t("ui", "closeDocumentTabsToRight");
+        tabCopyFileNameMenuBtn.textContent = t("ui", "copyFileName");
+        tabCopyPathMenuBtn.textContent = t("ui", "copyDocumentPath");
+        tabOpenInExplorerMenuBtn.textContent = t("ui", "openDocumentInExplorer");
         newMarkdownFileMenuBtn.textContent = t("ui", "newMarkdownFile");
         newFolderMenuBtn.textContent = t("ui", "newFolder");
         renameFileMenuBtn.textContent = t("ui", "renameFile");
@@ -8228,7 +8874,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         regexFindWorkerUrl = "";
       }
 
-      function finishRegexFindRequest(generation, requestId, outcome) {
+      function finishRegexFindRequest(documentId, generation, requestId, outcome) {
+        if (documentId !== activeDocumentId || !getDocumentState(documentId)) return;
         if (generation !== findGeneration || requestId !== regexFindRequestId || !findState.pending) return;
         disposeRegexFindWorker();
         findState.pending = false;
@@ -8247,7 +8894,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         selectFindMatch(nextIndex >= 0 ? nextIndex : 0);
       }
 
-      function startRegexFindWorker(preferredPosition, generation) {
+      function startRegexFindWorker(preferredPosition, generation, documentId = activeDocumentId) {
         if (
           typeof Worker !== "function"
           || typeof Blob !== "function"
@@ -8269,24 +8916,24 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             const result = event && event.data ? event.data : {};
             if (result.requestId !== requestId || result.generation !== generation) return;
             if (result.type === "error") {
-              finishRegexFindRequest(generation, requestId, { errorKey: "findRegexError" });
+              finishRegexFindRequest(documentId, generation, requestId, { errorKey: "findRegexError" });
               return;
             }
             if (result.type !== "result" || !Array.isArray(result.matches)) {
-              finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
+              finishRegexFindRequest(documentId, generation, requestId, { errorKey: "findRegexUnavailable" });
               return;
             }
-            finishRegexFindRequest(generation, requestId, {
+            finishRegexFindRequest(documentId, generation, requestId, {
               matches: result.matches,
               capped: result.capped,
               preferredPosition
             });
           };
           worker.onerror = () => {
-            finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
+            finishRegexFindRequest(documentId, generation, requestId, { errorKey: "findRegexUnavailable" });
           };
           regexFindWorkerTimer = window.setTimeout(() => {
-            finishRegexFindRequest(generation, requestId, { errorKey: "findRegexTimeout" });
+            finishRegexFindRequest(documentId, generation, requestId, { errorKey: "findRegexTimeout" });
           }, REGEX_FIND_TIMEOUT_MS);
           worker.postMessage({
             requestId,
@@ -8298,7 +8945,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             limit: FIND_MATCH_RENDER_LIMIT
           });
         } catch (err) {
-          finishRegexFindRequest(generation, requestId, { errorKey: "findRegexUnavailable" });
+          finishRegexFindRequest(documentId, generation, requestId, { errorKey: "findRegexUnavailable" });
         }
       }
 
@@ -8462,7 +9109,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (findRegexToggle.checked && findInput.value) {
           findState.pending = true;
           updateFindCount();
-          startRegexFindWorker(oldStart, generation);
+          startRegexFindWorker(oldStart, generation, activeDocumentId);
           return;
         }
         findState.matches = collectLiteralFindMatches();
@@ -8582,15 +9229,26 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function scheduleSourceRender() {
+        const documentId = activeDocumentId;
+        const state = getDocumentState(documentId);
+        if (!state) return;
+        state.renderGeneration += 1;
+        const generation = state.renderGeneration;
+        const text = source.value;
         clearTimeout(renderDebounceTimer);
         renderDebounceTimer = setTimeout(() => {
-          renderContent(source.value);
+          const current = getDocumentState(documentId);
+          if (!current || current.closed || activeDocumentId !== documentId || current.renderGeneration !== generation) return;
+          renderContent(text);
         }, RENDER_DEBOUNCE_MS);
       }
 
       function runSourceChangePipeline(options = {}) {
         const { defer = false } = options;
         if (!prepareSourceChange()) return false;
+        fileState.text = source.value;
+        fileState.selectionStart = source.selectionStart || 0;
+        fileState.selectionEnd = source.selectionEnd || 0;
         if (defer || sourceIsComposing) {
           sourceCompositionChanged = true;
           return true;
@@ -8606,6 +9264,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function applySourceTextChange(nextText, selectionStart, selectionEnd) {
         // setRangeText で全文置換すると textarea の undo スタックを保てる。
         // setRangeText は input 後処理を保証しないため、ここで共通pipelineを明示的に通す。
+        const state = getDocumentState();
+        if (state) {
+          state.undoStack.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
+          if (state.undoStack.length > 200) state.undoStack.shift();
+          state.redoStack.length = 0;
+        }
         sourceProgrammaticChange = true;
         try {
           if (typeof source.setRangeText === "function") {
@@ -8901,6 +9565,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         fileState.previewAutoCollapsed = fileState.viewMode === "plain";
         updateCardLayout();
         source.value = text;
+        fileState.text = text;
+        fileState.selectionStart = 0;
+        fileState.selectionEnd = 0;
+        fileState.sourceScrollTop = 0;
+        fileState.sourceScrollLeft = 0;
+        fileState.previewScrollTop = 0;
+        fileState.undoStack.length = 0;
+        fileState.redoStack.length = 0;
         source.scrollTop = 0;
         source.scrollLeft = 0;
         // FINDING-HTML2-NEW-003: updateEditorMetrics は updateByteCountStatus 経由で
@@ -8945,10 +9617,40 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       // Returns: true (load succeeded) / false (binary file – aborted)
       function applyLoadedContent(fileName, loaded, fileHandle = null, options = {}) {
         const { text, encoding, hasBom, buffer } = loaded;
+        const documentId = options.documentId || activeDocumentId;
+        const targetState = getDocumentState(documentId);
+        if (!targetState || targetState.closed) return false;
         if (isBinaryBuffer(buffer)) {
-          clearLoadedContent();
-          setStatus(t("status", "chooseMdOnly") + fileName, true);
+          if (documentId === activeDocumentId) {
+            clearLoadedContent();
+            setStatus(t("status", "chooseMdOnly") + fileName, true);
+          }
           return false;
+        }
+        if (documentId !== activeDocumentId) {
+          Object.assign(targetState, {
+            name: fileHandle && fileHandle.name ? fileHandle.name : fileName,
+            handle: fileHandle,
+            encoding,
+            bom: hasBom,
+            lineEnding: detectLineEnding(text),
+            buffer,
+            unsaved: false,
+            readOnly: false,
+            hasContent: true,
+            viewMode: getFileViewMode(options.viewModeKey !== undefined ? options.viewModeKey : fileName),
+            baselineText: text,
+            text,
+            selectionStart: 0,
+            selectionEnd: 0,
+            sourceScrollTop: 0,
+            sourceScrollLeft: 0,
+            previewScrollTop: 0,
+            undoStack: [],
+            redoStack: [],
+          });
+          targetState.previewAutoCollapsed = targetState.viewMode === "plain";
+          return true;
         }
         fileState.buffer = buffer;
         fileState.bom = hasBom;
@@ -8974,6 +9676,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setEncodingControlsBusy(false);
         updateFileStatusBarVisibility();
         source.value = "";
+        fileState.text = "";
+        fileState.selectionStart = 0;
+        fileState.selectionEnd = 0;
+        fileState.undoStack.length = 0;
+        fileState.redoStack.length = 0;
         source.scrollTop = 0;
         source.scrollLeft = 0;
         fileState.viewMode = "markdown";
@@ -8986,7 +9693,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         fileState.unsaved = false;
         setReadOnlyMode(false);
         setDirtyState(false);
-        setAppDocumentTitle();
+        setAppDocumentTitle(null);
         setOutlineVisible(false);
       }
 
@@ -9352,6 +10059,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function setDirtyState(isDirty) {
         const wasDirty = fileState.unsaved;
         fileState.unsaved = isDirty;
+        renderDocumentTabs();
         if (wasDirty && !isDirty && fileState.hasContent) {
           // Saved or reloaded clean — refresh baseline for diff
           setBaselineText(source.value);
@@ -9453,12 +10161,83 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
       }
 
-      function confirmDiscardUnsavedChanges() {
-        return !fileState.unsaved || window.confirm(t("status", "unsavedNavigationConfirm"));
+      function closeDocumentCloseDialog(result) {
+        if (!documentCloseResolver) return;
+        const resolve = documentCloseResolver;
+        documentCloseResolver = null;
+        documentCloseOverlay.hidden = true;
+        resolve(result || "cancel");
       }
 
-      function confirmCloseUnsavedChanges() {
-        return !fileState.unsaved || window.confirm(t("status", "unsavedCloseConfirm"));
+      function openDocumentCloseDialog(state) {
+        if (documentCloseResolver) closeDocumentCloseDialog("cancel");
+        const name = getDocumentTabLabel(state);
+        documentCloseTitle.textContent = t("ui", "closeDocumentTab").replace("{name}", name);
+        documentCloseMessage.textContent = t("status", "unsavedTabCloseMessage").replace("{name}", name);
+        documentCloseCancelBtn.textContent = t("ui", "cancel");
+        documentCloseDiscardBtn.textContent = t("ui", "discardAndClose");
+        documentCloseSaveBtn.textContent = t("ui", "saveAndClose");
+        documentCloseOverlay.hidden = false;
+        window.setTimeout(() => documentCloseCancelBtn.focus(), 0);
+        return new Promise((resolve) => {
+          documentCloseResolver = resolve;
+        });
+      }
+
+      async function requestCloseDocument(documentId) {
+        const state = getDocumentState(documentId);
+        if (!state || state.closed) return false;
+        if (activeDocumentId === documentId) captureActiveDocumentState();
+        if (state.unsaved) {
+          const choice = await openDocumentCloseDialog(state);
+          if (choice === "cancel") return false;
+          if (choice === "save") {
+            try {
+              await saveFile({ documentId, forcePick: false });
+            } catch (err) {
+              setStatus(t("status", "saveFailed") + (err && err.message ? err.message : String(err)), true);
+            }
+            const savedState = getDocumentState(documentId);
+            if (!savedState || savedState.unsaved) return false;
+          }
+        }
+        const wasActive = activeDocumentId === documentId;
+        closeDocumentState(documentId);
+        if (documentStates.size === 0) {
+          const fresh = addDocumentState({ hasContent: false, name: "" });
+          activateDocumentState(fresh.id);
+        }
+        renderDocumentTabs();
+        if (wasActive) source.focus();
+        setStatus(t("status", "documentTabClosed"), false);
+        return true;
+      }
+
+      // BUG-EXIT-PER-DOC-001: 終了時に hasUnsavedDocuments() で「まとめて1回」確認して
+      // 破棄していた挙動をやめ、未保存文書を1件ずつ requestCloseDocument（既存のタブ close
+      // ダイアログ＝保存して閉じる/破棄/戻る）で確認する。対象文書名はダイアログ自体が
+      // 表示するため、ここでタブを切り替える必要はない。
+      // 「戻る」、または保存に失敗・保存先選択をキャンセルして requestCloseDocument が false
+      // を返した時点で、残りの未保存文書には確認を出さず終了を中止する（false を返す）。
+      // それまでに保存/破棄が確定した文書は通常のタブ close と同じくそのまま処理済みとする。
+      // すべての未保存文書が片付いたときだけ true を返す。
+      async function confirmAllUnsavedDocumentsForExit() {
+        while (true) {
+          const target = Array.from(documentStates.values()).find((state) => !state.closed && state.unsaved);
+          if (!target) return true;
+          const resolved = await requestCloseDocument(target.id);
+          if (!resolved) return false;
+        }
+      }
+
+      // Same abort-on-first-unresolved behavior as confirmAllUnsavedDocumentsForExit,
+      // but over a fixed id list the caller captured at click time instead of a live scan.
+      async function closeDocumentTabsInOrder(documentIds) {
+        for (const documentId of documentIds) {
+          const resolved = await requestCloseDocument(documentId);
+          if (!resolved) return false;
+        }
+        return true;
       }
 
       async function setupTauriCloseGuard() {
@@ -9483,14 +10262,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         try {
           // BUG-TAURI-CLOSEGUARD-001 / BUG-CLOSEGUARD-SYNC-CONFIRM-002 / BUG-CLOSEGUARD-LISTEN-RACE-006:
           // - Rust 側で WindowEvent::CloseRequested に api.prevent_close() を仕込み close を保留する。
-          //   その間に async listener が openConfirmDialog で確認し、確定後 desktop_force_close_window を呼ぶ。
-          // - 同期 window.confirm は Tauri webview で挙動が不安定なため、プロジェクト標準の openConfirmDialog に統一。
+          //   その間に async listener が確認し、確定後 desktop_force_close_window を呼ぶ。
+          // - 同期 window.confirm は Tauri webview で挙動が不安定なため、プロジェクト標準の
+          //   ダイアログ（confirmAllUnsavedDocumentsForExit 内部が使う openDocumentCloseDialog）に統一。
           // - listen の解決後にフラグを立て、登録中 race による未保存破棄を防ぐ。
+          // BUG-EXIT-PER-DOC-001: 全文書一括の openConfirmDialog 1回確認から、文書ごとに
+          // 保存/破棄/戻るを選べる confirmAllUnsavedDocumentsForExit へ置き換えた。
+          // 終了確認は同時に 1 本だけ走らせる。openDocumentCloseDialog は新しいダイアログを
+          // 開くとき既存の resolver を "cancel" で畳むため、ガードが無いと X の連打で 2 本目の
+          // 確認が 1 本目のダイアログを取り消し、1 本目が中止判定になる。データが消える方向
+          // ではないが挙動が読めなくなるので、進行中は追加の close 要求を無視する。
+          let exitConfirmInProgress = false;
           await appWindow.listen(closeRequestedEvent, async () => {
-            if (fileState.unsaved) {
-              const ok = await openConfirmDialog("", t("status", "unsavedCloseConfirm"));
-              if (!ok) return;
+            if (exitConfirmInProgress) return;
+            exitConfirmInProgress = true;
+            let canExit = false;
+            try {
+              canExit = await confirmAllUnsavedDocumentsForExit();
+            } finally {
+              exitConfirmInProgress = false;
             }
+            if (!canExit) return;
             closingAfterUnsavedConfirm = true;
             try {
               await invokeTauri("desktop_force_close_window");
@@ -9500,8 +10292,29 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
               setStatus(t("status", "closeFailed") + message, true);
             }
           });
+          // C3 / BUG-CLOSEGUARD-LISTEN-RACE-006 と同型: desktop_frontend_ready を立てた時点から
+          // Rust 側はキューではなく "desktop-open-launch-paths" の emit で通知してくるため、
+          // その購読が解決する前にフラグを立てると、その隙間に届いた追加起動を取りこぼす。
+          // 購読の解決を待ってから準備完了を通知する。
+          if (tauriEventApi && typeof tauriEventApi.listen === "function") {
+            await tauriEventApi.listen("desktop-open-launch-paths", async (e) => {
+              const payload = e && e.payload;
+              const paths = payload && Array.isArray(payload.paths) ? payload.paths : [];
+              await openTauriLaunchPaths(paths);
+            });
+          }
           await invokeTauri("desktop_frontend_ready");
           tauriCloseGuardInstalled = true;
+          // C3: フロントエンド準備完了の直後に、準備中に溜まった追加起動パス（キュー）を drain する。
+          // ここで失敗しても close guard 自体は成功しているため、closeGuardSetupFailed とは別に扱う。
+          try {
+            const pendingLaunchPaths = await invokeTauri("desktop_take_pending_launch_paths");
+            await openTauriLaunchPaths(pendingLaunchPaths);
+          } catch (err) {
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn("desktop_take_pending_launch_paths failed", err);
+            }
+          }
         } catch (err) {
           if (typeof console !== "undefined" && console.warn) {
             console.warn("Tauri close guard setup failed", err);
@@ -9875,7 +10688,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const entry = getDirectoryRelativeLinkEntry(anchor);
         if (!entry) return false;
         e.preventDefault();
-        if (!confirmDiscardUnsavedChanges()) return true;
         loadDirectoryEntry(entry).catch((err) => {
           setStatus(t("status", "fileReadFailed") + (err && err.message ? err.message : String(err)), true);
         });
@@ -9921,7 +10733,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const targetPath = getTauriRelativeLinkTarget(anchor);
         if (!targetPath) return false;
         e.preventDefault();
-        if (!confirmDiscardUnsavedChanges()) return true;
         loadTauriFilePath(targetPath).catch((err) => {
           setStatus(t("status", "fileReadFailed") + (err && err.message ? err.message : String(err)), true);
         });
@@ -9970,11 +10781,82 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return { tauriPath: path, name: getPathFileName(path) };
       }
 
+      function updateDocumentDirectoryMetadata(state, metadata = {}) {
+        if (!state) return;
+        if (Object.prototype.hasOwnProperty.call(metadata, "directoryRootHandle")) {
+          state.directoryRootHandle = metadata.directoryRootHandle;
+        }
+        if (Object.prototype.hasOwnProperty.call(metadata, "directoryRootPath")) {
+          state.directoryRootPath = metadata.directoryRootPath || "";
+        }
+        if (Object.prototype.hasOwnProperty.call(metadata, "directoryRootName")) {
+          state.directoryRootName = metadata.directoryRootName || "";
+        }
+        if (Object.prototype.hasOwnProperty.call(metadata, "directoryEntryPath")) {
+          state.directoryEntryPath = metadata.directoryEntryPath || "";
+        }
+        if (Object.prototype.hasOwnProperty.call(metadata, "directoryEntryTauriPath")) {
+          state.directoryEntryTauriPath = metadata.directoryEntryTauriPath || "";
+        }
+      }
+
+      function documentBelongsToCurrentDirectory(state) {
+        if (!state || !dirState.handle) return false;
+        if (isTauri) {
+          const stateRoot = state.directoryRootPath || state.directoryRootHandle;
+          return !!stateRoot && normalizePathForCompare(stateRoot) === normalizePathForCompare(dirState.handle);
+        }
+        return !!state.directoryRootHandle && state.directoryRootHandle === dirState.handle;
+      }
+
+      function syncDirectorySelectionForDocument(state) {
+        if (!state) return;
+        if (documentBelongsToCurrentDirectory(state) && state.directoryEntryPath) {
+          dirState.entryPath = state.directoryEntryPath;
+          dirState.entryTauriPath = state.directoryEntryTauriPath || "";
+          dirState.selectedPaths.clear();
+          updateActiveSelection(state.directoryEntryPath, dirState.selectedPaths);
+          return;
+        }
+        dirState.entryPath = "";
+        dirState.entryTauriPath = "";
+        dirState.selectedPaths.clear();
+        updateActiveSelection("", dirState.selectedPaths);
+      }
+
+      async function findDocumentForIdentity(options = {}) {
+        const tauriPath = options.tauriPath ? normalizePathForCompare(options.tauriPath) : "";
+        const fileHandle = options.fileHandle || null;
+        for (const state of documentStates.values()) {
+          if (state.closed || !state.handle) continue;
+          if (tauriPath && state.handle.tauriPath && normalizePathForCompare(state.handle.tauriPath) === tauriPath) {
+            return state;
+          }
+          if (!fileHandle || fileHandle.tauriPath || state.handle.tauriPath) continue;
+          if (state.handle === fileHandle) return state;
+          if (typeof state.handle.isSameEntry === "function") {
+            try {
+              if (await state.handle.isSameEntry(fileHandle)) return state;
+            } catch (_err) {
+              // A stale browser handle is not an identity match.
+            }
+          }
+        }
+        return null;
+      }
+
+      // BUG-TAURI-RAW-RESPONSE-001: Rust 側は desktop_read_file_bytes で
+      // tauri::ipc::Response（生バイト）を返すが、この IPC 経路では ArrayBuffer ではなく
+      // 数値の素の配列として届く（実測: type=object / [object Array] / ctor=Array）。
+      // 0.3.3 までは Rust が Vec<u8> を返しており、やはり配列で届いていた。ArrayBuffer と
+      // TypedArray だけを受ける実装にすると、Desktop 版でファイルを 1 つも開けなくなる。
+      // 転送経路によってどちらでも来うるので、両方を受ける。
       function bytesToArrayBuffer(bytes) {
         if (bytes instanceof ArrayBuffer) return bytes;
         if (ArrayBuffer.isView(bytes)) {
           return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
         }
+        if (Array.isArray(bytes)) return Uint8Array.from(bytes).buffer;
         throw new Error("Tauri returned a non-binary file response.");
       }
 
@@ -9984,24 +10866,111 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return { ...decodeMarkdownBuffer(buffer), buffer };
       }
 
-      async function loadTauriFilePath(path, options = {}) {
-        beginDirectoryStartupIntent("open-file");
-        const gen = beginFileLoad();
-        const fileName = getPathFileName(path);
-        const loaded = await readTauriMarkdownFile(path);
-        if (!isFileLoadCurrent(gen)) return;
-        const fileHandle = getTauriFileHandle(path);
-        if (!applyLoadedContent(fileName, loaded, fileHandle, {
-          viewModeKey: path,
-          statusMessage: options.statusMessage
-        })) return;
-        if (!isFileLoadCurrent(gen)) return;
+      async function openDocumentTab(options = {}) {
+        const fileName = options.fileName || getPathFileName(options.tauriPath || "") || "";
+        const metadata = options.metadata || {};
+        if (options.beginIntent !== false) beginDirectoryStartupIntent(options.intentOwner || "open-file");
+        const activeAtStart = activeDocumentId;
+        const existing = await findDocumentForIdentity({
+          tauriPath: options.tauriPath || "",
+          fileHandle: options.fileHandle || null,
+        });
+        if (existing) {
+          updateDocumentDirectoryMetadata(existing, metadata);
+          selectDocumentTab(existing.id, { focus: false });
+          if (options.statusMessage) setStatus(options.statusMessage, options.statusIsError || false);
+          return existing;
+        }
 
+        const state = addDocumentState({
+          name: fileName,
+          ...metadata,
+        });
+        const token = beginFileLoad(state.id);
+        try {
+          const loaded = await options.load();
+          if (!isFileLoadCurrent(token)) return null;
+          const applied = applyLoadedContent(fileName, loaded, options.fileHandle || null, {
+            viewModeKey: options.viewModeKey !== undefined ? options.viewModeKey : fileName,
+            documentId: state.id,
+          });
+          if (!applied || !isFileLoadCurrent(token)) {
+            closeDocumentState(state.id);
+            if (!applied && loaded && isBinaryBuffer(loaded.buffer)) {
+              setStatus(t("status", "chooseMdOnly") + fileName, true);
+            }
+            return null;
+          }
+          updateDocumentDirectoryMetadata(state, metadata);
+          if (activeDocumentId === activeAtStart) {
+            if (!activateDocumentState(state.id)) {
+              closeDocumentState(state.id);
+              return null;
+            }
+          } else {
+            renderDocumentTabs();
+          }
+          if (options.statusMessage) {
+            setStatus(options.statusMessage, options.statusIsError || false);
+          } else if (options.showLoadedStatus !== false) {
+            setStatus(getLoadedStatus(options.fileHandle || null), false);
+          }
+          return state;
+        } catch (err) {
+          if (getDocumentState(state.id)) closeDocumentState(state.id);
+          throw err;
+        }
+      }
+
+      async function loadTauriFilePath(path, options = {}) {
+        const fileName = getPathFileName(path);
         const knownEntry = flattenTreeFiles(dirState.files).find((entry) => entry.tauriPath === path);
-        dirState.entryPath = knownEntry ? knownEntry.path : "";
-        dirState.entryTauriPath = knownEntry ? knownEntry.tauriPath || "" : "";
-        if (knownEntry) expandAncestorsForPath(knownEntry.path);
-        renderFileList();
+        const rootPath = knownEntry && typeof dirState.handle === "string"
+          ? dirState.handle
+          : "";
+        const state = await openDocumentTab({
+          fileName,
+          tauriPath: path,
+          fileHandle: getTauriFileHandle(path),
+          viewModeKey: path,
+          statusMessage: options.statusMessage,
+          beginIntent: options.beginIntent,
+          metadata: {
+            directoryRootHandle: rootPath,
+            directoryRootPath: rootPath,
+            directoryRootName: knownEntry ? (dirState.displayName || dirState.path) : "",
+            directoryEntryPath: knownEntry ? knownEntry.path : "",
+            directoryEntryTauriPath: knownEntry ? knownEntry.tauriPath || path : "",
+          },
+          load: () => readTauriMarkdownFile(path),
+        });
+        if (!state) return null;
+        if (knownEntry) {
+          dirState.entryPath = knownEntry.path;
+          dirState.entryTauriPath = knownEntry.tauriPath || path;
+          expandAncestorsForPath(knownEntry.path);
+          updateActiveSelection(knownEntry.path, dirState.selectedPaths);
+          renderFileList();
+        }
+        return state;
+      }
+
+      // C3: 起動済みアプリへ渡された追加起動パスを開く共通ハンドラ。
+      // desktop_frontend_ready 直後の desktop_take_pending_launch_paths のキュー drain と、
+      // "desktop-open-launch-paths" ランタイムイベントの両方がここへ集約される。
+      // どちらの経路も同じ documentId 判定（loadTauriFilePath -> openDocumentTab -> findDocumentForIdentity）
+      // を通るため、同一パスの二重タブ化・取りこぼしを防ぐ。パスは1件ずつ順に処理し、
+      // 途中の失敗が後続パスの処理を止めないよう個別に catch する。
+      async function openTauriLaunchPaths(paths) {
+        if (!Array.isArray(paths)) return;
+        for (const path of paths) {
+          if (!path) continue;
+          try {
+            await loadTauriFilePath(path);
+          } catch (err) {
+            setStatus(t("status", "launchFileOpenFailed") + (err && err.message ? err.message : String(err)), true);
+          }
+        }
       }
 
       function getLoadedStatus(fileHandle) {
@@ -10013,8 +10982,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       // Returns true on success, false when binary reject or missing file.
       async function loadFile(file, fileHandle = null) {
         if (!file) return false;
-        const loaded = await readMarkdownFile(file);
-        return applyLoadedContent(file.name, loaded, fileHandle, { viewModeKey: file });
+        const state = await openDocumentTab({
+          fileName: file.name,
+          fileHandle,
+          viewModeKey: file,
+          load: () => readMarkdownFile(file),
+        });
+        return !!state;
       }
 
       async function openWithFsAccess() {
@@ -10023,14 +10997,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
         beginDirectoryStartupIntent("open-file");
-        const gen = beginFileLoad();
         if (isTauri) {
           const path = await invokeTauri("desktop_open_file_dialog");
           if (!path) return;
-          const loaded = await readTauriMarkdownFile(path);
-          if (!isFileLoadCurrent(gen)) return;
-          const fileHandle = getTauriFileHandle(path);
-          applyLoadedContent(getPathFileName(path), loaded, fileHandle, { viewModeKey: path });
+          await openDocumentTab({
+            fileName: getPathFileName(path),
+            tauriPath: path,
+            fileHandle: getTauriFileHandle(path),
+            viewModeKey: path,
+            load: () => readTauriMarkdownFile(path),
+          });
           return;
         }
 
@@ -10040,18 +11016,24 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (!handle) return;
 
         const file = await handle.getFile();
-        const loaded = await readMarkdownFile(file);
-        if (!isFileLoadCurrent(gen)) return;
-        applyLoadedContent(file.name, loaded, handle, { viewModeKey: file });
+        await openDocumentTab({
+          fileName: file.name,
+          fileHandle: handle,
+          viewModeKey: file,
+          load: () => readMarkdownFile(file),
+        });
       }
 
-      function getSuggestedSaveName() {
-        return (fileState.handle && fileState.handle.name) || currentFileName.textContent || "untitled.md";
+      function getSuggestedSaveName(state = fileState) {
+        return (state.handle && state.handle.name) || state.name || "untitled.md";
       }
 
       async function ensureWritableHandle(options = {}) {
         const forcePick = !!options.forcePick;
-        if (fileState.handle && !forcePick) return "existing";
+        const documentId = options.documentId || activeDocumentId;
+        const state = getDocumentState(documentId);
+        if (!state || state.closed) return null;
+        if (state.handle && !forcePick) return "existing";
         if (!supportsFsAccess) {
           setStatus(t("status", "noFsSave"), true);
           return null;
@@ -10059,32 +11041,50 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
         setStatus(t("status", "askPickTarget"), false);
         if (isTauri) {
-          const path = await invokeTauri("desktop_save_file_dialog", { suggestedName: getSuggestedSaveName() });
+          const path = await invokeTauri("desktop_save_file_dialog", { suggestedName: getSuggestedSaveName(state) });
           if (!path) {
-            setStatus(t("status", "saveCanceled"), false);
+            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
             return null;
           }
-          fileState.handle = getTauriFileHandle(path);
-          setAppDocumentTitle(fileState.handle.name);
-          setDirtyState(fileState.unsaved);
+          if (!getDocumentState(documentId)) return null;
+          state.handle = getTauriFileHandle(path);
+          state.name = state.handle.name;
+          state.directoryRootHandle = getPathDirectoryName(path);
+          state.directoryRootPath = getPathDirectoryName(path);
+          state.directoryRootName = getPathDirectoryName(path);
+          state.directoryEntryPath = "";
+          state.directoryEntryTauriPath = path;
+          if (activeDocumentId === documentId) {
+            setAppDocumentTitle(state.name);
+            setDirtyState(state.unsaved);
+          }
           return "new";
         }
 
         let handle;
         try {
-          const suggestedName = getSuggestedSaveName();
+          const suggestedName = getSuggestedSaveName(state);
           handle = await window.showSaveFilePicker({ suggestedName });
         } catch (e) {
           if (e && e.name === "AbortError") {
-            setStatus(t("status", "saveCanceled"), false);
+            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
             return null;
           }
           throw e;
         }
         if (!handle) return null;
-        fileState.handle = handle;
-        setAppDocumentTitle(handle.name);
-        setDirtyState(fileState.unsaved);
+        if (!getDocumentState(documentId)) return null;
+        state.handle = handle;
+        state.name = handle.name;
+        state.directoryRootHandle = null;
+        state.directoryRootPath = "";
+        state.directoryRootName = "";
+        state.directoryEntryPath = "";
+        state.directoryEntryTauriPath = "";
+        if (activeDocumentId === documentId) {
+          setAppDocumentTitle(handle.name);
+          setDirtyState(state.unsaved);
+        }
         return "new";
       }
 
@@ -10095,8 +11095,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return normalized;
       }
 
-      function encodeFileContent(text, encoding, hasBom) {
-        const lineEnding = lineEndingSelect.value;
+      function encodeFileContent(text, encoding, hasBom, lineEnding = lineEndingSelect.value) {
         const content = applyLineEnding(text, lineEnding);
 
         if (encoding === "utf-8" || encoding === "auto") {
@@ -10153,63 +11152,89 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function saveFile(options = {}) {
-        if (fileState.readOnly) {
+        const documentId = activeDocumentId;
+        const saveDocumentId = options.documentId || documentId;
+        const state = getDocumentState(saveDocumentId);
+        if (!state || state.readOnly) {
           setStatus(t("status", "readOnlyBlocked"), true);
           return;
         }
         const forcePick = !!options.forcePick;
-        const handleState = await ensureWritableHandle({ forcePick });
+        const snapshot = {
+          text: source.value,
+          encoding: encodingSelect.value === "auto" ? "utf-8" : encodingSelect.value,
+          bom: bomCheckbox.checked,
+          lineEnding: lineEndingSelect.value,
+        };
+        if (saveDocumentId !== activeDocumentId) {
+          snapshot.text = state.text;
+          snapshot.encoding = state.encoding === "auto" ? "utf-8" : state.encoding;
+          snapshot.bom = state.bom;
+          snapshot.lineEnding = state.lineEnding;
+        }
+        const handleState = await ensureWritableHandle({ forcePick, documentId: saveDocumentId });
         if (!handleState) {
           return;
         }
         if (handleState === "existing" && !forcePick) {
           const confirmed = window.confirm(t("status", "saveHint"));
           if (!confirmed) {
-            setStatus(t("status", "saveCanceled"), false);
+            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
             return;
           }
         }
-        if (isTauri && fileState.handle && fileState.handle.tauriPath) {
-          const encoding = encodingSelect.value === "auto" ? "utf-8" : encodingSelect.value;
-          const hasBom = bomCheckbox.checked;
-          const bytes = encodeFileContent(source.value, encoding, hasBom);
+        const target = getDocumentState(saveDocumentId);
+        if (!target || target.closed || !target.handle) return;
+        const bytes = encodeFileContent(snapshot.text, snapshot.encoding, snapshot.bom, snapshot.lineEnding);
+        if (isTauri && target.handle.tauriPath) {
           await invokeTauriRaw("desktop_write_file_bytes", bytes, {
-            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(fileState.handle.tauriPath)
+            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(target.handle.tauriPath)
           });
-          fileState.encoding = encoding;
-          fileState.buffer = bytes.buffer;
-          fileState.bom = hasBom;
-          fileState.lineEnding = lineEndingSelect.value;
-          setEncodingSelectValue(fileState.encoding);
-          setDirtyState(false);
-          setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
+          target.encoding = snapshot.encoding;
+          target.buffer = bytes.buffer;
+          target.bom = snapshot.bom;
+          target.lineEnding = snapshot.lineEnding;
+          target.text = snapshot.text;
+          target.baselineText = snapshot.text;
+          target.unsaved = false;
+          if (activeDocumentId === saveDocumentId) {
+            setEncodingSelectValue(target.encoding);
+            setDirtyState(target.unsaved);
+            setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
+          } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
           return;
         }
-        const permission = await fileState.handle.requestPermission({ mode: "readwrite" });
+        const permission = await target.handle.requestPermission({ mode: "readwrite" });
         if (permission !== "granted") {
-          setStatus(t("status", "permissionDenied"), true);
+          if (activeDocumentId === saveDocumentId) setStatus(t("status", "permissionDenied"), true);
           return;
         }
-
-        const encoding = encodingSelect.value === "auto" ? "utf-8" : encodingSelect.value;
-        const hasBom = bomCheckbox.checked;
-        const bytes = encodeFileContent(source.value, encoding, hasBom);
-        await writeFileHandleBytes(fileState.handle, bytes);
-        fileState.encoding = encoding;
-        fileState.buffer = bytes.buffer;
-        fileState.bom = hasBom;
-        fileState.lineEnding = lineEndingSelect.value;
-        setEncodingSelectValue(fileState.encoding);
-        setDirtyState(false);
-        setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
+        await writeFileHandleBytes(target.handle, bytes);
+        if (!getDocumentState(saveDocumentId)) return;
+        target.encoding = snapshot.encoding;
+        target.buffer = bytes.buffer;
+        target.bom = snapshot.bom;
+        target.lineEnding = snapshot.lineEnding;
+        target.text = snapshot.text;
+        target.baselineText = snapshot.text;
+        target.unsaved = false;
+        if (activeDocumentId === saveDocumentId) {
+          setEncodingSelectValue(target.encoding);
+          setDirtyState(target.unsaved);
+          setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
+        } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
       }
 
-      async function loadFileReadOnly(file) {
+      async function loadFileReadOnly(file, fileHandle = null, options = {}) {
         if (!file) return false;
-        const gen = beginFileLoad();
-        const loaded = await readMarkdownFile(file);
-        if (!isFileLoadCurrent(gen)) return false;
-        return applyLoadedContent(file.name, loaded, null, { viewModeKey: file });
+        const state = await openDocumentTab({
+          fileName: file.name,
+          fileHandle,
+          viewModeKey: file,
+          beginIntent: options.beginIntent,
+          load: () => readMarkdownFile(file),
+        });
+        return !!state;
       }
 
       function compareText(a, b) {
@@ -10419,6 +11444,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           : dirState.path;
         dirState.entryPath = "";
         dirState.entryTauriPath = "";
+        syncDirectorySelectionForDocument(getDocumentState());
         if (options.revealFileList) {
           cardVisibility.fileList = true;
           saveCardVisibility();
@@ -10430,12 +11456,43 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setStatus(t("status", "folderLoaded"));
       }
 
+      function positionContextMenu(menuEl, x, y) {
+        menuEl.classList.remove("hidden");
+        const menuRect = menuEl.getBoundingClientRect();
+        const left = Math.min(x, window.innerWidth - menuRect.width - 8);
+        const top = Math.min(y, window.innerHeight - menuRect.height - 8);
+        menuEl.style.left = `${Math.max(8, left)}px`;
+        menuEl.style.top = `${Math.max(8, top)}px`;
+      }
+
       function hideFileContextMenu() {
         dirState.contextMenuEntry = null;
         fileContextMenu.classList.add("hidden");
       }
 
+      function hideDocumentTabContextMenu() {
+        tabContextMenuDocumentId = null;
+        documentTabContextMenu.classList.add("hidden");
+      }
+
+      function showDocumentTabContextMenu(documentId, x, y) {
+        hideFileContextMenu();
+        tabContextMenuDocumentId = documentId;
+        const openStates = Array.from(documentStates.values()).filter((state) => !state.closed);
+        const targetIndex = documentId ? openStates.findIndex((state) => state.id === documentId) : -1;
+        const hasTarget = targetIndex !== -1;
+        const state = hasTarget ? documentStates.get(documentId) : null;
+        closeDocumentTabMenuBtn.hidden = !hasTarget;
+        closeOtherDocumentTabsMenuBtn.hidden = !hasTarget || openStates.length < 2;
+        closeDocumentTabsToRightMenuBtn.hidden = !hasTarget || targetIndex >= openStates.length - 1;
+        tabCopyFileNameMenuBtn.hidden = !hasTarget;
+        tabCopyPathMenuBtn.hidden = !hasTarget || !getDocumentPathLabel(state);
+        tabOpenInExplorerMenuBtn.hidden = !hasTarget || !isTauri || !(state && state.handle && state.handle.tauriPath);
+        positionContextMenu(documentTabContextMenu, x, y);
+      }
+
       function showFileContextMenu(entry, x, y) {
+        hideDocumentTabContextMenu();
         dirState.contextMenuEntry = entry;
         const isDir = entry && entry.kind === "dir";
         const isEmpty = !entry;
@@ -10467,12 +11524,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           deleteFileMenuBtn.hidden = isEmpty;
         }
-        fileContextMenu.classList.remove("hidden");
-        const menuRect = fileContextMenu.getBoundingClientRect();
-        const left = Math.min(x, window.innerWidth - menuRect.width - 8);
-        const top = Math.min(y, window.innerHeight - menuRect.height - 8);
-        fileContextMenu.style.left = `${Math.max(8, left)}px`;
-        fileContextMenu.style.top = `${Math.max(8, top)}px`;
+        positionContextMenu(fileContextMenu, x, y);
       }
 
       function createFileIcon(type) {
@@ -10676,16 +11728,24 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function loadDirectoryEntry(entry) {
-        const gen = beginFileLoad();
         if (entry.tauriPath) {
-          const loaded = await readTauriMarkdownFile(entry.tauriPath);
-          if (!isFileLoadCurrent(gen)) return;
-          const fileHandle = getTauriFileHandle(entry.tauriPath);
           const entryName = entry.name || getPathFileName(entry.tauriPath);
-          if (!applyLoadedContent(entryName, loaded, fileHandle, {
-            viewModeKey: entry.name || entry.tauriPath
-          })) return;
-          if (!isFileLoadCurrent(gen)) return;
+          const rootPath = typeof dirState.handle === "string" ? dirState.handle : "";
+          const state = await openDocumentTab({
+            fileName: entryName,
+            tauriPath: entry.tauriPath,
+            fileHandle: getTauriFileHandle(entry.tauriPath),
+            viewModeKey: entry.name || entry.tauriPath,
+            metadata: {
+              directoryRootHandle: rootPath,
+              directoryRootPath: rootPath,
+              directoryRootName: dirState.displayName || dirState.path,
+              directoryEntryPath: entry.path || "",
+              directoryEntryTauriPath: entry.tauriPath || "",
+            },
+            load: () => readTauriMarkdownFile(entry.tauriPath),
+          });
+          if (!state) return;
           dirState.entryPath = entry.path;
           dirState.entryTauriPath = entry.tauriPath || "";
           dirState.selectedPaths.clear();
@@ -10694,12 +11754,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         // BUG-LOAD-BINARY-WEB-001: binary 拒否時は entryPath / selection を更新しない（Tauri 分岐と揃える）。
         const file = entry.fileHandle ? await entry.fileHandle.getFile() : entry.file;
-        if (!isFileLoadCurrent(gen)) return;
         if (!file) return;
-        const loaded = await readMarkdownFile(file);
-        if (!isFileLoadCurrent(gen)) return;
-        if (!applyLoadedContent(file.name, loaded, entry.fileHandle || null, { viewModeKey: file })) return;
-        if (!isFileLoadCurrent(gen)) return;
+        const state = await openDocumentTab({
+          fileName: file.name,
+          fileHandle: entry.fileHandle || null,
+          viewModeKey: file,
+          metadata: {
+            directoryRootHandle: dirState.handle,
+            directoryRootPath: "",
+            directoryRootName: dirState.displayName || dirState.path,
+            directoryEntryPath: entry.path || "",
+            directoryEntryTauriPath: "",
+          },
+          load: () => readMarkdownFile(file),
+        });
+        if (!state) return;
         dirState.entryPath = entry.path;
         dirState.entryTauriPath = "";
         dirState.selectedPaths.clear();
@@ -10992,7 +12061,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return entry.kind === "dir" && isPathInsideDirectory(targetEntry.path, entry.path);
       }
 
-      function updateActiveMovedEntry(oldDisplayPath, newDisplayPath, oldTauriPath = "", newTauriPath = "") {
+      function updateActiveMovedEntry(oldDisplayPath, newDisplayPath, oldTauriPath = "", newTauriPath = "", oldHandle = null, newHandle = null, movedKind = "file") {
         if (dirState.entryPath === oldDisplayPath || dirState.entryPath.startsWith(`${oldDisplayPath}/`)) {
           dirState.entryPath = `${newDisplayPath}${dirState.entryPath.slice(oldDisplayPath.length)}`;
         }
@@ -11006,6 +12075,102 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const suffix = String(fileState.handle.tauriPath).replace(/\\/g, "/").slice(String(oldTauriPath).replace(/\\/g, "/").length);
           fileState.handle = getTauriFileHandle(`${String(newTauriPath).replace(/\\/g, "/")}${suffix}`);
         }
+        if (oldTauriPath && newTauriPath && dirState.entryTauriPath
+          && isPathInsideDirectory(dirState.entryTauriPath, oldTauriPath)) {
+          const oldPath = String(oldTauriPath).replace(/\\/g, "/");
+          const currentPath = String(dirState.entryTauriPath).replace(/\\/g, "/");
+          const suffix = currentPath.slice(oldPath.length);
+          dirState.entryTauriPath = `${String(newTauriPath).replace(/\\/g, "/")}${suffix}`;
+        }
+        const replacePath = (path, oldPath, nextPath) => {
+          const value = String(path || "").replace(/\\/g, "/");
+          const oldValue = String(oldPath || "").replace(/\\/g, "/").replace(/\/+$/, "");
+          const nextValue = String(nextPath || "").replace(/\\/g, "/").replace(/\/+$/, "");
+          if (!oldValue || !nextValue || !isPathInsideDirectory(value, oldValue)) return path;
+          return `${nextValue}${value.slice(oldValue.length)}`;
+        };
+        for (const state of documentStates.values()) {
+          if (state.closed) continue;
+          let changed = false;
+          if (oldTauriPath && newTauriPath) {
+            if (state.handle && state.handle.tauriPath && isPathInsideDirectory(state.handle.tauriPath, oldTauriPath)) {
+              state.handle = getTauriFileHandle(replacePath(state.handle.tauriPath, oldTauriPath, newTauriPath));
+              if (movedKind === "file") state.name = state.handle.name;
+              changed = true;
+            }
+            if (state.directoryEntryTauriPath && isPathInsideDirectory(state.directoryEntryTauriPath, oldTauriPath)) {
+              state.directoryEntryTauriPath = replacePath(state.directoryEntryTauriPath, oldTauriPath, newTauriPath);
+              changed = true;
+            }
+            if (state.directoryRootPath && isPathInsideDirectory(state.directoryRootPath, oldTauriPath)) {
+              state.directoryRootPath = replacePath(state.directoryRootPath, oldTauriPath, newTauriPath);
+              state.directoryRootHandle = state.directoryRootPath;
+              changed = true;
+            }
+          }
+          if (oldHandle && state.handle === oldHandle && newHandle) {
+            state.handle = newHandle;
+            if (movedKind === "file" && newHandle.name) state.name = newHandle.name;
+            changed = true;
+          }
+          const sameBrowserRoot = !isTauri && state.directoryRootHandle && state.directoryRootHandle === dirState.handle;
+          if (state.directoryEntryPath && (isTauri || sameBrowserRoot)
+            && isPathInsideDirectory(state.directoryEntryPath, oldDisplayPath)) {
+            state.directoryEntryPath = replacePath(state.directoryEntryPath, oldDisplayPath, newDisplayPath);
+            if (movedKind === "file") state.name = getPathFileName(newDisplayPath);
+            changed = true;
+          }
+          if (changed) {
+            if (state.id === activeDocumentId) setAppDocumentTitle(state.name || (state.handle && state.handle.name) || null);
+            else renderDocumentTabs();
+          }
+        }
+      }
+
+      async function refreshMovedBrowserDocumentHandles(newDisplayPath, newHandle) {
+        if (!newHandle || !newDisplayPath || isTauri) return;
+        for (const state of documentStates.values()) {
+          if (state.closed || state.directoryRootHandle !== dirState.handle || !state.directoryEntryPath
+            || !isPathInsideDirectory(state.directoryEntryPath, newDisplayPath)) continue;
+          const relative = state.directoryEntryPath === newDisplayPath
+            ? ""
+            : state.directoryEntryPath.slice(newDisplayPath.length + 1);
+          if (!relative) {
+            if (newHandle.kind === "file") state.handle = newHandle;
+            continue;
+          }
+          const nestedHandle = await getNestedFileHandle(newHandle, relative).catch(() => null);
+          if (nestedHandle) state.handle = nestedHandle;
+        }
+        renderDocumentTabs();
+        const activeState = getDocumentState();
+        if (activeState) setCurrentFileName(activeState.name || (activeState.handle && activeState.handle.name) || null);
+      }
+
+      function markDocumentsDeleted(entry) {
+        if (!entry) return;
+        for (const state of documentStates.values()) {
+          if (state.closed) continue;
+          const sameBrowserRoot = !isTauri && state.directoryRootHandle && state.directoryRootHandle === dirState.handle;
+          const displayMatch = !!state.directoryEntryPath && sameBrowserRoot && (
+            state.directoryEntryPath === entry.path
+            || (entry.kind === "dir" && isPathInsideDirectory(state.directoryEntryPath, entry.path))
+          );
+          const tauriMatch = !!entry.tauriPath && state.handle && state.handle.tauriPath
+            && isPathInsideDirectory(state.handle.tauriPath, entry.tauriPath);
+          const tauriEntryMatch = !!entry.tauriPath && state.directoryEntryTauriPath
+            && isPathInsideDirectory(state.directoryEntryTauriPath, entry.tauriPath);
+          const browserMatch = !isTauri && entry.kind === "file" && state.handle === entry.fileHandle;
+          if (!displayMatch && !tauriMatch && !tauriEntryMatch && !browserMatch) continue;
+          state.handle = null;
+          state.directoryEntryPath = "";
+          state.directoryEntryTauriPath = "";
+          if (state.id === activeDocumentId) {
+            setAppDocumentTitle(state.name || null);
+            setDirtyState(state.unsaved);
+          }
+        }
+        renderDocumentTabs();
       }
 
       // FS abstraction layer – each function performs only the raw FS operation and
@@ -11160,7 +12325,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           removeFileNode(dirState.files, entry);
           const { newDisplayPath } = updateTauriMovedNode(entry, oldTauriPath, result.tauriPath);
           appendMovedTreeNode(targetEntry, entry);
-          updateActiveMovedEntry(oldDisplayPath, newDisplayPath, oldTauriPath, result.tauriPath);
+          updateActiveMovedEntry(oldDisplayPath, newDisplayPath, oldTauriPath, result.tauriPath, null, null, entry.kind);
           renderFileList();
           setStatus(t("status", "moveDone"), false);
           return;
@@ -11186,19 +12351,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
 
         const oldDisplayPath = entry.path;
-        const activeWasInside = dirState.entryPath === oldDisplayPath || dirState.entryPath.startsWith(`${oldDisplayPath}/`);
+        const oldHandle = entry.kind === "file" ? entry.fileHandle : null;
         const result = await fsMoveEntry(entry, targetEntry);
         removeFileNode(dirState.files, entry);
         updateWebMovedNode(entry, targetEntry, result.handle);
         appendMovedTreeNode(targetEntry, entry);
-        updateActiveMovedEntry(oldDisplayPath, entry.path);
-        if (entry.kind === "file" && fileState.handle && dirState.entryPath === entry.path) {
-          fileState.handle = result.handle;
-        } else if (entry.kind === "dir" && activeWasInside && fileState.handle) {
-          const relative = dirState.entryPath.slice(entry.path.length + 1);
-          const nestedHandle = await getNestedFileHandle(result.handle, relative).catch(() => null);
-          if (nestedHandle) fileState.handle = nestedHandle;
-        }
+        updateActiveMovedEntry(oldDisplayPath, entry.path, "", "", oldHandle, result.handle, entry.kind);
+        await refreshMovedBrowserDocumentHandles(entry.path, result.handle);
         renderFileList();
         setStatus(t("status", "moveDone"), false);
       }
@@ -11457,7 +12616,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (parentEntry && parentEntry.kind !== "dir") {
           parentEntry = null;
         }
-        if (!confirmDiscardUnsavedChanges()) return;
         const newName = await openTextPrompt(t("status", "fileNamePrompt"), "untitled.md", t("ui", "newMarkdownFile"));
         if (newName === null) return;
         let trimmedName = newName.trim();
@@ -11598,7 +12756,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             updateTauriMovedNode(entry, oldTauriPath, result.tauriPath);
             sortDirectoryFiles();
             // Propagate to active file/dir state if it lived inside the renamed directory.
-            updateActiveMovedEntry(oldDisplayPath, entry.path, oldTauriPath, result.tauriPath);
+            updateActiveMovedEntry(oldDisplayPath, entry.path, oldTauriPath, result.tauriPath, null, null, entry.kind);
             if (dirState.entryPath === entry.path) {
               setAppDocumentTitle(entry.name);
             }
@@ -11609,6 +12767,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             entry.tauriParentPath = getPathDirectoryName(result.tauriPath);
             entry.modified = Date.now();
             sortDirectoryFiles();
+            updateActiveMovedEntry(oldDisplayPath, entry.path, oldTauriPath, result.tauriPath, null, null, entry.kind);
             if ((fileState.handle && fileState.handle.tauriPath === oldTauriPath) || dirState.entryPath === oldDisplayPath) {
               fileState.handle = getTauriFileHandle(result.tauriPath);
               dirState.entryPath = entry.path;
@@ -11623,6 +12782,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const newFile = await result.handle.getFile();
           entry.modified = newFile.lastModified || Date.now();
           sortDirectoryFiles();
+          updateActiveMovedEntry(oldDisplayPath, entry.path, "", "", oldHandle, result.handle, entry.kind);
           if (fileState.handle === oldHandle || dirState.entryPath === oldDisplayPath) {
             fileState.handle = result.handle;
             dirState.entryPath = entry.path;
@@ -11658,6 +12818,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
 
         await fsDeleteEntry(entry);
+        markDocumentsDeleted(entry);
         removeFileNode(dirState.files, entry);
 
         // BUG-FT-005: delete 後に expandedDirs / favoriteDirs に削除済みパスが残ると、
@@ -11677,27 +12838,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (favChanged) saveFavoriteDirs();
         }
 
-        if (entry.kind === "dir") {
-          const activeInside = entry.tauriPath
-            ? (fileState.handle && fileState.handle.tauriPath && isPathInsideDirectory(fileState.handle.tauriPath, entry.tauriPath)) ||
-              isPathInsideDirectory(dirState.entryPath, entry.path)
-            : isPathInsideDirectory(dirState.entryPath, entry.path);
-          if (activeInside) {
-            fileState.handle = null;
-            dirState.entryPath = "";
-            setAppDocumentTitle();
-            setDirtyState(fileState.unsaved);
-          }
-        } else {
-          const activeFile = entry.tauriPath
-            ? (fileState.handle && fileState.handle.tauriPath === entry.tauriPath) || dirState.entryPath === entry.path
-            : fileState.handle === entry.fileHandle || dirState.entryPath === entry.path;
-          if (activeFile) {
-            fileState.handle = null;
-            dirState.entryPath = "";
-            setAppDocumentTitle();
-            setDirtyState(fileState.unsaved);
-          }
+        if (dirState.entryPath === entry.path || (entry.kind === "dir" && isPathInsideDirectory(dirState.entryPath, entry.path))) {
+          dirState.entryPath = "";
+          dirState.entryTauriPath = "";
+          updateActiveSelection("", dirState.selectedPaths);
         }
         return true;
       }
@@ -11934,6 +13078,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         showDirectoryFiles(tree, dirPath, dirPath, { revealFileList: true });
         if (!activeFilePath) return;
         const displayPath = getTauriDisplayPath(activeFilePath, dirPath);
+        const activeState = getDocumentState();
+        if (activeState && activeState.handle && activeState.handle.tauriPath
+          && normalizePathForCompare(activeState.handle.tauriPath) === normalizePathForCompare(activeFilePath)) {
+          updateDocumentDirectoryMetadata(activeState, {
+            directoryRootHandle: dirPath,
+            directoryRootPath: dirPath,
+            directoryRootName: dirPath,
+            directoryEntryPath: displayPath,
+            directoryEntryTauriPath: activeFilePath,
+          });
+          setAppDocumentTitle(activeState.name || activeState.handle.name || getPathFileName(activeFilePath));
+        }
         dirState.entryTauriPath = activeFilePath;
         expandToPath(displayPath);
       }
@@ -12368,6 +13524,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       let renderDebounceTimer = null;
       const RENDER_DEBOUNCE_MS = 150;
       function handleSourceCompositionStart() {
+        const state = getDocumentState();
+        if (state) {
+          state.compositionSnapshot = {
+            text: source.value,
+            selectionStart: source.selectionStart || 0,
+            selectionEnd: source.selectionEnd || 0,
+          };
+        }
         sourceIsComposing = true;
         sourceCompositionChanged = false;
         sourceCompositionFlushText = null;
@@ -12376,6 +13540,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       function handleSourceCompositionEnd() {
         sourceIsComposing = false;
         if (!sourceCompositionChanged) return;
+        const state = getDocumentState();
+        if (state && state.compositionSnapshot && state.compositionSnapshot.text !== source.value) {
+          state.undoStack.push(state.compositionSnapshot);
+          state.redoStack.length = 0;
+        }
+        if (state) state.compositionSnapshot = null;
         sourceCompositionFlushText = source.value;
         runSourceChangePipeline();
         window.setTimeout(() => {
@@ -12394,6 +13564,39 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         runSourceChangePipeline({ defer: composing });
       }
 
+      function restoreDocumentHistorySnapshot(snapshot) {
+        if (!snapshot) return false;
+        sourceProgrammaticChange = true;
+        try {
+          source.value = snapshot.text;
+          source.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+        } finally {
+          sourceProgrammaticChange = false;
+        }
+        runSourceChangePipeline();
+        return true;
+      }
+
+      function handleSourceBeforeInput(event) {
+        const state = getDocumentState();
+        if (!state || state.readOnly) return;
+        if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
+          event.preventDefault();
+          const from = event.inputType === "historyUndo" ? state.undoStack : state.redoStack;
+          const to = event.inputType === "historyUndo" ? state.redoStack : state.undoStack;
+          const snapshot = from.pop();
+          if (!snapshot) return;
+          to.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
+          restoreDocumentHistorySnapshot(snapshot);
+          return;
+        }
+        if (sourceIsComposing || event.isComposing === true || event.inputType === "insertCompositionText") return;
+        state.undoStack.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
+        if (state.undoStack.length > 200) state.undoStack.shift();
+        state.redoStack.length = 0;
+      }
+
+      source.addEventListener("beforeinput", handleSourceBeforeInput);
       source.addEventListener("compositionstart", handleSourceCompositionStart);
       source.addEventListener("compositionend", handleSourceCompositionEnd);
       source.addEventListener("input", handleSourceInput);
@@ -12561,8 +13764,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           setStatus("", false);
         }
-        if (file && !confirmDiscardUnsavedChanges()) return;
-        await loadFileReadOnly(file);
+        let droppedFileHandle = null;
+        if (item && item.handlePromise) {
+          const handleResult = await item.handlePromise;
+          const handle = handleResult && handleResult.handle;
+          if (handle && handle.kind === "file") droppedFileHandle = handle;
+        }
+        await loadFileReadOnly(file, droppedFileHandle, { beginIntent: false });
         if (!isDirectoryStartupIntentCurrent(intent)) return;
 
         if (item && looksLikeFile) {
@@ -13019,19 +14227,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function openWithFileInput() {
+        beginDirectoryStartupIntent("open-file");
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "*/*";
         input.addEventListener("change", () => {
           const file = input.files && input.files[0];
           if (!file) return;
-          beginDirectoryStartupIntent("open-file");
-          const gen = beginFileLoad();
-          readMarkdownFile(file).then((loaded) => {
-            if (!isFileLoadCurrent(gen)) return;
-            applyLoadedContent(file.name, loaded, null, { viewModeKey: file });
+          openDocumentTab({
+            fileName: file.name,
+            viewModeKey: file,
+            load: () => readMarkdownFile(file),
           }).catch((err) => {
-            if (!isFileLoadCurrent(gen)) return;
             preview.classList.remove("hint");
             preview.classList.add("error");
             preview.textContent = t("status", "fileReadFailed") + (err && err.message ? err.message : String(err));
@@ -13041,7 +14248,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       openBtn.addEventListener("click", () => {
-        if (!confirmDiscardUnsavedChanges()) return;
         if (supportsFsAccess) {
           openWithFsAccess().catch((err) => {
             if (err && err.name === "AbortError") return;
@@ -13254,6 +14460,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       confirmOverlay.addEventListener("click", (e) => {
         if (e.target === confirmOverlay) closeConfirmDialog(false);
       });
+      documentCloseCancelBtn.addEventListener("click", () => closeDocumentCloseDialog("cancel"));
+      documentCloseDiscardBtn.addEventListener("click", () => closeDocumentCloseDialog("discard"));
+      documentCloseSaveBtn.addEventListener("click", () => closeDocumentCloseDialog("save"));
+      documentCloseOverlay.addEventListener("click", (e) => {
+        if (e.target === documentCloseOverlay) closeDocumentCloseDialog("cancel");
+      });
 
       closeFileListBtn.addEventListener("click", () => {
         hideFileContextMenu();
@@ -13377,6 +14589,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (!fileContextMenu.contains(e.target)) {
           hideFileContextMenu();
         }
+        if (!documentTabContextMenu.contains(e.target)) {
+          hideDocumentTabContextMenu();
+        }
         if (!appMenuPanel.contains(e.target) && !appMenuBtn.contains(e.target)) {
           closeAppMenu();
         }
@@ -13384,6 +14599,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       window.addEventListener("resize", () => {
         hideFileContextMenu();
+        hideDocumentTabContextMenu();
         if (!appMenuPanel.classList.contains("hidden")) positionAppMenu();
         updateModeLabelLayout();
       });
@@ -13396,42 +14612,23 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           });
           return;
         }
-        if (!confirmDiscardUnsavedChanges()) return;
-        dirState.entryPath = "";
-        dirState.entryTauriPath = "";
-        fileState.handle = null;
-        fileState.encoding = "utf-8";
-        fileState.buffer = null;
-        fileState.bom = false;
-        fileState.lineEnding = "lf";
-        setEncodingSelectValue(fileState.encoding);
-        bomCheckbox.checked = fileState.bom;
-        lineEndingSelect.value = fileState.lineEnding;
-        fileState.hasContent = true;
-        setEncodingControlsBusy(false);
-        updateFileStatusBarVisibility();
-        setReadOnlyMode(false);
-        source.value = "";
-        source.scrollTop = 0;
-        source.scrollLeft = 0;
-        fileState.viewMode = "markdown";
-        setBaselineText("");
-        updateEditorMetrics();
-        fileState.previewAutoCollapsed = false;
-        updateCardLayout();
-        renderMarkdown("");
-        preview.scrollTop = 0;
-        fileState.unsaved = false;
-        setDirtyState(false);
-        setAppDocumentTitle();
-        setStatus(t("status", "newCreated"), false);
-        source.focus();
+        createUntitledDocument();
       });
 
       modeToggle.addEventListener("change", async () => {
+        // BUG-TABS-ASYNC-TOGGLE-001: 確認ダイアログ待ちの間に document tab が切り替わると、
+        // 確認後の setReadOnlyMode が「確認を求めた文書」ではなくその時点のアクティブ文書に
+        // 適用され、無関係な文書の読み取り専用状態を書き換えてしまう。対象文書を固定し、
+        // 適用直前にまだアクティブかを確認する（切り替わっていれば何もしない＝安全側）。
+        const targetDocumentId = activeDocumentId;
         const toEdit = modeToggle.checked;
         if (!toEdit && fileState.unsaved) {
           const ok = await openConfirmDialog("", t("status", "dropModeReadOnlyConfirm"));
+          if (activeDocumentId !== targetDocumentId || !getDocumentState(targetDocumentId)) {
+            modeToggle.checked = !fileState.readOnly;
+            updateModeToggleLabels();
+            return;
+          }
           if (!ok) {
             modeToggle.checked = true;
             updateModeToggleLabels();
@@ -13468,6 +14665,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       });
 
       encodingSelect.addEventListener("change", async () => {
+        // BUG-TABS-ASYNC-ENCODING-001: 確認/描画待ちの間に document tab が切り替わる、または
+        // 対象文書が閉じられると、その後の decode 結果を無関係な文書へ書き込んでしまう。
+        // 対象文書を固定し、各 await の直後に「まだ対象文書がアクティブか」を確認してから
+        // 適用する（切り替わっていれば何もしない＝安全側。他文書の書き換えは絶対にしない）。
+        const targetDocumentId = activeDocumentId;
+        const isStillTarget = () => activeDocumentId === targetDocumentId && !!getDocumentState(targetDocumentId);
         const encoding = encodingSelect.value;
         if (!fileState.buffer) {
           fileState.encoding = encoding;
@@ -13478,6 +14681,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         try {
           if (fileState.unsaved) {
             const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
+            if (!isStillTarget()) return;
             if (!ok) {
               setEncodingSelectValue(fileState.encoding);
               updateEditorMetrics();
@@ -13486,6 +14690,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           setStatus(t("status", "encodingChanging"), "loading");
           await waitForPaint();
+          if (!isStillTarget()) return;
           const decoded = encoding === "auto"
             ? decodeMarkdownBuffer(fileState.buffer)
             : { text: decodeBuffer(fileState.buffer, encoding), encoding, hasBom: fileState.bom };
@@ -13599,10 +14804,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function rememberCurrentAsRecent() {
-        const name = currentFileName.textContent || (fileState.handle && fileState.handle.name) || "";
+        const state = getDocumentState();
+        const name = (state && (state.name || (state.handle && state.handle.name))) || currentFileName.textContent || "";
         if (!name) return;
-        const tauriPath = (fileState.handle && fileState.handle.tauriPath) || dirState.entryTauriPath || "";
-        const path = dirState.entryPath || "";
+        const tauriPath = (state && state.handle && state.handle.tauriPath)
+          || (state && state.directoryEntryTauriPath)
+          || "";
+        const path = (state && state.directoryEntryPath) || "";
         rememberRecentFile({ name, path, tauriPath });
       }
 
@@ -13897,7 +15105,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function openRecentFileEntry(item) {
-        if (!confirmDiscardUnsavedChanges()) return;
         closeRecentFiles();
         if (item.tauriPath && isTauri) {
           await loadTauriFilePath(item.tauriPath, { statusMessage: t("status", "recentOpened") });
@@ -13905,7 +15112,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         if (item.path && dirState.handle) {
           const flat = flattenTreeFiles(dirState.files);
-          const hit = flat.find((e) => e.path === item.path || e.name === item.name);
+          const hit = flat.find((e) => e.path === item.path);
           if (hit) {
             await loadDirectoryEntry(hit);
             setStatus(t("status", "recentOpened"), false);
@@ -14078,6 +15285,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       window.addEventListener("keydown", (e) => {
         // --- Escape: close dialogs / bars / menus ---
         if (e.key === "Escape") {
+          if (!documentCloseOverlay.hidden) { closeDocumentCloseDialog("cancel"); return; }
           if (!confirmOverlay.hidden) { closeConfirmDialog(false); return; }
           if (!promptOverlay.hidden) { closeTextPrompt(null); return; }
           if (!commandPaletteOverlay.hidden) { closeCommandPalette(); return; }
@@ -14090,6 +15298,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (zenActive) { exitZenMode(); return; }
           closeAppMenu();
           hideFileContextMenu();
+          hideDocumentTabContextMenu();
           return;
         }
         // --- Ctrl/Cmd+K or Ctrl/Cmd+Shift+P: command palette ---
@@ -14101,6 +15310,24 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             else closeCommandPalette();
             return;
           }
+        }
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "PageUp" || e.key === "PageDown")) {
+          const states = Array.from(documentStates.values()).filter((state) => !state.closed);
+          if (states.length > 1) {
+            e.preventDefault();
+            const currentIndex = Math.max(0, states.findIndex((state) => state.id === activeDocumentId));
+            const direction = e.key === "PageUp" ? -1 : 1;
+            const nextIndex = (currentIndex + direction + states.length) % states.length;
+            selectDocumentTab(states[nextIndex].id, { focus: false });
+            return;
+          }
+        }
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "w") {
+          e.preventDefault();
+          requestCloseDocument(activeDocumentId).catch((err) => {
+            setStatus(t("status", "closeFailed") + (err && err.message ? err.message : String(err)), true);
+          });
+          return;
         }
         // --- Ctrl/Cmd+S: save ---
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -14152,8 +15379,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
       });
 
+      // BUG-EXIT-PER-DOC-001: Desktop（setupTauriCloseGuard）は文書ごとに保存/破棄/戻るを
+      // 確認できるが、Browser の beforeunload はブラウザ仕様上カスタムダイアログを出せず
+      // 非同期処理も待てない。ここは仕様上できる範囲（preventDefault + returnValue による
+      // ブラウザ標準の確認）に留め、Desktop と同じ文書ごとの確認はできない。
       window.addEventListener("beforeunload", (e) => {
-        if (!fileState.unsaved || closingAfterUnsavedConfirm) return;
+        if (!hasUnsavedDocuments() || closingAfterUnsavedConfirm) return;
         e.preventDefault();
         e.returnValue = t("status", "unsavedCloseConfirm");
       });
@@ -14386,7 +15617,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         dirState.lastSelectedPath = entry.path;
         const viewable = isViewableFile(entry.name);
         if (!viewable) { setStatus(t("status", "unsupportedFile"), "warning"); return; }
-        if (!confirmDiscardUnsavedChanges()) return;
         updateActiveSelection(entry.path, dirState.selectedPaths);
         loadDirectoryEntry(entry).catch((err) => {
           setStatus(t("status", "fileReadFailed") + (err && err.message ? err.message : String(err)), true);
@@ -14556,22 +15786,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       });
 
       if (isTauri) {
+        // C3: 初回起動（関連付け・引数起動）も openDocumentTab 経由のタブ追加へ寄せ、
+        // 起動済みアプリへの追加起動（openTauriLaunchPaths 経由）と同じ結果になるようにする。
+        // beginIntent: false で loadTauriFilePath 内部の beginDirectoryStartupIntent 再採番を止め、
+        // ここで採番した intent を読み込み後の親フォルダ表示まで一貫して使う。
         invokeTauri("desktop_get_launch_file_path")
           .then(async (path) => {
             if (!path) return;
             const intent = beginDirectoryStartupIntent("associated-file");
-            const gen = beginFileLoad();
             try {
-              const loaded = await readTauriMarkdownFile(path);
-              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
-              const fileHandle = getTauriFileHandle(path);
-              if (!applyLoadedContent(getPathFileName(path), loaded, fileHandle, { viewModeKey: path })) return;
-              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+              // C3: 読み込み世代は loadTauriFilePath -> openDocumentTab が対象文書ごとに
+              // 発番する。ここで beginFileLoad() を呼ぶと起動直後の無題タブに対する
+              // トークンになり、実際に開いた文書と対応しない。開いた文書がまだ生きて
+              // いるかで判定する。
+              const launched = await loadTauriFilePath(path, { beginIntent: false });
+              if (!launched || !isDirectoryStartupIntentCurrent(intent)) return;
 
               const listing = normalizeTauriDirectoryListing(
                 await invokeTauri("desktop_get_file_directory", { filePath: path })
               );
-              if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+              const launchedState = getDocumentState(launched.id);
+              if (!launchedState || launchedState.closed || !isDirectoryStartupIntentCurrent(intent)) return;
               if (listing.entries.length > 0) {
                 const sepIdx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
                 const dirPath = sepIdx >= 0 ? path.substring(0, sepIdx) : "";
@@ -14712,7 +15947,6 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             }
 
             // Default: open folder or file.
-            if (!confirmDiscardUnsavedChanges()) return;
             const intent = beginDirectoryStartupIntent("tauri-drop-open");
             const gen = beginFileLoad();
             try {
@@ -14729,17 +15963,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
                 if (dropRejectionMessage) setStatus(dropRejectionMessage, "warning");
               } else if (payload.kind === "file") {
                 const filePath = payload.path;
-                const fileBaseName = String(filePath).split(/[\\/]/).pop() || "";
-                const loaded = await readTauriMarkdownFile(filePath);
-                if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
-                const fileHandle = getTauriFileHandle(filePath);
-                if (!applyLoadedContent(fileBaseName, loaded, fileHandle, { viewModeKey: fileBaseName })) return;
-                if (!isFileLoadCurrent(gen)) return;
+                // C3: gen は drop 時点の作業中文書に対するトークンで、drop で新しく
+                // 開いた文書とは対応しない。開いた文書がまだ生きているかで判定する。
+                const dropped = await loadTauriFilePath(filePath, { beginIntent: false });
+                if (!dropped || !isDirectoryStartupIntentCurrent(intent)) return;
 
                 const listing = normalizeTauriDirectoryListing(
                   await invokeTauri("desktop_get_file_directory", { filePath: filePath })
                 );
-                if (!isFileLoadCurrent(gen) || !isDirectoryStartupIntentCurrent(intent)) return;
+                const droppedState = getDocumentState(dropped.id);
+                if (!droppedState || droppedState.closed || !isDirectoryStartupIntentCurrent(intent)) return;
                 if (listing.entries.length > 0) {
                   const sepIdx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
                   const dirPath = sepIdx >= 0 ? filePath.substring(0, sepIdx) : "";

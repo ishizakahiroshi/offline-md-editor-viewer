@@ -4,6 +4,7 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
 
@@ -33,6 +34,14 @@ struct DirectoryListingState {
 #[derive(Default)]
 struct CloseGuardState {
     frontend_ready: AtomicBool,
+}
+
+// LAUNCH-RS-001: 2 本目の exe 起動（別インスタンス）から届いたパスを、フロントエンドが
+// 準備完了になるまで一時的に溜めておくキュー。emit イベントの取りこぼしと、初回起動自身の
+// 引数（desktop_get_launch_file_path 側で処理済み）との二重処理を避けるための経路。
+#[derive(Default)]
+struct PendingLaunchPathsState {
+    paths: Mutex<Vec<String>>,
 }
 
 const RAW_PATH_HEADER: &str = "x-offline-md-editor-path";
@@ -1160,6 +1169,20 @@ fn desktop_get_launch_file_path() -> Option<String> {
     Some(path_to_string(&path))
 }
 
+// LAUNCH-RS-001: フロントエンドは desktop_frontend_ready の成功直後にこれを呼ぶ。
+// 別インスタンス起動イベント（desktop-open-launch-paths）を取りこぼした場合でも、
+// このキューから同じパス集合を回収できるようにするための二重経路。
+#[tauri::command]
+fn desktop_take_pending_launch_paths(
+    state: tauri::State<'_, PendingLaunchPathsState>,
+) -> Vec<String> {
+    let mut queue = state
+        .paths
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    std::mem::take(&mut *queue)
+}
+
 #[tauri::command]
 fn desktop_force_close_window<R: tauri::Runtime>(window: tauri::Window<R>) -> Result<(), String> {
     window.destroy().map_err(|err| err.to_string())
@@ -1207,6 +1230,25 @@ fn inspect_drag_drop_path(path: &Path) -> Result<&'static str, String> {
     }
 }
 
+// LAUNCH-RS-005: WebView2 のデータ位置を identifier から切り離して固定するための名前。
+// 指定が無い場合の既定は %LOCALAPPDATA%\<identifier> になるため、LAUNCH-RS-002 で
+// identifier を配置別へ書き換えると、exe 隣に userdata を作れない配置（MSIX の
+// 読み取り専用インストール先など）で保存先が別フォルダへ移り、既に配布済みの版を
+// 使っているユーザーの localStorage（テーマ・履歴・最後に開いたフォルダ・表示モード）
+// が空になる。0.3.3 までが使っていた名前をそのまま定数として持ち、以後は identifier に
+// 依存せずこのフォルダを指し続ける。**この値は変更しない。**
+const LEGACY_WEBVIEW_DATA_DIR_NAME: &str = "com.ishizakahiroshi.offline-md-editor-viewer";
+
+// exe 隣に userdata を作れないときの保存先を返す。読み取り専用の配置でも
+// 既配布版と同じフォルダを指すことが目的。
+fn fallback_webview_data_dir(local_app_data: Option<&str>) -> Option<PathBuf> {
+    let base = local_app_data?;
+    if base.is_empty() {
+        return None;
+    }
+    Some(PathBuf::from(base).join(LEGACY_WEBVIEW_DATA_DIR_NAME))
+}
+
 fn configure_portable_userdata() {
     let exe_path = match std::env::current_exe() {
         Ok(path) => path,
@@ -1219,14 +1261,144 @@ fn configure_portable_userdata() {
     let userdata = exe_dir.join("offline-md-editor-viewer-userdata");
     if fs::create_dir_all(&userdata).is_ok() {
         std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &userdata);
+        return;
     }
+    // ポータブル配置に書けない場合のみ、既配布版と同じ固定フォルダへ明示的に寄せる。
+    let local_app_data = std::env::var("LOCALAPPDATA").ok();
+    if let Some(fallback) = fallback_webview_data_dir(local_app_data.as_deref()) {
+        if fs::create_dir_all(&fallback).is_ok() {
+            std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", &fallback);
+        }
+    }
+}
+
+// FNV-1a 64bit。std::collections::hash_map::DefaultHasher はハッシュアルゴリズムの詳細を
+// rustc バージョン間で保証しないため、配置別 identifier のように同一プロセス内で
+// 決定的な値が要る用途には使わない。新規依存を増やさず数行で書ける自前実装で足りる。
+fn fnv1a64(data: &[u8]) -> u64 {
+    const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    let mut hash = FNV_OFFSET_BASIS;
+    for byte in data {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
+}
+
+// LAUNCH-RS-002: tauri-plugin-single-instance の Windows 実装は、排他キー（mutex / window
+// class 名）を app.config().identifier だけから作る。Store 版・portable 版・開発版はすべて
+// 同じ identifier（com.ishizakahiroshi.offline-md-editor-viewer）を使うため、素のまま渡すと
+// 別フォルダに置かれた別配置のコピー同士が誤って単一インスタンスに統合されてしまう。
+// exe が置かれているディレクトリを正規化してハッシュへ混ぜ込み、配置ごとに別の
+// identifier へ分離する。大文字小文字とパス区切りの違いは同一の配置とみなすため、
+// ハッシュ計算前に小文字化しバックスラッシュを '/' へそろえる。
+fn placement_scoped_identifier(base: &str, exe_dir: &str) -> String {
+    let normalized_exe_dir = exe_dir.to_ascii_lowercase().replace('\\', "/");
+    let hash = fnv1a64(normalized_exe_dir.as_bytes());
+    format!("{base}-p{hash:016x}")
+}
+
+// LAUNCH-RS-003: 上限に達した状態で新規パスが届いた場合は新規パスを破棄し、既存キューは
+// そのまま保持する。大量の外部起動が連続する異常系でもメモリ増加を止めつつ、
+// フロントエンドが起動した時点で最初に受け取った要求（ユーザーが最初に開こうとした
+// ファイル）から順に開けることを優先するため、後着ではなく先着を残す設計にした。
+const MAX_PENDING_LAUNCH_PATHS: usize = 64;
+
+fn push_pending_launch_path(queue: &mut Vec<String>, path: String) {
+    if queue.iter().any(|existing| existing == &path) {
+        return;
+    }
+    if queue.len() >= MAX_PENDING_LAUNCH_PATHS {
+        return;
+    }
+    queue.push(path);
+}
+
+// LAUNCH-RS-004: 2 本目の起動から届いた argv を、既存画面へ渡してよいパスの集合へ絞り込む。
+// argv[0]（実行ファイル自身のパス）は対象外。相対パスは cwd を基準に解決し、引数は
+// シェルコマンドとして解釈しない（単なるパス文字列としてのみ扱う）。既存のパス検証ヘルパ
+// （reject_nul_in_path → is_file → is_markdown_file → reject_symlink_or_reparse）を
+// そのまま流用し、1 つでも弾かれたパスは黙って捨てる。
+fn resolve_secondary_instance_launch_paths(argv: &[String], cwd: &str) -> Vec<String> {
+    let cwd_path = PathBuf::from(cwd);
+    let mut seen = std::collections::HashSet::new();
+    let mut resolved = Vec::new();
+    for arg in argv.iter().skip(1) {
+        if reject_nul_in_path(arg).is_err() {
+            continue;
+        }
+        let candidate = PathBuf::from(arg);
+        let absolute = if candidate.is_absolute() {
+            candidate
+        } else {
+            cwd_path.join(candidate)
+        };
+        if !absolute.is_file() {
+            continue;
+        }
+        if !is_markdown_file(&absolute) {
+            continue;
+        }
+        let normalized = path_to_string(&absolute);
+        if reject_symlink_or_reparse(&normalized).is_err() {
+            continue;
+        }
+        if seen.insert(normalized.clone()) {
+            resolved.push(normalized);
+        }
+    }
+    resolved
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     configure_portable_userdata();
+
+    // LAUNCH-RS-002: identifier を配置別へ書き換えてから .run(context) へ渡す。
+    // config_mut() は tauri 2.11 で public かつ安定 API。
+    let mut context = tauri::generate_context!();
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
+        .map(|dir| path_to_string(&dir))
+        .unwrap_or_default();
+    let scoped_identifier = placement_scoped_identifier(&context.config().identifier, &exe_dir);
+    context.config_mut().identifier = scoped_identifier;
+
     let run_result = tauri::Builder::default()
         .manage(CloseGuardState::default())
+        .manage(PendingLaunchPathsState::default())
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            // 2 本目の起動から届いたパスを既存ウィンドウへ渡す。フロントエンド準備前は
+            // ペンディングキューへ積み、準備済みならイベントで即時通知する。
+            let paths = resolve_secondary_instance_launch_paths(&argv, &cwd);
+            if !paths.is_empty() {
+                let frontend_ready = app
+                    .state::<CloseGuardState>()
+                    .frontend_ready
+                    .load(Ordering::Acquire);
+                if frontend_ready {
+                    let _ = app.emit(
+                        "desktop-open-launch-paths",
+                        serde_json::json!({ "paths": paths }),
+                    );
+                } else {
+                    let pending = app.state::<PendingLaunchPathsState>();
+                    let mut queue = pending
+                        .paths
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    for path in paths {
+                        push_pending_launch_path(&mut queue, path);
+                    }
+                }
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -1255,6 +1427,7 @@ pub fn run() {
             desktop_open_path_in_explorer,
             desktop_open_external_url,
             desktop_get_launch_file_path,
+            desktop_take_pending_launch_paths,
             desktop_force_close_window,
             desktop_frontend_ready,
             desktop_get_file_directory,
@@ -1323,7 +1496,7 @@ pub fn run() {
                 _ => {}
             }
         })
-        .run(tauri::generate_context!());
+        .run(context);
     if let Err(err) = run_result {
         // windows_subsystem = "windows" 下では panic してもユーザーに無言クラッシュとして
         // 見えるため、stderr へ詳細を出してから明示的に異常終了する。WebView2 Runtime 不在
@@ -1471,5 +1644,94 @@ mod tests {
     fn close_guard_stays_disabled_until_frontend_ready() {
         assert!(!should_prevent_close(false));
         assert!(should_prevent_close(true));
+    }
+
+    #[test]
+    fn fallback_webview_data_dir_pins_the_legacy_identifier_folder() {
+        // identifier を配置別へ書き換えても、既配布版が使っていたフォルダを指し続ける。
+        let dir = fallback_webview_data_dir(Some("C:/Users/example/AppData/Local"))
+            .expect("fallback directory");
+        assert!(dir.ends_with(LEGACY_WEBVIEW_DATA_DIR_NAME));
+        assert_eq!(
+            LEGACY_WEBVIEW_DATA_DIR_NAME,
+            "com.ishizakahiroshi.offline-md-editor-viewer"
+        );
+        assert!(fallback_webview_data_dir(None).is_none());
+        assert!(fallback_webview_data_dir(Some("")).is_none());
+    }
+
+    #[test]
+    fn placement_scoped_identifier_is_deterministic_and_placement_sensitive() {
+        let base = "com.ishizakahiroshi.offline-md-editor-viewer";
+        let first = placement_scoped_identifier(base, "C:/apps/one");
+        let second = placement_scoped_identifier(base, "C:/apps/one");
+        assert_eq!(first, second);
+
+        let different = placement_scoped_identifier(base, "C:/apps/two");
+        assert_ne!(first, different);
+        assert!(first.starts_with(&format!("{base}-p")));
+    }
+
+    #[test]
+    fn placement_scoped_identifier_normalizes_case_and_separators() {
+        let base = "com.ishizakahiroshi.offline-md-editor-viewer";
+        let backslash_upper = placement_scoped_identifier(base, r"C:\Apps\One");
+        let forward_lower = placement_scoped_identifier(base, "c:/apps/one");
+        assert_eq!(backslash_upper, forward_lower);
+    }
+
+    #[test]
+    fn secondary_instance_launch_paths_filters_and_dedupes() {
+        let root = test_directory("launch-argv");
+        let markdown = root.join("note.md");
+        fs::write(&markdown, b"# note").expect("write markdown");
+        let rejected_ext = root.join("app.exe");
+        fs::write(&rejected_ext, b"binary").expect("write rejected extension file");
+        let missing = root.join("missing.md");
+
+        let cwd = path_to_string(&root);
+        let argv = vec![
+            "offline-md-editor-viewer.exe".to_string(), // argv[0]: always excluded
+            "note.md".to_string(),                      // relative: resolved against cwd
+            path_to_string(&markdown),                  // absolute duplicate of the same file
+            path_to_string(&rejected_ext),              // wrong extension: dropped
+            path_to_string(&missing),                   // does not exist: dropped
+        ];
+
+        let resolved = resolve_secondary_instance_launch_paths(&argv, &cwd);
+        assert_eq!(resolved, vec![path_to_string(&markdown)]);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn secondary_instance_launch_paths_returns_empty_for_argv0_only() {
+        let resolved = resolve_secondary_instance_launch_paths(
+            &["offline-md-editor-viewer.exe".to_string()],
+            "C:/",
+        );
+        assert!(resolved.is_empty());
+    }
+
+    #[test]
+    fn pending_launch_queue_deduplicates_paths() {
+        let mut queue: Vec<String> = Vec::new();
+        push_pending_launch_path(&mut queue, "a.md".to_string());
+        push_pending_launch_path(&mut queue, "a.md".to_string());
+        assert_eq!(queue, vec!["a.md".to_string()]);
+    }
+
+    #[test]
+    fn pending_launch_queue_drops_new_entries_once_full() {
+        let mut queue: Vec<String> = Vec::new();
+        for index in 0..MAX_PENDING_LAUNCH_PATHS {
+            push_pending_launch_path(&mut queue, format!("fill-{index}.md"));
+        }
+        assert_eq!(queue.len(), MAX_PENDING_LAUNCH_PATHS);
+
+        push_pending_launch_path(&mut queue, "overflow.md".to_string());
+        assert_eq!(queue.len(), MAX_PENDING_LAUNCH_PATHS);
+        assert!(!queue.contains(&"overflow.md".to_string()));
+        // The earliest entry must survive the overflow attempt.
+        assert_eq!(queue.first(), Some(&"fill-0.md".to_string()));
     }
 }

@@ -87,6 +87,9 @@ Edits on the left source pane update the right preview pane in real time. `Save 
 In edit mode, use `Ctrl/Cmd+F` to open the floating find bar and `Ctrl/Cmd+H` or `Ctrl/Cmd+R` to expand replace controls. `Enter` moves to the next match, `Shift+Enter` moves to the previous match, and `Esc` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. `(?<=foo)bar`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 Press `Ctrl/Cmd+K` (or `Ctrl/Cmd+Shift+P`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press `Esc` to exit.
+Open documents are listed as tabs above the editor. Click a tab to switch. Each document keeps its own text, undo history, cursor position, encoding, BOM, line ending and read-only state, so switching tabs never mixes one document's settings into another. `+` opens a new untitled tab. `New` creates a file in the opened folder when a folder is open, and otherwise opens an untitled tab; either way it no longer replaces what you are currently editing. A tab with unsaved changes is marked, and closing it asks whether to save, discard, or go back. Closing the window asks the same for each unsaved document in turn, and cancelling any one of them stops the exit.
+
+Right-clicking a tab, or an empty area of the tab row, opens a context menu for creating a new tab, closing tabs (this one, others, or those to the right), and copying the file name or path. The desktop app also adds an item there to open the file's folder in Explorer.
 
 ## Use in the Browser
 
@@ -147,6 +150,9 @@ Editing, rendering, and preview share the same HTML on both editions, so **the c
 | Rename folders in the tree | | ✓ |
 | Moving files and folders inside the tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
 | Copy external files/folders into the opened tree by drag & drop | ✓ (standard in Chrome via File System Access API) | ✓ |
+| Opening a file from Explorer adds a tab to the running window instead of starting another copy | | ✓ |
+
+On the Desktop edition, opening another `.md` from Explorer while the app is running adds it as a tab in the existing window and brings that window to the front, instead of starting a second copy of the app. A file that is already open just gets its tab selected. Copies of the app placed in different folders stay independent of each other, so a portable copy on a USB drive and an installed copy do not merge into one window.
 
 ## Build the Windows Desktop App
 

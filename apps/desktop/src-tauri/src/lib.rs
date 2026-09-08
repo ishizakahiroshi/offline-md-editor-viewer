@@ -332,6 +332,25 @@ fn path_from_raw_request(request: &tauri::ipc::Request<'_>) -> Result<String, St
     Ok(path)
 }
 
+// BUG-TAURI-RAW-REQUEST-001: JSON で届いたバイト列（数値の配列）を Vec<u8> にする。
+// 0..=255 の整数以外、配列以外は拒否する。raw body が使える経路ではこちらは通らない。
+fn json_body_to_bytes(value: &serde_json::Value) -> Result<Vec<u8>, String> {
+    let array = value
+        .as_array()
+        .ok_or_else(|| "Request body must be raw bytes or an array of bytes.".to_string())?;
+    let mut bytes = Vec::with_capacity(array.len());
+    for item in array {
+        let number = item
+            .as_u64()
+            .ok_or_else(|| "Request body contains a non-byte value.".to_string())?;
+        if number > u8::MAX as u64 {
+            return Err("Request body contains a value outside 0..=255.".to_string());
+        }
+        bytes.push(number as u8);
+    }
+    Ok(bytes)
+}
+
 fn read_bounded<R: Read>(
     reader: R,
     initial_size: Option<u64>,
@@ -432,11 +451,15 @@ fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
 fn desktop_write_file_bytes(request: tauri::ipc::Request<'_>) -> Result<(), String> {
     let path = path_from_raw_request(&request)?;
     reject_symlink_or_reparse(&path)?;
-    let bytes = match request.body() {
-        tauri::ipc::InvokeBody::Raw(bytes) => bytes,
-        tauri::ipc::InvokeBody::Json(_) => {
-            return Err("Raw byte request body is required.".to_string());
-        }
+    // BUG-TAURI-RAW-REQUEST-001: フロントは Uint8Array をそのまま invoke へ渡すが、この
+    // IPC 経路では raw body にならず JSON の数値配列として届く
+    // （実機で保存が全て失敗することを確認済み）。raw body だけを受ける実装だと
+    // Desktop 版で保存が一切できない。応答側の BUG-TAURI-RAW-RESPONSE-001 と同じ根本原因なので、
+    // 送信側も両方の形を受ける。JSON 経路でも 0..=255 の整数配列以外は拒否し、
+    // 上限検査は共通で通す。
+    let bytes: std::borrow::Cow<'_, [u8]> = match request.body() {
+        tauri::ipc::InvokeBody::Raw(raw) => std::borrow::Cow::Borrowed(raw.as_slice()),
+        tauri::ipc::InvokeBody::Json(value) => std::borrow::Cow::Owned(json_body_to_bytes(value)?),
     };
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err(format!(
@@ -444,7 +467,7 @@ fn desktop_write_file_bytes(request: tauri::ipc::Request<'_>) -> Result<(), Stri
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(Path::new(&path), bytes.as_slice())
+    atomic_write(Path::new(&path), bytes.as_ref())
 }
 
 #[tauri::command]
@@ -1658,6 +1681,25 @@ mod tests {
         );
         assert!(fallback_webview_data_dir(None).is_none());
         assert!(fallback_webview_data_dir(Some("")).is_none());
+    }
+
+    #[test]
+    fn json_body_to_bytes_accepts_a_byte_array_and_rejects_anything_else() {
+        // BUG-TAURI-RAW-REQUEST-001: JSON 経路で届いたバイト列を受けられること。
+        let value = serde_json::json!([0, 1, 254, 255]);
+        assert_eq!(json_body_to_bytes(&value).unwrap(), vec![0u8, 1, 254, 255]);
+        assert_eq!(
+            json_body_to_bytes(&serde_json::json!([])).unwrap(),
+            Vec::<u8>::new()
+        );
+
+        // 範囲外・非整数・配列以外は拒否する。
+        assert!(json_body_to_bytes(&serde_json::json!([256])).is_err());
+        assert!(json_body_to_bytes(&serde_json::json!([-1])).is_err());
+        assert!(json_body_to_bytes(&serde_json::json!([1.5])).is_err());
+        assert!(json_body_to_bytes(&serde_json::json!(["a"])).is_err());
+        assert!(json_body_to_bytes(&serde_json::json!({"bytes": [1]})).is_err());
+        assert!(json_body_to_bytes(&serde_json::json!("not an array")).is_err());
     }
 
     #[test]

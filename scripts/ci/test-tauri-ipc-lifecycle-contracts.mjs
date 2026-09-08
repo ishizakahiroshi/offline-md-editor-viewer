@@ -106,8 +106,14 @@ assert.doesNotMatch(html.slice(html.indexOf('invokeTauriRaw("desktop_write_file_
 assert.match(rust, /Result<tauri::ipc::Response, String>/);
 assert.match(rust, /tauri::ipc::Response::new\(bytes\)/);
 assert.match(rust, /fn desktop_write_file_bytes\(request: tauri::ipc::Request<'_>\)/);
-assert.match(rust, /tauri::ipc::InvokeBody::Raw\(bytes\)/);
-assert.match(rust, /Raw byte request body is required/);
+// BUG-TAURI-RAW-REQUEST-001: 送信側も raw body だけを受ける実装に戻さないこと。
+// この IPC 経路では Uint8Array が JSON の数値配列として届き、Raw だけを受けると
+// Desktop 版で保存が一切できなくなる（実機で再現）。両方を受けることを検査する。
+assert.match(rust, /tauri::ipc::InvokeBody::Raw\(raw\)/);
+assert.match(rust, /tauri::ipc::InvokeBody::Json\(value\) => std::borrow::Cow::Owned\(json_body_to_bytes\(value\)\?\)/);
+assert.match(rust, /fn json_body_to_bytes\(value: &serde_json::Value\) -> Result<Vec<u8>, String>/);
+// 旧: raw body 以外を拒否するエラー文言の存在を検査していたが、その経路自体を廃止した。
+// 文言の有無ではなく、上の「両方の body を受ける」構造で検査する。
 assert.match(rust, /Duplicate raw path header/);
 assert.match(rust, /frontend_ready: AtomicBool/);
 assert.match(rust, /\.manage\(CloseGuardState::default\(\)\)/);

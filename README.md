@@ -60,7 +60,7 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
 - **Navigate and focus quickly.** Command palette (`Ctrl/Cmd+K`), heading outline panel, distraction-free Zen mode, recent files list, and an unsaved-changes diff view.
-- **Writing stats at a glance.** The status bar shows character / word counts and estimated reading time, and the toolbar shows the current file name with one-click copy.
+- **Writing stats at a glance.** The status bar shows character / word counts and estimated reading time, and the toolbar shows the current file name and full path, each with one-click copy.
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 

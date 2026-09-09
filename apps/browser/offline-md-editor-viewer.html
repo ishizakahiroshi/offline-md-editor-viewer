@@ -431,12 +431,17 @@
 
     .document-path {
       min-width: 0;
+      flex: 0 1 auto;
       overflow: hidden;
       color: var(--muted);
       font-family: var(--mono-font);
       font-size: calc(0.72rem * var(--app-font-scale));
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    #copyCurrentDocumentPathBtn {
+      flex-shrink: 0;
     }
 
     .current-document-copy {
@@ -1981,6 +1986,7 @@
     }
 
     #copyFileNameBtn,
+    #copyCurrentDocumentPathBtn,
     #copyAllBtn {
       display: inline-flex;
       align-items: center;
@@ -2059,11 +2065,13 @@
     }
 
     #copyFileNameBtn:hover,
+    #copyCurrentDocumentPathBtn:hover,
     #copyAllBtn:hover {
       opacity: 1;
     }
 
     #copyFileNameBtn svg,
+    #copyCurrentDocumentPathBtn svg,
     #copyAllBtn svg {
       width: 16px;
       height: 16px;
@@ -4309,6 +4317,15 @@
           </span>
         </button>
         <span id="currentDocumentPath" class="document-path"></span>
+        <button id="copyCurrentDocumentPathBtn" type="button" style="display:none" title="">
+          <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -4940,6 +4957,7 @@
       const currentDocumentPathRow = document.getElementById("currentDocumentPathRow");
       const currentDocumentName = document.getElementById("currentDocumentName");
       const currentDocumentPath = document.getElementById("currentDocumentPath");
+      const copyCurrentDocumentPathBtn = document.getElementById("copyCurrentDocumentPathBtn");
       const copyCurrentDocumentNameBtn = document.getElementById("copyCurrentDocumentNameBtn");
       const newBtn = document.getElementById("newBtn");
       const openBtn = document.getElementById("openBtn");
@@ -5165,7 +5183,7 @@
         return _svgTemplates;
       }
       const APP_NAME = "offline-md-editor-viewer";
-      const APP_VERSION = "v0.3.3";
+      const APP_VERSION = "v0.4.0";
       const UI_HOVER_TOOLTIP_SHOW_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_HIDE_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_FADE_MS = 0;
@@ -5204,7 +5222,7 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Preview matches what you write.** Live preview updates as you type, with synced left/right scrolling.
 - **Folder browsing.** Point it at a folder once and pick from a left-side tree — handy for note collections or docs trees.
 - **Navigate and focus quickly.** Command palette (\`Ctrl/Cmd+K\`), heading outline panel, distraction-free Zen mode, recent files list, and an unsaved-changes diff view.
-- **Writing stats at a glance.** The status bar shows character / word counts and estimated reading time, and the toolbar shows the current file name with one-click copy.
+- **Writing stats at a glance.** The status bar shows character / word counts and estimated reading time, and the toolbar shows the current file name and full path, each with one-click copy.
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
@@ -5432,7 +5450,7 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 - **書きながら結果が見えます。** タイプに合わせてプレビューが更新され、左右パネルはスクロール同期します。
 - **フォルダ単位で扱えます。** 一度フォルダを指定すれば、左側のツリーから \`.md\` を選んで開けます。ノート集やドキュメントツリーの確認に。
 - **すばやい移動と集中モード。** コマンドパレット（\`Ctrl/Cmd+K\`）、見出しアウトライン、集中執筆用の Zen モード、最近使ったファイル一覧、未保存変更の差分表示に対応。
-- **書いた量がひと目で分かります。** ステータスバーに文字数・単語数・推定読了時間を表示し、ツールバーの現在ファイル名はワンクリックでコピーできます。
+- **書いた量がひと目で分かります。** ステータスバーに文字数・単語数・推定読了時間を表示し、ツールバーの現在ファイル名とフルパスはそれぞれワンクリックでコピーできます。
 - **読みやすいデフォルト。** 見出し・表・引用・シンタックスハイライト付きコードブロックに調整したダーク/ブルー/ライトテーマ、文字サイズ変更にも対応。
 - **UI は 13 言語。** English / 日本語 / 简体中文 / 繁體中文 / Español / Deutsch / 한국어 / Português (Brasil) / Русский / Tiếng Việt / Français / Italiano / Bahasa Indonesia
 
@@ -7541,6 +7559,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           setUiTooltip(currentDocumentPath, currentDocumentPath.textContent, { aria: false });
           setUiTooltip(copyCurrentDocumentNameBtn, fileName, { aria: false });
           copyCurrentDocumentNameBtn.setAttribute("aria-label", `${t("ui", "copyFileName")}: ${fileName}`);
+          copyCurrentDocumentPathBtn.style.display = "inline-flex";
+          setUiTooltip(copyCurrentDocumentPathBtn, t("ui", "copyDocumentPath"));
         } else {
           currentFileName.textContent = "";
           delete currentFileName.dataset.uiTooltip;
@@ -7551,6 +7571,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           currentDocumentPathRow.hidden = true;
           delete copyCurrentDocumentNameBtn.dataset.uiTooltip;
           copyCurrentDocumentNameBtn.removeAttribute("aria-label");
+          copyCurrentDocumentPathBtn.style.display = "none";
+          delete copyCurrentDocumentPathBtn.dataset.uiTooltip;
         }
         updateSourceExtBadge(fileName);
         updateModeLabelLayout();
@@ -7623,6 +7645,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       copyCurrentDocumentNameBtn.addEventListener("click", () => {
         copyFileNameText(currentDocumentName.textContent, copyCurrentDocumentNameBtn);
+      });
+
+      copyCurrentDocumentPathBtn.addEventListener("click", () => {
+        copyFileNameText(currentDocumentPath.textContent, copyCurrentDocumentPathBtn);
       });
 
       newDocumentTabBtn.addEventListener("click", () => {
@@ -7846,6 +7872,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         renderFileList();
         if (currentFileName.textContent) {
           setUiTooltip(copyFileNameBtn, t("ui", "copyFileName"));
+        }
+        if (currentDocumentPath.textContent) {
+          setUiTooltip(copyCurrentDocumentPathBtn, t("ui", "copyDocumentPath"));
         }
         setUiTooltip(copyAllBtn, t("ui", "allCopyTitle"));
         updateModeLabelLayout();

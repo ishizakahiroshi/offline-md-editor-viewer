@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-09-09
 
 ### Added
 
 - Documents now open as tabs above the editor instead of replacing what you are editing. Each tab keeps its own text, undo/redo history, cursor position and scroll, encoding, BOM, line ending, read-only state and unsaved-diff baseline, so switching tabs never mixes one document's settings into another. `+` opens a new untitled tab; `New` still creates a file inside the opened folder when a folder is open. A tab with unsaved changes is marked (in text and in its accessible name, not by color alone) and closing it asks whether to save, discard, or go back.
 - Desktop edition: opening another `.md` from Explorer while the app is running now adds it as a tab in the existing window and brings that window to the front, instead of starting a second copy of the app. A file that is already open just gets its tab selected. Copies of the app placed in different folders stay independent, so a portable copy on a USB drive and an installed copy do not merge into one window. This is implemented with `tauri-plugin-single-instance`, whose exclusion key is derived only from the app identifier; because every edition of this app ships the same identifier, the identifier is extended at startup with a hash of the directory the exe runs from so that different placements do not collide.
 - Tabs, and empty space in the tab row, now have a right-click context menu: new tab, close this tab / other tabs / tabs to the right (a multi-close confirms each unsaved document in turn and stops on the first cancel, the same as closing the window), and copy file name / path. Items that need a save location (path, and open in Explorer) are hidden for untitled tabs, and the Explorer item only appears in the desktop edition.
+- The path row below the tab bar now has a copy button next to the full path, matching the existing one next to the file name, so the full path can be copied with one click without opening the tab's right-click menu.
 
 ### Security
 
@@ -17,6 +18,7 @@
 
 - Closing the window now confirms each unsaved document in turn, offering save / discard / go back per document, and stops the exit as soon as one of them is cancelled or a save fails. Previously a single prompt covered every unsaved document at once. The Browser edition keeps the standard `beforeunload` prompt, because a page cannot show its own dialog and wait for it there.
 - Desktop edition: the WebView2 user-data location is now pinned explicitly instead of being derived from the app identifier. Behavior is unchanged for existing installs — this keeps the Microsoft Store edition pointing at the same folder it has always used, so language, theme, recent files and the last opened folder survive the identifier change described above.
+- The overwrite confirmation shown when saving over the original file is now the application's own dialog instead of the browser/WebView native confirm. On the Desktop edition it no longer appears as a system prompt titled after the internal host name, and it matches the dialog used everywhere else in the app.
 
 ### Fixed
 

@@ -19,5 +19,5 @@ When reporting, please include reproduction steps, the affected edition (browser
 ## Scope
 
 - Browser edition: local Markdown rendering with an offline Content Security Policy (`connect-src 'none'`); no intentional network calls. See [README.md](README.md#security--privacy) for details.
-- Desktop edition (Windows / Tauri): local filesystem access through app-owned `invoke` commands, scoped to files the user opens or drags in. Treat the app like any other local, trusted editor with the user's own filesystem permissions.
+- Desktop edition (Windows / Tauri): local filesystem access through app-owned `invoke` commands, scoped to folders and files the user opens, saves via the OS dialog, launches, or drags in. The Rust backend keeps an allowlist of those workspace roots and rejects read/write/list/delete/rename/move/copy/Explorer paths outside them. Treat the app like any other local, trusted editor with the user's own filesystem permissions inside the authorized folders.
 - npm package: a launcher only. It opens the bundled browser HTML in the default browser and performs no network access of its own.

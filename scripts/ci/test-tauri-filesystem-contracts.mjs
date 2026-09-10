@@ -55,4 +55,14 @@ requireText(rust, "no_clobber_copy_preserves_existing_destination", "copy fault 
 requireText(rust, "no_clobber_move_preserves_existing_destination", "move fault test");
 requireText(rust, "case_only_rename_uses_a_temporary_sibling", "case-only rename test");
 
+// SEC-RS-003: workspace-root allowlist on FS invoke commands.
+requireText(rust, "struct WorkspaceAllowlist", "workspace allowlist state");
+requireText(rust, "ensure_within_allowed_roots", "workspace allowlist enforce");
+requireText(rust, "authorize_workspace_path", "workspace allowlist authorize");
+requireText(rust, "WORKSPACE_ROOTS_FILE_NAME", "workspace allowlist persistence");
+requireText(rust, "allowlist_denies_paths_outside_authorized_roots", "workspace allowlist unit test");
+requireText(readSection, "ensure_within_allowed_roots", "read gated by allowlist");
+requireText(renameSection, "ensure_within_allowed_roots", "rename gated by allowlist");
+requireText(moveSection, "ensure_within_allowed_roots", "move gated by allowlist");
+
 console.log("OK Tauri filesystem contracts");

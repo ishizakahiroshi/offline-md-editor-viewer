@@ -87,6 +87,177 @@ fn reject_symlink_or_reparse(path: &str) -> Result<(), String> {
     Ok(())
 }
 
+// SEC-RS-003: Backend allowlist of workspace roots. App-owned invoke FS commands may only
+// read/write/list/delete/rename/move/copy/open-Explorer under roots the user authorized via
+// an OS file/folder/save dialog, a launch argv path, or a drag-drop the Rust shell accepted.
+// Roots are persisted under the WebView2 userdata directory so "reopen last folder" keeps
+// working across restarts without letting the frontend expand the set (XSS cannot authorize
+// a new root). Junction *roots* chosen through a dialog are stored after canonicalize
+// (resolved target); direct symlink/reparse *operation targets* remain rejected by
+// reject_symlink_or_reparse (SEC-RS-002).
+const MAX_WORKSPACE_ROOTS: usize = 64;
+const WORKSPACE_ROOTS_FILE_NAME: &str = "workspace-roots.v1.txt";
+
+struct WorkspaceAllowlist {
+    roots: Mutex<Vec<PathBuf>>,
+    persist_path: Option<PathBuf>,
+}
+
+impl Default for WorkspaceAllowlist {
+    fn default() -> Self {
+        Self {
+            roots: Mutex::new(Vec::new()),
+            persist_path: None,
+        }
+    }
+}
+
+impl WorkspaceAllowlist {
+    fn load() -> Self {
+        let persist_path = std::env::var_os("WEBVIEW2_USER_DATA_FOLDER").map(|folder| {
+            PathBuf::from(folder).join(WORKSPACE_ROOTS_FILE_NAME)
+        });
+        let mut roots = Vec::new();
+        if let Some(ref path) = persist_path {
+            if let Ok(contents) = fs::read_to_string(path) {
+                for line in contents.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    let candidate = PathBuf::from(trimmed);
+                    if let Ok(canonical) = fs::canonicalize(&candidate) {
+                        if !roots.iter().any(|existing| existing == &canonical) {
+                            roots.push(canonical);
+                        }
+                    }
+                    if roots.len() >= MAX_WORKSPACE_ROOTS {
+                        break;
+                    }
+                }
+            }
+        }
+        Self {
+            roots: Mutex::new(roots),
+            persist_path,
+        }
+    }
+
+    fn persist_locked(&self, roots: &[PathBuf]) {
+        let Some(ref path) = self.persist_path else {
+            return;
+        };
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let body = roots
+            .iter()
+            .map(|root| path_to_string(root))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let tmp = path.with_extension("txt.tmp");
+        if fs::write(&tmp, body.as_bytes()).is_ok() {
+            if fs::rename(&tmp, path).is_err() {
+                let _ = fs::remove_file(&tmp);
+            }
+        }
+    }
+
+    fn authorize_canonical_root(&self, canonical_root: PathBuf) {
+        let mut roots = self
+            .roots
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(index) = roots.iter().position(|existing| existing == &canonical_root) {
+            // Refresh recency so repeatedly used roots are not the first eviction victims.
+            let existing = roots.remove(index);
+            roots.push(existing);
+        } else {
+            if roots.len() >= MAX_WORKSPACE_ROOTS {
+                roots.remove(0);
+            }
+            roots.push(canonical_root);
+        }
+        self.persist_locked(&roots);
+    }
+
+    fn authorize_workspace_path(&self, path: &Path) -> Result<(), String> {
+        reject_nul_in_path(&path_to_string(path))?;
+        let metadata = fs::symlink_metadata(path).map_err(|err| err.to_string())?;
+        let root = if metadata.is_dir() {
+            path.to_path_buf()
+        } else if metadata.is_file() {
+            path.parent()
+                .filter(|parent| !parent.as_os_str().is_empty())
+                .ok_or_else(|| "Path has no parent directory.".to_string())?
+                .to_path_buf()
+        } else {
+            return Err("Path is not a regular file or directory.".to_string());
+        };
+        let canonical = fs::canonicalize(&root).map_err(|err| err.to_string())?;
+        self.authorize_canonical_root(canonical);
+        Ok(())
+    }
+
+    fn ensure_within_allowed_roots(&self, path: &Path) -> Result<PathBuf, String> {
+        let canonical = resolve_path_for_allowlist(path)?;
+        let roots = self
+            .roots
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if roots.is_empty() {
+            return Err(
+                "No authorized workspace folder is open. Open a folder or file first."
+                    .to_string(),
+            );
+        }
+        if roots
+            .iter()
+            .any(|root| is_path_within_root(&canonical, root))
+        {
+            Ok(canonical)
+        } else {
+            Err("Path is outside the authorized workspace folders.".to_string())
+        }
+    }
+}
+
+fn is_path_within_root(path: &Path, root: &Path) -> bool {
+    path == root || path.strip_prefix(root).is_ok()
+}
+
+/// Canonicalize `path` for allowlist comparison. If `path` does not exist yet (Save As /
+/// create), walk up to an existing ancestor, canonicalize that, and rejoin the missing
+/// trailing components so a not-yet-created child under an authorized root still passes.
+fn resolve_path_for_allowlist(path: &Path) -> Result<PathBuf, String> {
+    if path.as_os_str().is_empty() {
+        return Err("Invalid path.".to_string());
+    }
+    if path.exists() {
+        return fs::canonicalize(path).map_err(|err| err.to_string());
+    }
+    let mut missing: Vec<std::ffi::OsString> = Vec::new();
+    let mut current = path.to_path_buf();
+    loop {
+        if current.exists() {
+            let mut canonical = fs::canonicalize(&current).map_err(|err| err.to_string())?;
+            for component in missing.iter().rev() {
+                canonical.push(component);
+            }
+            return Ok(canonical);
+        }
+        let name = current
+            .file_name()
+            .ok_or_else(|| "Path is outside the authorized workspace folders.".to_string())?;
+        missing.push(name.to_os_string());
+        let parent = current
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .ok_or_else(|| "Path is outside the authorized workspace folders.".to_string())?;
+        current = parent.to_path_buf();
+    }
+}
+
 const VIEWABLE_EXTENSIONS: &[&str] = &[
     "md", "markdown", "txt", "log", "rst", "adoc", "json", "yml", "yaml", "toml", "ini", "conf",
     "xml", "csv", "tsv", "sql", "diff", "patch",
@@ -248,8 +419,8 @@ fn collect_markdown_files_inner(
 }
 
 #[tauri::command]
-fn desktop_open_file_dialog() -> Option<String> {
-    rfd::FileDialog::new()
+fn desktop_open_file_dialog(allowlist: tauri::State<'_, WorkspaceAllowlist>) -> Option<String> {
+    let path = rfd::FileDialog::new()
         .add_filter("Markdown", &["md", "markdown"])
         .add_filter(
             "Plain text",
@@ -259,13 +430,19 @@ fn desktop_open_file_dialog() -> Option<String> {
             ],
         )
         .add_filter("All files", &["*"])
-        .pick_file()
-        .map(|path| path_to_string(&path))
+        .pick_file()?;
+    // Authorize the parent folder so subsequent read/list/save under that folder work,
+    // including "show parent tree" after opening a single file.
+    let _ = allowlist.authorize_workspace_path(&path);
+    Some(path_to_string(&path))
 }
 
 #[tauri::command]
-fn desktop_save_file_dialog(suggested_name: Option<String>) -> Option<String> {
-    rfd::FileDialog::new()
+fn desktop_save_file_dialog(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    suggested_name: Option<String>,
+) -> Option<String> {
+    let path = rfd::FileDialog::new()
         .add_filter("Markdown", &["md", "markdown"])
         .add_filter(
             "Plain text",
@@ -276,15 +453,22 @@ fn desktop_save_file_dialog(suggested_name: Option<String>) -> Option<String> {
         )
         .add_filter("All files", &["*"])
         .set_file_name(suggested_name.as_deref().unwrap_or("untitled.md"))
-        .save_file()
-        .map(|path| path_to_string(&path))
+        .save_file()?;
+    // Save As may target a folder the user has not opened as a workspace yet; the OS
+    // dialog is the authorization event, so register the destination's parent.
+    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+        let _ = allowlist.authorize_workspace_path(parent);
+    }
+    Some(path_to_string(&path))
 }
 
 #[tauri::command]
-fn desktop_open_directory_dialog() -> Option<String> {
-    rfd::FileDialog::new()
-        .pick_folder()
-        .map(|path| path_to_string(&path))
+fn desktop_open_directory_dialog(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+) -> Option<String> {
+    let path = rfd::FileDialog::new().pick_folder()?;
+    let _ = allowlist.authorize_workspace_path(&path);
+    Some(path_to_string(&path))
 }
 
 // BUG-RS-106: 巨大ファイルの一括メモリ展開で OOM / 長時間応答停止を起こすのを防ぐ。
@@ -376,8 +560,12 @@ fn read_bounded<R: Read>(
 }
 
 #[tauri::command]
-fn desktop_read_file_bytes(path: String) -> Result<tauri::ipc::Response, String> {
+fn desktop_read_file_bytes(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+) -> Result<tauri::ipc::Response, String> {
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-RS-NEW-205: metadata と fs::read の間にファイルが成長すると、事前サイズ検査だけでは
     // 64 MiB 上限が fail-open になる。先にハンドルを開き、そのハンドルから上限 + 1 byte だけ読む。
@@ -434,8 +622,13 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
+fn desktop_write_file_text(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+    text: String,
+) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-RS-106: 巨大ペイロードの書き込みは fs::File::create → write_all 経由でメモリ・I/O を圧迫する。
     if text.len() as u64 > MAX_FILE_BYTES {
@@ -448,8 +641,12 @@ fn desktop_write_file_text(path: String, text: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn desktop_write_file_bytes(request: tauri::ipc::Request<'_>) -> Result<(), String> {
+fn desktop_write_file_bytes(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
     let path = path_from_raw_request(&request)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-TAURI-RAW-REQUEST-001: フロントは Uint8Array をそのまま invoke へ渡すが、この
     // IPC 経路では raw body にならず JSON の数値配列として届く
@@ -471,8 +668,12 @@ fn desktop_write_file_bytes(request: tauri::ipc::Request<'_>) -> Result<(), Stri
 }
 
 #[tauri::command]
-fn desktop_list_shallow_entries(dir_path: String) -> Result<DesktopDirectoryListing, String> {
+fn desktop_list_shallow_entries(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    dir_path: String,
+) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&dir_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&dir_path))?;
     let dir = PathBuf::from(&dir_path);
     let read_dir = fs::read_dir(&dir).map_err(|e| e.to_string())?;
     let mut state = DirectoryListingState::default();
@@ -748,8 +949,13 @@ fn rename_without_replace(source: &Path, destination: &Path) -> io::Result<()> {
 }
 
 #[tauri::command]
-fn desktop_rename_file(path: String, new_name: String) -> Result<String, String> {
+fn desktop_rename_file(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+    new_name: String,
+) -> Result<String, String> {
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     if !is_valid_child_name(&new_name) {
         return Err("Invalid file name.".to_string());
@@ -825,9 +1031,15 @@ fn move_across_devices(
 }
 
 #[tauri::command]
-fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
+fn desktop_move_entry(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    source_path: String,
+    target_dir_path: String,
+) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&source_path))?;
+    allowlist.ensure_within_allowed_roots(Path::new(&target_dir_path))?;
     reject_symlink_or_reparse(&source_path)?;
     let source = PathBuf::from(source_path);
     let target_dir = PathBuf::from(target_dir_path);
@@ -873,8 +1085,12 @@ fn desktop_move_entry(source_path: String, target_dir_path: String) -> Result<St
 }
 
 #[tauri::command]
-fn desktop_delete_file(path: String) -> Result<(), String> {
+fn desktop_delete_file(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     fs::remove_file(path).map_err(|err| err.to_string())
 }
@@ -923,8 +1139,13 @@ fn is_valid_child_name(name: &str) -> bool {
 }
 
 #[tauri::command]
-fn desktop_create_directory(parent_path: String, name: String) -> Result<String, String> {
+fn desktop_create_directory(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    parent_path: String,
+    name: String,
+) -> Result<String, String> {
     reject_nul_in_path(&parent_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&parent_path))?;
     if !is_valid_child_name(&name) {
         return Err("Invalid folder name.".to_string());
     }
@@ -941,8 +1162,13 @@ fn desktop_create_directory(parent_path: String, name: String) -> Result<String,
 }
 
 #[tauri::command]
-fn desktop_create_file(parent_path: String, name: String) -> Result<String, String> {
+fn desktop_create_file(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    parent_path: String,
+    name: String,
+) -> Result<String, String> {
     reject_nul_in_path(&parent_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&parent_path))?;
     if !is_valid_child_name(&name) {
         return Err("Invalid file name.".to_string());
     }
@@ -972,9 +1198,15 @@ fn desktop_create_file(parent_path: String, name: String) -> Result<String, Stri
 /// is appended to the stem (or bare name for folders) until a free slot is found.
 /// Returns the final destination path.
 #[tauri::command]
-fn desktop_copy_entry(source_path: String, target_dir_path: String) -> Result<String, String> {
+fn desktop_copy_entry(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    source_path: String,
+    target_dir_path: String,
+) -> Result<String, String> {
     reject_nul_in_path(&source_path)?;
     reject_nul_in_path(&target_dir_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&source_path))?;
+    allowlist.ensure_within_allowed_roots(Path::new(&target_dir_path))?;
     reject_symlink_or_reparse(&source_path)?;
     let source = PathBuf::from(&source_path);
     let target_dir = PathBuf::from(&target_dir_path);
@@ -1108,8 +1340,13 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
 }
 
 #[tauri::command]
-fn desktop_delete_directory(path: String, recursive: bool) -> Result<(), String> {
+fn desktop_delete_directory(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+    recursive: bool,
+) -> Result<(), String> {
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     let target = PathBuf::from(path);
     if !target.is_dir() {
@@ -1123,11 +1360,15 @@ fn desktop_delete_directory(path: String, recursive: bool) -> Result<(), String>
 }
 
 #[tauri::command]
-fn desktop_open_path_in_explorer(path: String) -> Result<(), String> {
+fn desktop_open_path_in_explorer(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+) -> Result<(), String> {
     if path.contains("://") {
         return Err("Invalid path.".to_string());
     }
     reject_nul_in_path(&path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     // canonicalize は symlink/ジャンクションを辿ってしまうため、辿る前に対象そのものを検査する。
     reject_symlink_or_reparse(&path)?;
     let target = PathBuf::from(&path);
@@ -1180,7 +1421,9 @@ fn desktop_open_external_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn desktop_get_launch_file_path() -> Option<String> {
+fn desktop_get_launch_file_path(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+) -> Option<String> {
     let arg = std::env::args().nth(1)?;
     let path = PathBuf::from(&arg);
     if !path.is_file() {
@@ -1189,6 +1432,8 @@ fn desktop_get_launch_file_path() -> Option<String> {
     if !is_markdown_file(&path) {
         return None;
     }
+    // File-association / argv launch is an OS-mediated open; authorize the parent folder.
+    let _ = allowlist.authorize_workspace_path(&path);
     Some(path_to_string(&path))
 }
 
@@ -1198,12 +1443,17 @@ fn desktop_get_launch_file_path() -> Option<String> {
 #[tauri::command]
 fn desktop_take_pending_launch_paths(
     state: tauri::State<'_, PendingLaunchPathsState>,
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
 ) -> Vec<String> {
     let mut queue = state
         .paths
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    std::mem::take(&mut *queue)
+    let paths = std::mem::take(&mut *queue);
+    for path in &paths {
+        let _ = allowlist.authorize_workspace_path(Path::new(path));
+    }
+    paths
 }
 
 #[tauri::command]
@@ -1222,8 +1472,12 @@ fn should_prevent_close(frontend_ready: bool) -> bool {
 }
 
 #[tauri::command]
-fn desktop_get_file_directory(file_path: String) -> Result<DesktopDirectoryListing, String> {
+fn desktop_get_file_directory(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    file_path: String,
+) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&file_path)?;
+    allowlist.ensure_within_allowed_roots(Path::new(&file_path))?;
     let path = PathBuf::from(&file_path);
     let parent = path
         .parent()
@@ -1392,11 +1646,16 @@ pub fn run() {
     let run_result = tauri::Builder::default()
         .manage(CloseGuardState::default())
         .manage(PendingLaunchPathsState::default())
+        .manage(WorkspaceAllowlist::load())
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // 2 本目の起動から届いたパスを既存ウィンドウへ渡す。フロントエンド準備前は
             // ペンディングキューへ積み、準備済みならイベントで即時通知する。
             let paths = resolve_secondary_instance_launch_paths(&argv, &cwd);
             if !paths.is_empty() {
+                let allowlist = app.state::<WorkspaceAllowlist>();
+                for path in &paths {
+                    let _ = allowlist.authorize_workspace_path(Path::new(path));
+                }
                 let frontend_ready = app
                     .state::<CloseGuardState>()
                     .frontend_ready
@@ -1468,11 +1727,17 @@ pub fn run() {
                     // symlinks are rejected and the reason is sent to the frontend for display.
                     let mut entries = Vec::new();
                     let mut rejected = Vec::new();
+                    let allowlist = window.app_handle().state::<WorkspaceAllowlist>();
                     for path in paths {
                         match inspect_drag_drop_path(path) {
-                            Ok(kind) => entries.push(
-                                serde_json::json!({ "path": path_to_string(path), "kind": kind }),
-                            ),
+                            Ok(kind) => {
+                                // Drag-drop is OS-mediated; authorize so a subsequent
+                                // copy/open invoke for the dropped path is allowed.
+                                let _ = allowlist.authorize_workspace_path(path);
+                                entries.push(
+                                    serde_json::json!({ "path": path_to_string(path), "kind": kind }),
+                                );
+                            }
                             Err(reason) => rejected.push(serde_json::json!({
                                 "path": path_to_string(path),
                                 "reason": reason
@@ -1815,5 +2080,60 @@ mod tests {
         assert!(!queue.contains(&"overflow.md".to_string()));
         // The earliest entry must survive the overflow attempt.
         assert_eq!(queue.first(), Some(&"fill-0.md".to_string()));
+    }
+
+    #[test]
+    fn path_within_root_rejects_sibling_prefix_lookalikes() {
+        let root = Path::new("/workspace/notes");
+        assert!(is_path_within_root(Path::new("/workspace/notes"), root));
+        assert!(is_path_within_root(Path::new("/workspace/notes/a.md"), root));
+        assert!(is_path_within_root(Path::new("/workspace/notes/sub/b.md"), root));
+        assert!(!is_path_within_root(Path::new("/workspace/notes-other/a.md"), root));
+        assert!(!is_path_within_root(Path::new("/workspace/other/a.md"), root));
+        assert!(!is_path_within_root(Path::new("/workspace"), root));
+    }
+
+    #[test]
+    fn allowlist_denies_paths_outside_authorized_roots() {
+        let root = test_directory("allowlist-root");
+        let inside = root.join("inside.md");
+        fs::write(&inside, b"ok").expect("write inside");
+        let outside_root = test_directory("allowlist-outside");
+        let outside = outside_root.join("secret.md");
+        fs::write(&outside, b"nope").expect("write outside");
+
+        let allowlist = WorkspaceAllowlist::default();
+        allowlist
+            .authorize_workspace_path(&root)
+            .expect("authorize root");
+
+        assert!(allowlist
+            .ensure_within_allowed_roots(&inside)
+            .is_ok());
+        assert!(allowlist
+            .ensure_within_allowed_roots(&outside)
+            .is_err());
+        // Not-yet-created child under an authorized root must still be allowed (Save As).
+        let newborn = root.join("newborn.md");
+        assert!(allowlist
+            .ensure_within_allowed_roots(&newborn)
+            .is_ok());
+
+        let _ = fs::remove_dir_all(root);
+        let _ = fs::remove_dir_all(outside_root);
+    }
+
+    #[test]
+    fn allowlist_empty_rejects_until_authorized() {
+        let root = test_directory("allowlist-empty");
+        let file = root.join("note.md");
+        fs::write(&file, b"x").expect("write");
+        let allowlist = WorkspaceAllowlist::default();
+        assert!(allowlist.ensure_within_allowed_roots(&file).is_err());
+        allowlist
+            .authorize_workspace_path(&file)
+            .expect("authorize via file parent");
+        assert!(allowlist.ensure_within_allowed_roots(&file).is_ok());
+        let _ = fs::remove_dir_all(root);
     }
 }

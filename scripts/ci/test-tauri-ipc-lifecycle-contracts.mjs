@@ -105,7 +105,10 @@ assert.match(html, /invokeTauriRaw\("desktop_write_file_bytes", bytes/);
 assert.doesNotMatch(html.slice(html.indexOf('invokeTauriRaw("desktop_write_file_bytes"'), html.indexOf('invokeTauriRaw("desktop_write_file_bytes"') + 500), /Array\.from\(bytes\)/);
 assert.match(rust, /Result<tauri::ipc::Response, String>/);
 assert.match(rust, /tauri::ipc::Response::new\(bytes\)/);
-assert.match(rust, /fn desktop_write_file_bytes\(request: tauri::ipc::Request<'_>\)/);
+assert.match(
+  rust,
+  /fn desktop_write_file_bytes\(\s*allowlist: tauri::State<'_, WorkspaceAllowlist>,\s*request: tauri::ipc::Request<'_>,\s*\)/s
+);
 // BUG-TAURI-RAW-REQUEST-001: 送信側も raw body だけを受ける実装に戻さないこと。
 // この IPC 経路では Uint8Array が JSON の数値配列として届き、Raw だけを受けると
 // Desktop 版で保存が一切できなくなる（実機で再現）。両方を受けることを検査する。

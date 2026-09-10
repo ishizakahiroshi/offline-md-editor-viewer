@@ -70,6 +70,7 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **No CDN.** Runtime libraries and icons are bundled with the app.
 - **No app network calls.** Release builds use `connect-src 'none'` in the Content Security Policy.
 - **External links are opt-in.** `http` / `https` links open only when you enable the External links setting and click a link.
+- **Desktop file access is scoped (Windows).** The desktop edition only reads and writes inside folders you authorized by opening, saving, launching, or dropping them. Paths outside those folders are rejected by the Rust backend. After updating to this version, reopen your folder once so it is authorized again.
 
 ## How It Works
 

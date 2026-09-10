@@ -5,7 +5,11 @@
 ### Security
 
 - Desktop edition: bind app-owned filesystem `invoke` commands to an allowlist of workspace roots authorized by OS file/folder/save dialogs, launch argv, or drag-drop. Paths outside those roots are rejected for read/write/list/delete/rename/move/copy and open-in-Explorer. Authorized roots persist under the WebView2 userdata directory so reopening the last folder keeps working without letting the frontend expand the set.
-- CI: pin `npm@11.19.1` (was `npm@latest`) in the release npm job, and pin the Rust toolchain channel to `stable-2026-08-23` in validate/release (Actions SHAs were already pinned).
+- CI: pin `npm@11.19.1` (was `npm@latest`) in the release npm job, and pin the Rust toolchain channel to `stable-2026-08-20` in validate/release (Actions SHAs were already pinned).
+
+### Changed
+
+- Desktop edition: the first launch after this update has no authorized folders yet, so restoring the last folder is refused once. The remembered path is kept, and the status bar asks you to reopen the folder; reopening it authorizes the folder again and later launches restore normally. Recent files outside an authorized folder need the same one-time reopen.
 
 ## 0.4.0 - 2026-09-09
 

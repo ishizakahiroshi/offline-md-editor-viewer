@@ -5232,6 +5232,7 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **No CDN.** Runtime libraries and icons are bundled with the app.
 - **No app network calls.** Release builds use \`connect-src 'none'\` in the Content Security Policy.
 - **External links are opt-in.** \`http\` / \`https\` links open only when you enable the External links setting and click a link.
+- **Desktop file access is scoped (Windows).** The desktop edition only reads and writes inside folders you authorized by opening, saving, launching, or dropping them. Paths outside those folders are rejected by the Rust backend. After updating to this version, reopen your folder once so it is authorized again.
 
 ## How It Works
 
@@ -5460,6 +5461,7 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 - **CDN を使いません。** 実行時ライブラリとアイコンはアプリに同梱しています。
 - **アプリから外部通信しません。** リリース版は Content Security Policy の \`connect-src 'none'\` を使います。
 - **外部リンクは任意です。** \`http\` / \`https\` リンクは、設定で「外部リンク」を有効にしてクリックした場合だけ開きます。
+- **デスクトップ版のファイルアクセスは範囲を限定します（Windows）。** デスクトップ版は、開く・保存する・関連付けで起動する・ドロップして認可したフォルダの中だけを読み書きします。その外のパスは Rust 側で拒否します。このバージョンへ更新した直後は、フォルダを一度開き直すと再び認可されます。
 
 ## 使い方の流れ
 
@@ -13364,6 +13366,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return !!err && (err.name === "NotFoundError" || err.name === "InvalidStateError");
       }
 
+      // SEC-RS-003: Desktop の backend は、認可済み workspace 根の外を NOT_AUTHORIZED: で拒否する。
+      // このセキュリティ変更を入れた直後の初回起動では認可根がまだ 1 件も無いため、記憶している
+      // 前回フォルダの復元も必ずここで弾かれる。stale path と同じ扱いで消してしまうと、既存
+      // ユーザーは全員フォルダの記憶を失う。区別して「開き直してください」で止める。
+      function isWorkspaceNotAuthorizedError(err) {
+        return !!err && /NOT_AUTHORIZED:/.test(String((err && err.message) || err));
+      }
+
       async function restoreLastDirectory() {
         if (!supportsDirectoryAccess) return;
         const intent = beginDirectoryStartupIntent("restore-last-directory");
@@ -13386,6 +13396,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             reportTauriListingWarning(listing);
           } catch (err) {
             if (!isDirectoryStartupIntentCurrent(intent)) return;
+            if (isWorkspaceNotAuthorizedError(err)) {
+              // 記憶した path は消さない。ユーザーが「フォルダ」から開き直せば認可され、
+              // 次回以降の復元はそのまま成功する。
+              setStatus(t("status", "folderRestorePermission"), false);
+              return;
+            }
             await storeLastDirectoryHandle(null);
             throw err;
           }

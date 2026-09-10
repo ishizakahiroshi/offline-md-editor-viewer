@@ -95,6 +95,10 @@ fn reject_symlink_or_reparse(path: &str) -> Result<(), String> {
 // a new root). Junction *roots* chosen through a dialog are stored after canonicalize
 // (resolved target); direct symlink/reparse *operation targets* remain rejected by
 // reject_symlink_or_reparse (SEC-RS-002).
+// Allowlist rejections carry the machine-readable `NOT_AUTHORIZED:` prefix (same convention as
+// `ALREADY_EXISTS:`). The frontend keys off it to tell "this folder was never authorized in this
+// install" apart from a genuinely stale path, so that startup restore does not discard the
+// remembered folder on the first launch after this security change.
 const MAX_WORKSPACE_ROOTS: usize = 64;
 const WORKSPACE_ROOTS_FILE_NAME: &str = "workspace-roots.v1.txt";
 
@@ -114,9 +118,8 @@ impl Default for WorkspaceAllowlist {
 
 impl WorkspaceAllowlist {
     fn load() -> Self {
-        let persist_path = std::env::var_os("WEBVIEW2_USER_DATA_FOLDER").map(|folder| {
-            PathBuf::from(folder).join(WORKSPACE_ROOTS_FILE_NAME)
-        });
+        let persist_path = std::env::var_os("WEBVIEW2_USER_DATA_FOLDER")
+            .map(|folder| PathBuf::from(folder).join(WORKSPACE_ROOTS_FILE_NAME));
         let mut roots = Vec::new();
         if let Some(ref path) = persist_path {
             if let Ok(contents) = fs::read_to_string(path) {
@@ -156,10 +159,8 @@ impl WorkspaceAllowlist {
             .collect::<Vec<_>>()
             .join("\n");
         let tmp = path.with_extension("txt.tmp");
-        if fs::write(&tmp, body.as_bytes()).is_ok() {
-            if fs::rename(&tmp, path).is_err() {
-                let _ = fs::remove_file(&tmp);
-            }
+        if fs::write(&tmp, body.as_bytes()).is_ok() && fs::rename(&tmp, path).is_err() {
+            let _ = fs::remove_file(&tmp);
         }
     }
 
@@ -168,7 +169,10 @@ impl WorkspaceAllowlist {
             .roots
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Some(index) = roots.iter().position(|existing| existing == &canonical_root) {
+        if let Some(index) = roots
+            .iter()
+            .position(|existing| existing == &canonical_root)
+        {
             // Refresh recency so repeatedly used roots are not the first eviction victims.
             let existing = roots.remove(index);
             roots.push(existing);
@@ -207,7 +211,7 @@ impl WorkspaceAllowlist {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if roots.is_empty() {
             return Err(
-                "No authorized workspace folder is open. Open a folder or file first."
+                "NOT_AUTHORIZED: No authorized workspace folder is open. Open a folder or file first."
                     .to_string(),
             );
         }
@@ -217,7 +221,7 @@ impl WorkspaceAllowlist {
         {
             Ok(canonical)
         } else {
-            Err("Path is outside the authorized workspace folders.".to_string())
+            Err("NOT_AUTHORIZED: Path is outside the authorized workspace folders.".to_string())
         }
     }
 }
@@ -246,14 +250,16 @@ fn resolve_path_for_allowlist(path: &Path) -> Result<PathBuf, String> {
             }
             return Ok(canonical);
         }
-        let name = current
-            .file_name()
-            .ok_or_else(|| "Path is outside the authorized workspace folders.".to_string())?;
+        let name = current.file_name().ok_or_else(|| {
+            "NOT_AUTHORIZED: Path is outside the authorized workspace folders.".to_string()
+        })?;
         missing.push(name.to_os_string());
         let parent = current
             .parent()
             .filter(|parent| !parent.as_os_str().is_empty())
-            .ok_or_else(|| "Path is outside the authorized workspace folders.".to_string())?;
+            .ok_or_else(|| {
+                "NOT_AUTHORIZED: Path is outside the authorized workspace folders.".to_string()
+            })?;
         current = parent.to_path_buf();
     }
 }
@@ -456,7 +462,10 @@ fn desktop_save_file_dialog(
         .save_file()?;
     // Save As may target a folder the user has not opened as a workspace yet; the OS
     // dialog is the authorization event, so register the destination's parent.
-    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
         let _ = allowlist.authorize_workspace_path(parent);
     }
     Some(path_to_string(&path))
@@ -1421,9 +1430,7 @@ fn desktop_open_external_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn desktop_get_launch_file_path(
-    allowlist: tauri::State<'_, WorkspaceAllowlist>,
-) -> Option<String> {
+fn desktop_get_launch_file_path(allowlist: tauri::State<'_, WorkspaceAllowlist>) -> Option<String> {
     let arg = std::env::args().nth(1)?;
     let path = PathBuf::from(&arg);
     if !path.is_file() {
@@ -2086,10 +2093,22 @@ mod tests {
     fn path_within_root_rejects_sibling_prefix_lookalikes() {
         let root = Path::new("/workspace/notes");
         assert!(is_path_within_root(Path::new("/workspace/notes"), root));
-        assert!(is_path_within_root(Path::new("/workspace/notes/a.md"), root));
-        assert!(is_path_within_root(Path::new("/workspace/notes/sub/b.md"), root));
-        assert!(!is_path_within_root(Path::new("/workspace/notes-other/a.md"), root));
-        assert!(!is_path_within_root(Path::new("/workspace/other/a.md"), root));
+        assert!(is_path_within_root(
+            Path::new("/workspace/notes/a.md"),
+            root
+        ));
+        assert!(is_path_within_root(
+            Path::new("/workspace/notes/sub/b.md"),
+            root
+        ));
+        assert!(!is_path_within_root(
+            Path::new("/workspace/notes-other/a.md"),
+            root
+        ));
+        assert!(!is_path_within_root(
+            Path::new("/workspace/other/a.md"),
+            root
+        ));
         assert!(!is_path_within_root(Path::new("/workspace"), root));
     }
 
@@ -2107,17 +2126,11 @@ mod tests {
             .authorize_workspace_path(&root)
             .expect("authorize root");
 
-        assert!(allowlist
-            .ensure_within_allowed_roots(&inside)
-            .is_ok());
-        assert!(allowlist
-            .ensure_within_allowed_roots(&outside)
-            .is_err());
+        assert!(allowlist.ensure_within_allowed_roots(&inside).is_ok());
+        assert!(allowlist.ensure_within_allowed_roots(&outside).is_err());
         // Not-yet-created child under an authorized root must still be allowed (Save As).
         let newborn = root.join("newborn.md");
-        assert!(allowlist
-            .ensure_within_allowed_roots(&newborn)
-            .is_ok());
+        assert!(allowlist.ensure_within_allowed_roots(&newborn).is_ok());
 
         let _ = fs::remove_dir_all(root);
         let _ = fs::remove_dir_all(outside_root);

@@ -65,4 +65,26 @@ requireText(readSection, "ensure_within_allowed_roots", "read gated by allowlist
 requireText(renameSection, "ensure_within_allowed_roots", "rename gated by allowlist");
 requireText(moveSection, "ensure_within_allowed_roots", "move gated by allowlist");
 
+// SEC-RS-003 (migration): allowlist rejections must stay machine-readable, and the startup
+// restore must not discard the remembered folder when the rejection is only "not authorized
+// yet". Without this, the first launch after shipping the allowlist wipes every existing
+// user's remembered folder.
+requireText(rust, "NOT_AUTHORIZED: No authorized workspace folder is open.", "allowlist empty error code");
+requireText(rust, "NOT_AUTHORIZED: Path is outside the authorized workspace folders.", "allowlist outside error code");
+requireText(html, "function isWorkspaceNotAuthorizedError", "frontend allowlist error probe");
+requireText(html, "/NOT_AUTHORIZED:/", "frontend allowlist error code match");
+const restoreStart = html.indexOf("async function restoreLastDirectory()");
+assert.notEqual(restoreStart, -1, "restoreLastDirectory not found");
+const restoreEnd = html.indexOf("function isChromeBlockedFolderError", restoreStart);
+assert.notEqual(restoreEnd, -1, "restoreLastDirectory end marker not found");
+const tauriRestore = html.slice(restoreStart, restoreEnd);
+const guardAt = tauriRestore.indexOf("isWorkspaceNotAuthorizedError(err)");
+const clearAt = tauriRestore.indexOf("storeLastDirectoryHandle(null)");
+assert.notEqual(guardAt, -1, "restore missing NOT_AUTHORIZED guard");
+assert.notEqual(clearAt, -1, "restore missing stale-path cleanup");
+assert.ok(
+  guardAt < clearAt,
+  "restore must check NOT_AUTHORIZED before clearing the remembered folder"
+);
+
 console.log("OK Tauri filesystem contracts");

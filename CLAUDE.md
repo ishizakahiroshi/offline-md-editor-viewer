@@ -12,6 +12,7 @@
 
 | 領域 | 正本 / 強制層 |
 |---|---|
+| **どのファイルが何をして、どのテーブルを読み書きするか**（探す前にここ） | `.omitnix/index.json`。全ファイルの索引とテーブル逆引き。**解析できなかったファイルも名前と理由付きで載る**ので「索引に無い」と「読めなかった」を取り違えない。参照 0 件は「未使用」ではない。**`generated.commit` が HEAD と違えば索引はその commit 時点のもの**なので、古いまま断定せず `omitnix` で作り直すか、古いことを添えて答える |
 | 単一 HTML と同梱ライブラリ | `apps/browser/offline-md-editor-viewer.html`、`apps/browser/lib/` |
 | Browser / Tauri 分岐 | `window.__TAURI__` 判定、`apps/desktop/src-tauri/src/lib.rs` |
 | Markdown pipeline | marked → DOMPurify → `preview.innerHTML` |

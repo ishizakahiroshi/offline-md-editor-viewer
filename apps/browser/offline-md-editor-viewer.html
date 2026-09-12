@@ -2969,6 +2969,21 @@
       opacity: 0 !important;
     }
 
+    /* IME preedit is painted into #source. Keep overlay text hidden and restore
+       textarea color while composing, otherwise the conversion string is invisible. */
+    .source-scroll-shell.syntax-highlight-on.is-composing #source,
+    .source-scroll-shell.find-highlight-on.is-composing #source {
+      color: var(--text) !important;
+      -webkit-text-fill-color: var(--text) !important;
+      caret-color: var(--text);
+      opacity: 1 !important;
+    }
+
+    .source-scroll-shell.is-composing .source-highlight,
+    .source-scroll-shell.is-composing .source-find-highlight {
+      visibility: hidden;
+    }
+
     .source-scroll-shell.find-highlight-on {
       --find-match-bg: rgba(255, 211, 102, 0.46);
       --find-match-box: inset 0 0 0 1px rgba(138, 92, 0, 0.36);
@@ -5839,6 +5854,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         sourceIsComposing = false;
         sourceCompositionChanged = false;
         sourceCompositionFlushText = null;
+        sourceScrollShell.classList.remove("is-composing");
         activeDocumentId = documentId;
         source.value = next.text;
         source.setSelectionRange(next.selectionStart, next.selectionEnd);
@@ -13583,12 +13599,14 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           };
         }
         sourceIsComposing = true;
+        sourceScrollShell.classList.add("is-composing");
         sourceCompositionChanged = false;
         sourceCompositionFlushText = null;
       }
 
       function handleSourceCompositionEnd() {
         sourceIsComposing = false;
+        sourceScrollShell.classList.remove("is-composing");
         if (!sourceCompositionChanged) return;
         const state = getDocumentState();
         if (state && state.compositionSnapshot && state.compositionSnapshot.text !== source.value) {
@@ -13649,6 +13667,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       source.addEventListener("beforeinput", handleSourceBeforeInput);
       source.addEventListener("compositionstart", handleSourceCompositionStart);
       source.addEventListener("compositionend", handleSourceCompositionEnd);
+      source.addEventListener("compositioncancel", handleSourceCompositionEnd);
       source.addEventListener("input", handleSourceInput);
 
       source.addEventListener("select", scheduleMirroredSelectionUpdate);

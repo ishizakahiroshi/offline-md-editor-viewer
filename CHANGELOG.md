@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 - 2026-09-13
 
 ### Security
 
@@ -10,6 +10,10 @@
 ### Changed
 
 - Desktop edition: the first launch after this update has no authorized folders yet, so restoring the last folder is refused once. The remembered path is kept, and the status bar asks you to reopen the folder; reopening it authorizes the folder again and later launches restore normally. Recent files outside an authorized folder need the same one-time reopen.
+
+### Fixed
+
+- Text being typed through an IME (the uncommitted conversion string, for example while typing Japanese, Chinese or Korean) is now visible in the source editor. The syntax highlighting is drawn on a layer above the text box and the text box itself is transparent, but an IME paints its in-progress text into the text box, so the characters were invisible until they were committed and only the IME candidate window showed what was being typed. While a conversion is in progress the text box now paints its own text and the highlight layer steps aside; the highlighting comes back as soon as the text is committed.
 
 ## 0.4.0 - 2026-09-09
 

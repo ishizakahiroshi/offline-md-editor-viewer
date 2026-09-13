@@ -142,6 +142,10 @@ const flushTimers = () => {
 };
 
 const classes = new Set();
+// `.source-scroll-shell` carries the IME state class. The composition handlers toggle it so the
+// textarea stops being transparent while a preedit is on screen, so the stub has to exist here or
+// those handlers throw before any of the assertions below can run.
+const shellClasses = new Set();
 const counters = {
   dirty: 0,
   metrics: 0,
@@ -195,6 +199,20 @@ const context = {
   lineEndingSelect: { disabled: false, value: "lf" },
   editorPanel: { classList: { contains: () => false } },
   fileStatusBar: { style: {} },
+  sourceScrollShell: {
+    classList: {
+      add: (name) => shellClasses.add(name),
+      remove: (name) => shellClasses.delete(name),
+      contains: (name) => shellClasses.has(name),
+      toggle(name, force) {
+        const enabled = force === undefined ? !shellClasses.has(name) : !!force;
+        if (enabled) shellClasses.add(name);
+        else shellClasses.delete(name);
+        return enabled;
+      },
+    },
+    style: { setProperty: () => {} },
+  },
   document: {
     body: {
       classList: {
@@ -272,10 +290,15 @@ assert.equal(counters.render, 1, "programmatic replacement schedules preview ren
 Object.assign(counters, { dirty: 0, metrics: 0, find: 0, mirror: 0, render: 0 });
 context.source.value = "日本";
 context.handleSourceCompositionStart();
+// The syntax-highlight overlay paints the text and `#source` is transparent underneath it, but the
+// IME preedit is painted into `#source`. `is-composing` is what restores its colour, so losing this
+// class makes the conversion string invisible while it is being typed.
+assert.ok(shellClasses.has("is-composing"), "composition start marks the shell as composing");
 context.handleSourceInput({ isComposing: true });
 assert.equal(counters.dirty, 1, "IME input marks dirty immediately");
 assert.equal(counters.metrics, 0, "IME input defers metrics while composing");
 context.handleSourceCompositionEnd();
+assert.ok(!shellClasses.has("is-composing"), "composition end clears the composing marker");
 assert.equal(counters.metrics, 1, "IME composition end flushes metrics once");
 context.handleSourceInput({ isComposing: false });
 assert.equal(counters.metrics, 1, "duplicate post-composition input is coalesced");
@@ -300,8 +323,18 @@ assert.equal(undoPrevented, true, "document history intercepts native undo after
 assert.equal(context.source.value, "before", "undo restores only the active document snapshot");
 assert.equal(context.fileState.redoStack[0].text, "first", "undo keeps an active-document redo snapshot");
 
+// Seeded as composing: switching tabs mid-conversion must clear the marker, otherwise the next
+// document keeps the overlay hidden and the textarea opaque.
+const switchShellClasses = new Set(["is-composing"]);
 const switchContext = {
   Map,
+  sourceScrollShell: {
+    classList: {
+      add: (name) => switchShellClasses.add(name),
+      remove: (name) => switchShellClasses.delete(name),
+      contains: (name) => switchShellClasses.has(name),
+    },
+  },
   source: {
     value: "A edited",
     selectionStart: 2,
@@ -346,6 +379,7 @@ vm.runInNewContext(`
   this.activeId = () => activeDocumentId;
 `, switchContext);
 assert.equal(switchContext.activateDocumentState("document-b"), true, "B can be activated without replacing A");
+assert.ok(!switchShellClasses.has("is-composing"), "switching documents clears the composing marker");
 assert.equal(switchContext.documents.get("document-a").text, "A edited", "switching captures A's edited text");
 assert.equal(switchContext.source.value, "B edited", "switching restores B's edited text");
 switchContext.source.value = "B newer";

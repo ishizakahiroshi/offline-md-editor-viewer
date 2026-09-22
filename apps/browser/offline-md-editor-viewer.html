@@ -5751,6 +5751,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       const MIN_CONTENT_W = 220;
       const STACKED_LAYOUT_QUERY = "(max-width: 1100px)";
       let syncingScroll = false;
+      let scrollSyncHeadingLines = [];
+      const scrollSyncEchoTop = { source: null, preview: null };
       function createDocumentState(id, overrides = {}) {
         return {
           id,
@@ -9764,7 +9766,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             preview.textContent = t("preview", "largeFilePaused");
             return;
           }
-          const rawHtml = marked.parse(normalized);
+          const tokens = marked.lexer(normalized);
+          scrollSyncHeadingLines = headingLineIndexesFromTokens(tokens);
+          const rawHtml = marked.parser(tokens);
           const safeHtml = sanitizeMarkdownHtml(rawHtml);
           preview.classList.remove("hint", "error");
           if (safeHtml) {
@@ -9785,6 +9789,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           syncScroll(source, preview);
           scheduleMirroredSelectionUpdate();
         } catch (err) {
+          scrollSyncHeadingLines = [];
+          scrollSyncAnchors = [];
           preview.classList.remove("hint");
           preview.classList.add("error");
           preview.textContent = t("status", "convertFailed") + (err && err.message ? err.message : String(err));
@@ -9806,9 +9812,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function setScrollRatio(el, ratio) {
         const scrollable = el.scrollHeight - el.clientHeight;
-        if (scrollable <= 0) return;
+        if (scrollable <= 0) {
+          assignSyncedScrollTop(el, 0);
+          return;
+        }
         const clamped = Math.max(0, Math.min(1, ratio));
-        el.scrollTop = scrollable * clamped;
+        assignSyncedScrollTop(el, scrollable * clamped);
       }
 
       function getPreviewElementTop(el) {
@@ -9817,61 +9826,62 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return preview.scrollTop + elRect.top - previewRect.top;
       }
 
-      function getMarkdownHeadingLineIndexes() {
+      function countMarkdownRawLineBreaks(raw) {
+        if (!raw) return 0;
+        let count = 0;
+        for (let i = 0; i < raw.length; i++) {
+          const code = raw.charCodeAt(i);
+          if (code === 10) {
+            count += 1;
+          } else if (code === 13) {
+            count += 1;
+            if (raw.charCodeAt(i + 1) === 10) i += 1;
+          }
+        }
+        return count;
+      }
+
+      // 見出し行は marked の token から取る。独自正規表現は fence 内の # / === や
+      // setext の下線を preview と違う数で拾っていた（BUG-MD-002 / BUG-MD-003）。
+      // list と blockquote の中も歩く。preview の h1..h6 と数が違うときはアンカーを使わない。
+      function headingLineIndexesFromTokens(tokens) {
         const indexes = [];
-        let inFence = false;
-        let fenceChar = "";
-        let fenceLen = 0;
-        let prevLineNonEmpty = false;
-        lineRanges.forEach((range, index) => {
-          const line = range.text || "";
-          const fenceMatch = line.match(/^\s{0,3}(```+|~~~+)/);
-          if (fenceMatch) {
-            const markerChar = fenceMatch[1][0];
-            const markerLen = fenceMatch[1].length;
-            if (!inFence) {
-              inFence = true;
-              fenceChar = markerChar;
-              fenceLen = markerLen;
-            } else if (markerChar === fenceChar && markerLen >= fenceLen) {
-              // BUG-MD-003: CommonMark の closing fence は同種かつ長さ >= opening のときのみ閉じる。
-              inFence = false;
-              fenceChar = "";
-              fenceLen = 0;
+        const walk = (list, baseLine) => {
+          let cursor = baseLine;
+          for (let i = 0; i < (list ? list.length : 0); i++) {
+            const token = list[i];
+            const start = cursor;
+            if (token.type === "heading") indexes.push(start);
+            if (token.type === "list" && Array.isArray(token.items)) {
+              let itemLine = start;
+              for (let j = 0; j < token.items.length; j++) {
+                const item = token.items[j];
+                walk(item.tokens, itemLine);
+                itemLine += countMarkdownRawLineBreaks(item.raw || "");
+              }
+            } else if (token.type === "blockquote" && Array.isArray(token.tokens)) {
+              walk(token.tokens, start);
             }
-            prevLineNonEmpty = false;
-            return;
+            cursor = start + countMarkdownRawLineBreaks(token.raw || "");
           }
-          if (inFence) {
-            prevLineNonEmpty = line.trim() !== "";
-            return;
-          }
-          if (/^\s{0,3}#{1,6}\s+\S/.test(line)) {
-            indexes.push(index);
-            prevLineNonEmpty = true;
-            return;
-          }
-          // BUG-MD-002: setext 見出し（前行非空 + 現在行が ===/--- 下線）を ATX と同等に拾う。
-          if (prevLineNonEmpty && (/^\s{0,3}=+\s*$/.test(line) || /^\s{0,3}-+\s*$/.test(line))) {
-            if (indexes[indexes.length - 1] !== index - 1) indexes.push(index - 1);
-            prevLineNonEmpty = false;
-            return;
-          }
-          prevLineNonEmpty = line.trim() !== "";
-        });
+        };
+        walk(tokens, 0);
         return indexes;
       }
 
       function updateScrollSyncAnchors() {
-        const sourceHeadings = getMarkdownHeadingLineIndexes();
+        const sourceHeadings = scrollSyncHeadingLines;
         const previewHeadings = Array.from(preview.querySelectorAll("h1,h2,h3,h4,h5,h6"));
-        const count = Math.min(sourceHeadings.length, previewHeadings.length);
+        if (sourceHeadings.length !== previewHeadings.length) {
+          scrollSyncAnchors = [];
+          return;
+        }
         const sourceMax = Math.max(0, source.scrollHeight - source.clientHeight);
         const previewMax = Math.max(0, preview.scrollHeight - preview.clientHeight);
         const style = getComputedStyle(source);
         const padTop = parseFloat(style.paddingTop) || 0;
         const anchors = [{ sourceTop: 0, previewTop: 0 }];
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < sourceHeadings.length; i++) {
           const lineIndex = sourceHeadings[i];
           anchors.push({
             sourceTop: Math.max(0, Math.min(sourceMax, padTop + getLineTop(lineIndex))),
@@ -9922,39 +9932,66 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return getInterpolatedScrollTop(fromTop, fromKey, toKey);
       }
 
+      function scrollSyncEchoKey(el) {
+        if (el === source) return "source";
+        if (el === preview) return "preview";
+        return "";
+      }
+
+      function consumeScrollSyncEcho(el) {
+        const key = scrollSyncEchoKey(el);
+        if (!key || scrollSyncEchoTop[key] === null) return false;
+        const expected = scrollSyncEchoTop[key];
+        scrollSyncEchoTop[key] = null;
+        return Math.abs(el.scrollTop - expected) <= 1;
+      }
+
+      function assignSyncedScrollTop(el, top) {
+        const max = Math.max(0, el.scrollHeight - el.clientHeight);
+        const next = Math.max(0, Math.min(max, top));
+        const key = scrollSyncEchoKey(el);
+        if (key) scrollSyncEchoTop[key] = next;
+        el.scrollTop = next;
+        // 代入中に scroll が同期発火して echo を消費した場合は、ここで書き戻さない。
+        if (key && scrollSyncEchoTop[key] === next) scrollSyncEchoTop[key] = el.scrollTop;
+        if (el === source) {
+          updateSourceScrollChrome();
+          updateEofMarker();
+        }
+      }
+
       function syncScroll(fromEl, toEl) {
+        // 連動で書いた値そのものの scroll は返さない。時間で旗を下ろすと、下ろしたあとに
+        // 相手の scroll が届いて往復する。syncingScroll は代入中の再入だけを止め、その場で戻す
+        // （BUG-MD-004: rAF / setTimeout で戻すと非表示タブで旗が残る）。
+        if (consumeScrollSyncEcho(fromEl)) return;
         if (syncingScroll) return;
         syncingScroll = true;
-        // 同期処理中に例外が起きても syncingScroll が true のまま固着しないよう finally で解除予約する
         try {
+          const fromMax = Math.max(0, fromEl.scrollHeight - fromEl.clientHeight);
+          const fromTop = fromEl.scrollTop;
+          const toMax = Math.max(0, toEl.scrollHeight - toEl.clientHeight);
+          if (fromTop <= 0) {
+            assignSyncedScrollTop(toEl, 0);
+            return;
+          }
+          if (fromMax > 0 && fromTop >= fromMax - 1) {
+            assignSyncedScrollTop(toEl, toMax);
+            return;
+          }
           if (fromEl === source && toEl === preview) {
             const previewTop = getHeadingLockedScrollTop(source, preview, "sourceTop", "previewTop");
-            if (previewTop === null) {
-              setScrollRatio(toEl, getScrollRatio(fromEl));
-            } else {
-              preview.scrollTop = previewTop;
-            }
+            if (previewTop === null) setScrollRatio(toEl, getScrollRatio(fromEl));
+            else assignSyncedScrollTop(preview, previewTop);
           } else if (fromEl === preview && toEl === source) {
             const sourceTop = getHeadingLockedScrollTop(preview, source, "previewTop", "sourceTop");
-            if (sourceTop === null) {
-              setScrollRatio(toEl, getScrollRatio(fromEl));
-            } else {
-              source.scrollTop = sourceTop;
-              updateSourceScrollChrome();
-              updateEofMarker();
-            }
+            if (sourceTop === null) setScrollRatio(toEl, getScrollRatio(fromEl));
+            else assignSyncedScrollTop(source, sourceTop);
           } else {
             setScrollRatio(toEl, getScrollRatio(fromEl));
           }
         } finally {
-          // BUG-MD-004: タブが非アクティブのときは rAF がスロットルされ syncingScroll が長時間 true で固着する。
-          // setTimeout(0) を保険として併用し、タブ復帰直後の最初のスクロールも片側追従しないようにする。
-          requestAnimationFrame(() => {
-            syncingScroll = false;
-          });
-          setTimeout(() => {
-            syncingScroll = false;
-          }, 0);
+          syncingScroll = false;
         }
       }
 

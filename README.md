@@ -125,7 +125,7 @@ The exe is portable: no installation required, and it runs from a USB drive. The
 
 Folder access is smoother than the browser edition: the last folder path is remembered and reopened without re-prompting. If you do not need to carry settings over, the exe works by itself. On first launch, an `offline-md-editor-viewer-userdata/` directory is created next to the exe for WebView2 user data. To carry settings to another PC or USB drive, move the exe and `offline-md-editor-viewer-userdata/` together. Unsigned executables may show a SmartScreen warning on first launch.
 
-macOS and Linux desktop packages are planned for later. Use the browser edition on those platforms in the meantime.
+There are no plans for a macOS desktop package, so please use the browser edition on macOS. A Linux desktop package is under consideration; use the browser edition on Linux in the meantime.
 
 ## Self-hosting (optional)
 

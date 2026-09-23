@@ -61,10 +61,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path apps/desktop/src-tauri/target/release | Out-Null
-          gh release download "${{ inputs.tag }}" --pattern "offline-md-editor-viewer.exe" --dir apps/desktop/src-tauri/target/release --clobber
+          gh release download $env:RELEASE_TAG --pattern "offline-md-editor-viewer.exe" --pattern "SHA256SUMS.txt" --dir apps/desktop/src-tauri/target/release --clobber
+          $expectedLine = Get-Content apps/desktop/src-tauri/target/release/SHA256SUMS.txt | Where-Object { $_ -match "offline-md-editor-viewer\.exe$" }
+          if (-not $expectedLine) {
+            throw "SHA256SUMS.txt does not contain a checksum for offline-md-editor-viewer.exe"
+          }
+          $expectedHash = ($expectedLine -split "\s+")[0].ToLowerInvariant()
+          $actualHash = (Get-FileHash -Algorithm SHA256 apps/desktop/src-tauri/target/release/offline-md-editor-viewer.exe).Hash.ToLowerInvariant()
+          if ($expectedHash -ne $actualHash) {
+            throw "Checksum mismatch for offline-md-editor-viewer.exe (expected: $expectedHash, actual: $actualHash)"
+          }
+          Write-Host "Checksum verified for offline-md-editor-viewer.exe ($actualHash)"
 
       - name: Build MSIX package
         shell: pwsh
@@ -78,13 +89,18 @@ jobs:
         uses: microsoft/microsoft-store-apppublisher@cc9910a8d59f2eb55cbb83df0a3800cf3b5300e0 # v1.4
 
       - name: Configure MS Store CLI
+        env:
+          MSSTORE_TENANT_ID: ${{ secrets.AZURE_AD_TENANT_ID }}
+          MSSTORE_SELLER_ID: ${{ secrets.SELLER_ID }}
+          MSSTORE_CLIENT_ID: ${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}
+          MSSTORE_CLIENT_SECRET: ${{ secrets.AZURE_AD_APPLICATION_SECRET }}
         shell: pwsh
         run: |
           msstore reconfigure `
-            --tenantId "${{ secrets.AZURE_AD_TENANT_ID }}" `
-            --sellerId "${{ secrets.SELLER_ID }}" `
-            --clientId "${{ secrets.AZURE_AD_APPLICATION_CLIENT_ID }}" `
-            --clientSecret "${{ secrets.AZURE_AD_APPLICATION_SECRET }}"
+            --tenantId "$env:MSSTORE_TENANT_ID" `
+            --sellerId "$env:MSSTORE_SELLER_ID" `
+            --clientId "$env:MSSTORE_CLIENT_ID" `
+            --clientSecret "$env:MSSTORE_CLIENT_SECRET"
 
       # `msstore publish <pathOrUrl> -id <Store product Id>` が公式サンプルの形。
       # `-id/--appId` は init 済みでないプロジェクトでは必須（`--productId` という

@@ -265,6 +265,7 @@ for (const name of [
   "prepareSourceChange",
   "scheduleSourceRender",
   "runSourceChangePipeline",
+  "pushDocumentUndoSnapshot",
   "applySourceTextChange",
   "handleSourceCompositionStart",
   "handleSourceCompositionEnd",

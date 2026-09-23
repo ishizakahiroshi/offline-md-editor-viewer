@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src blob:; manifest-src 'none'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src blob:; manifest-src 'none'">
   <title>offline-md-editor-viewer</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3Crect width='1024' height='1024' rx='225' fill='%230b1020'/%3E%3Crect x='5' y='5' width='1014' height='1014' rx='220' fill='none' stroke='%232a355f' stroke-width='10'/%3E%3Crect x='72' y='72' width='880' height='880' rx='164' fill='none' stroke='%231d4f7c' stroke-width='5' opacity='.55'/%3E%3Cpath d='M 230 742 L 230 333 L 410 538 L 589 333 L 589 742' fill='none' stroke='%2359b2ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M 758 333 L 758 707 M 655 604 L 758 707 L 860 604' fill='none' stroke='%2384c3ff' stroke-width='92' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="lib/hljs-github-dark.min.css">
@@ -6108,6 +6108,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.findClose": ["Close find", "検索を閉じる", "關閉尋找", "关闭查找", "Cerrar busqueda", "Suche schliessen", "찾기 닫기", "Fechar busca", "Закрыть поиск", "Đóng tìm", "Fermer recherche", "Chiudi ricerca", "Tutup cari"],
         "ui.replaceOne": ["Replace", "置換", "取代", "替换", "Reemplazar", "Ersetzen", "바꾸기", "Substituir", "Заменить", "Thay", "Remplacer", "Sostituisci", "Ganti"],
         "ui.replaceAll": ["All", "すべて", "全部", "全部", "Todo", "Alle", "모두", "Tudo", "Все", "Tất cả", "Tout", "Tutto", "Semua"],
+        "ui.replaceAllCapped": ["Match limit exceeded (2,000+). Replace all is disabled to prevent incomplete changes.", "一致数が上限（2,000件）を超えているため、不完全な置換を防ぐ目的ですべて置換は無効です。", "符合筆數已超過上限（2,000 筆），為避免不完整置換已停用全部取代。", "匹配数量已超过上限（2,000 处），为避免不完整替换已禁用全部替换。", "Límite de coincidencias superado (2.000+). Reemplazar todo desactivado para evitar cambios incompletos.", "Trefferlimit überschritten (2.000+). Alle ersetzen ist deaktiviert, um unvollständige Änderungen zu verhindern.", "일치 한도(2,000개 이상)를 초과했습니다. 불완전한 대체를 방지하기 위해 모두 바꾸기가 비활성화되었습니다.", "Limite de correspondências excedido (2.000+). Substituir tudo desativado para evitar alterações incompletas.", "Превышен лимит совпадений (2 000+). Заменить все отключено для предотвращения неполной замены.", "Đã vượt quá giới hạn kết quả (2.000+). Thay thế tất cả bị vô hiệu hóa để tránh thay thế không hoàn chỉnh.", "Limite de correspondances dépassée (2 000+). Remplacer tout est désactivé pour éviter des modifications incomplètes.", "Limite corrispondenze superato (2.000+). Sostituisci tutto disattivato per prevenire modifiche incomplete.", "Batas kecocokan terlampaui (2.000+). Ganti semua dinonaktifkan untuk mencegah perubahan yang tidak lengkap."],
         "ui.findNoMatches": ["0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0", "0/0"],
         "ui.findRegexError": ["Invalid regex", "正規表現が不正", "正規表示式無效", "正则表达式无效", "Regex no valida", "Ungueltige Regex", "잘못된 정규식", "Regex invalida", "Неверное regex", "Regex không hợp lệ", "Regex invalide", "Regex non valida", "Regex tidak valid"],
         "ui.findRegexSearching": ["Searching…", "検索中…", "搜尋中…", "搜索中…", "Buscando…", "Suche…", "검색 중…", "Pesquisando…", "Поиск…", "Đang tìm…", "Recherche…", "Ricerca…", "Mencari…"],
@@ -6571,6 +6572,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "status.dropReadFailed": ["Drag-and-drop read failed: ", "ドラッグ＆ドロップ読み込み失敗: ", "拖放讀取失敗：", "拖放读取失败: ", "Error al leer al arrastrar y soltar: ", "Lesen per Drag-and-drop fehlgeschlagen: ", "드래그 앤 드롭 읽기 실패: ", "Falha ao ler por arrastar e soltar: ", "Не удалось прочитать при перетаскивании: ", "Đọc bằng kéo thả thất bại: ", "Échec de la lecture par glisser-déposer : ", "Lettura tramite trascinamento fallita: ", "Pembacaan seret-dan-lepas gagal: "],
         "status.permissionDenied": ["Write permission was not granted.", "書き込み権限が許可されなかったため、保存できませんでした。", "未獲得寫入權限。", "未获得写入权限。", "No se concedió permiso de escritura.", "Schreibberechtigung wurde nicht erteilt.", "쓰기 권한이 허용되지 않았습니다.", "A permissao de escrita nao foi concedida.", "Разрешение на запись не предоставлено.", "Quyền ghi chưa được cấp.", "L'autorisation d'écriture n'a pas été accordée.", "Autorizzazione di scrittura non concessa.", "Izin tulis tidak diberikan."],
         "status.saveHint": ["Save will overwrite the target file. Continue?", "元ファイルへ上書き保存します。よろしいですか？", "儲存將覆寫目標檔案，是否繼續？", "将覆盖目标文件,是否继续?", "Guardar sobrescribirá el archivo destino. ¿Continuar?", "Speichern ueberschreibt die Zieldatei. Fortfahren?", "저장하면 대상 파일을 덮어씁니다. 계속할까요?", "Salvar ira sobrescrever o arquivo de destino. Continuar?", "Сохранение перезапишет целевой файл. Продолжить?", "Lưu sẽ ghi đè tệp đích. Tiếp tục?", "L'enregistrement écrasera le fichier cible. Continuer ?", "Il salvataggio sovrascriverà il file di destinazione. Continuare?", "Simpan akan menimpa file target. Lanjutkan?"],
+        "status.encodingLossWarning": ["Characters not supported by {encoding} will be replaced with '?'. Continue saving?", "{encoding} で表現できない文字は '?' に置き換わります。保存を続けますか？", "{encoding} 不支援的字元將被取代為 '?'。是否繼續儲存？", "{encoding} 不支持的字符将被替换为 '?'。是否继续保存?", "Los caracteres no compatibles con {encoding} se reemplazarán por '?'. ¿Continuar guardando?", "Zeichen, die von {encoding} nicht unterstuetzt werden, werden durch '?' ersetzt. Speichern fortsetzen?", "{encoding}에서 지원하지 않는 문자는 '?'로 대체됩니다. 저장을 계속할까요?", "Caracteres nao suportados por {encoding} serao substituidos por '?'. Continuar salvando?", "Символы, не поддерживаемые {encoding}, будут заменены на '?'. Продолжить сохранение?", "Các ký tự không được {encoding} hỗ trợ sẽ được thay thế bằng '?'. Tiếp tục lưu?", "Les caractères non pris en charge par {encoding} seront remplacés par '?'. Continuer l'enregistrement ?", "I caratteri non supportati da {encoding} verranno sostituiti con '?'. Continuare a salvare?", "Karakter yang tidak didukung oleh {encoding} akan diganti dengan '?'. Lanjutkan menyimpan?"],
         "status.unsavedNavigationConfirm": ["You have unsaved changes. Leave without saving?", "未保存の編集があります。保存せずに移動しますか？", "您有未儲存的變更，確定要離開嗎？", "存在未保存的更改。要不保存就离开吗?", "Tienes cambios sin guardar. ¿Salir sin guardar?", "Sie haben ungespeicherte Aenderungen. Ohne Speichern verlassen?", "저장하지 않은 변경 사항이 있습니다. 저장하지 않고 나갈까요?", "Voce tem alteracoes nao salvas. Sair sem salvar?", "Есть несохраненные изменения. Выйти без сохранения?", "Bạn có thay đổi chưa lưu. Rời đi mà không lưu?", "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?", "Hai modifiche non salvate. Vuoi uscire senza salvare?", "Ada perubahan yang belum disimpan. Keluar tanpa menyimpan?"],
         "status.unsavedTabCloseMessage": ["{name} has unsaved changes. Save before closing?", "{name}には未保存の編集があります。閉じる前に保存しますか？", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?", "{name} has unsaved changes. Save before closing?"],
         "status.documentTabClosed": ["Document closed", "文書を閉じました", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed", "Document closed"],
@@ -8098,12 +8100,18 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         applySourceFontStyle(probe, style, contentWidth, { fixedWrap: true });
         document.body.appendChild(probe);
         const heights = [];
+        const rows = [];
+        const fragment = document.createDocumentFragment();
         for (const range of ranges) {
           const row = document.createElement("div");
           row.textContent = range.text.length ? range.text : " ";
           row.style.minHeight = `${baseHeight}px`;
-          probe.appendChild(row);
-          const measured = row.getBoundingClientRect().height;
+          fragment.appendChild(row);
+          rows.push(row);
+        }
+        probe.appendChild(fragment);
+        for (let i = 0; i < rows.length; i++) {
+          const measured = rows[i].getBoundingClientRect().height;
           heights.push(Math.max(baseHeight, measured));
         }
         probe.textContent = "";
@@ -9041,6 +9049,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         showReplaceBtn.disabled = fileState.readOnly || isReplaceVisible();
         replaceOneBtn.disabled = !hasMatch || fileState.readOnly;
         replaceAllBtn.disabled = !hasMatch || fileState.readOnly || findState.capped || findState.pending;
+        replaceAllBtn.title = findState.capped ? t("ui", "replaceAllCapped") : "";
       }
 
       function syncFindHighlightState() {
@@ -9066,13 +9075,17 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         findCount.classList.toggle("error", !!findState.error);
         if (findState.pending) {
           findCount.textContent = t("ui", "findRegexSearching");
+          findCount.title = "";
         } else if (findState.error) {
           findCount.textContent = findState.error;
+          findCount.title = "";
         } else if (!findState.matches.length) {
           findCount.textContent = t("ui", "findNoMatches");
+          findCount.title = "";
         } else {
           const suffix = findState.capped ? "+" : "";
           findCount.textContent = `${findState.currentIndex + 1}/${findState.matches.length}${suffix}`;
+          findCount.title = findState.capped ? t("ui", "replaceAllCapped") : "";
         }
         updateFindButtons();
         updateFindHighlight();
@@ -9310,14 +9323,23 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return true;
       }
 
+      function pushDocumentUndoSnapshot(state, text, selectionStart, selectionEnd) {
+        if (!state) return;
+        const len = (text || "").length;
+        const limit = len > 5000000 ? 5 : (len > 1000000 ? 15 : (len > 100000 ? 50 : 200));
+        state.undoStack.push({ text, selectionStart: selectionStart || 0, selectionEnd: selectionEnd || 0 });
+        while (state.undoStack.length > limit) {
+          state.undoStack.shift();
+        }
+        state.redoStack.length = 0;
+      }
+
       function applySourceTextChange(nextText, selectionStart, selectionEnd) {
         // setRangeText で全文置換すると textarea の undo スタックを保てる。
         // setRangeText は input 後処理を保証しないため、ここで共通pipelineを明示的に通す。
         const state = getDocumentState();
         if (state) {
-          state.undoStack.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
-          if (state.undoStack.length > 200) state.undoStack.shift();
-          state.redoStack.length = 0;
+          pushDocumentUndoSnapshot(state, source.value, source.selectionStart || 0, source.selectionEnd || 0);
         }
         sourceProgrammaticChange = true;
         try {
@@ -11192,22 +11214,32 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         if (encoding === "utf-16le") {
           const bom = hasBom ? new Uint8Array([0xff, 0xfe]) : new Uint8Array(0);
-          const arr = Encoding.convert(Array.from(new TextEncoder().encode(content)), { to: "UTF16LE", from: "UTF8" });
+          const arr = Encoding.convert(new TextEncoder().encode(content), { to: "UTF16LE", from: "UTF8" });
           const out = new Uint8Array(bom.length + arr.length);
           out.set(bom); out.set(arr, bom.length);
           return out;
         }
         if (encoding === "utf-16be") {
           const bom = hasBom ? new Uint8Array([0xfe, 0xff]) : new Uint8Array(0);
-          const arr = Encoding.convert(Array.from(new TextEncoder().encode(content)), { to: "UTF16BE", from: "UTF8" });
+          const arr = Encoding.convert(new TextEncoder().encode(content), { to: "UTF16BE", from: "UTF8" });
           const out = new Uint8Array(bom.length + arr.length);
           out.set(bom); out.set(arr, bom.length);
           return out;
         }
         const encMap = { shift_jis: "SJIS", "euc-jp": "EUCJP", "iso-2022-jp": "JIS" };
         const to = encMap[encoding] || "SJIS";
-        const arr = Encoding.convert(Array.from(new TextEncoder().encode(content)), { to, from: "UTF8" });
+        const arr = Encoding.convert(new TextEncoder().encode(content), { to, from: "UTF8" });
         return new Uint8Array(arr);
+      }
+
+      function detectEncodingLoss(content, encoding, lineEnding) {
+        const encMap = { shift_jis: "SJIS", "euc-jp": "EUCJP", "iso-2022-jp": "JIS" };
+        const to = encMap[encoding];
+        if (!to) return false;
+        const normalized = normalizeLineEnding(content, lineEnding);
+        const encoded = Encoding.convert(new TextEncoder().encode(normalized), { to, from: "UTF8" });
+        const roundtrip = Encoding.codeToString(Encoding.convert(encoded, { to: "UNICODE", from: to }));
+        return roundtrip !== normalized;
       }
 
       async function saveToCurrentFile() {
@@ -11267,6 +11299,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
           // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
           const confirmed = await openConfirmDialog("", t("status", "saveHint"));
+          if (!confirmed) {
+            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+            return;
+          }
+        }
+        if (detectEncodingLoss(snapshot.text, snapshot.encoding, snapshot.lineEnding)) {
+          const encodingLabel = snapshot.encoding.toUpperCase();
+          const warningMessage = (t("status", "encodingLossWarning") || "").replace("{encoding}", encodingLabel);
+          const confirmed = await openConfirmDialog("", warningMessage);
           if (!confirmed) {
             if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
             return;
@@ -13696,9 +13737,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return;
         }
         if (sourceIsComposing || event.isComposing === true || event.inputType === "insertCompositionText") return;
-        state.undoStack.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
-        if (state.undoStack.length > 200) state.undoStack.shift();
-        state.redoStack.length = 0;
+        pushDocumentUndoSnapshot(state, source.value, source.selectionStart || 0, source.selectionEnd || 0);
       }
 
       source.addEventListener("beforeinput", handleSourceBeforeInput);
@@ -13799,14 +13838,19 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
       });
 
-      document.addEventListener("click", (e) => {
+      function handleLinkActivation(e) {
         if (e.defaultPrevented) return;
+        if (e.type === "auxclick" && e.button !== 1) return;
         const a = e.target.closest("a");
+        if (!a) return;
         if (handleDirectoryRelativeLinkClick(e, a)) return;
         if (handleTauriRelativeLinkClick(e, a)) return;
         if (handleExternalLinkClick(e, a)) return;
         handleUnsupportedLinkClick(e, a);
-      });
+      }
+
+      document.addEventListener("click", handleLinkActivation);
+      document.addEventListener("auxclick", handleLinkActivation);
 
       function setupDropZone(zone, onDrop, highlightZone) {
         const visualZone = highlightZone || zone;
@@ -14924,8 +14968,31 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const lines = String(text || "").split(/\r\n|\r|\n/);
         const items = [];
         let offset = 0;
+        let inFence = false;
+        let fenceChar = "";
+        let fenceLen = 0;
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
+          const fenceMatch = line.match(/^\s{0,3}(```+|~~~+)/);
+          if (fenceMatch) {
+            const markerChar = fenceMatch[1][0];
+            const markerLen = fenceMatch[1].length;
+            if (!inFence) {
+              inFence = true;
+              fenceChar = markerChar;
+              fenceLen = markerLen;
+            } else if (markerChar === fenceChar && markerLen >= fenceLen) {
+              inFence = false;
+              fenceChar = "";
+              fenceLen = 0;
+            }
+            offset += line.length + 1;
+            continue;
+          }
+          if (inFence) {
+            offset += line.length + 1;
+            continue;
+          }
           const m = /^(#{1,6})\s+(.+?)\s*$/.exec(line);
           if (m) {
             items.push({

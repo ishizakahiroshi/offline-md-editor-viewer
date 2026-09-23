@@ -574,11 +574,11 @@ fn desktop_read_file_bytes(
     path: String,
 ) -> Result<tauri::ipc::Response, String> {
     reject_nul_in_path(&path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-RS-NEW-205: metadata と fs::read の間にファイルが成長すると、事前サイズ検査だけでは
     // 64 MiB 上限が fail-open になる。先にハンドルを開き、そのハンドルから上限 + 1 byte だけ読む。
-    let file = fs::File::open(&path).map_err(|err| err.to_string())?;
+    let file = fs::File::open(&canonical).map_err(|err| err.to_string())?;
     let initial_size = file.metadata().ok().map(|metadata| metadata.len());
     let bytes = read_bounded(file, initial_size, MAX_FILE_BYTES)?;
     Ok(tauri::ipc::Response::new(bytes))
@@ -637,7 +637,7 @@ fn desktop_write_file_text(
     text: String,
 ) -> Result<(), String> {
     reject_nul_in_path(&path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-RS-106: 巨大ペイロードの書き込みは fs::File::create → write_all 経由でメモリ・I/O を圧迫する。
     if text.len() as u64 > MAX_FILE_BYTES {
@@ -646,7 +646,7 @@ fn desktop_write_file_text(
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(Path::new(&path), text.as_bytes())
+    atomic_write(&canonical, text.as_bytes())
 }
 
 #[tauri::command]
@@ -655,7 +655,7 @@ fn desktop_write_file_bytes(
     request: tauri::ipc::Request<'_>,
 ) -> Result<(), String> {
     let path = path_from_raw_request(&request)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
     // BUG-TAURI-RAW-REQUEST-001: フロントは Uint8Array をそのまま invoke へ渡すが、この
     // IPC 経路では raw body にならず JSON の数値配列として届く
@@ -673,7 +673,7 @@ fn desktop_write_file_bytes(
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(Path::new(&path), bytes.as_ref())
+    atomic_write(&canonical, bytes.as_ref())
 }
 
 #[tauri::command]
@@ -1099,9 +1099,9 @@ fn desktop_delete_file(
     path: String,
 ) -> Result<(), String> {
     reject_nul_in_path(&path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
-    fs::remove_file(path).map_err(|err| err.to_string())
+    fs::remove_file(&canonical).map_err(|err| err.to_string())
 }
 
 fn is_valid_child_name(name: &str) -> bool {
@@ -1355,16 +1355,16 @@ fn desktop_delete_directory(
     recursive: bool,
 ) -> Result<(), String> {
     reject_nul_in_path(&path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
     reject_symlink_or_reparse(&path)?;
-    let target = PathBuf::from(path);
+    let target = canonical;
     if !target.is_dir() {
         return Err("Directory does not exist.".to_string());
     }
     if recursive {
-        fs::remove_dir_all(target).map_err(|err| err.to_string())
+        fs::remove_dir_all(&target).map_err(|err| err.to_string())
     } else {
-        fs::remove_dir(target).map_err(|err| err.to_string())
+        fs::remove_dir(&target).map_err(|err| err.to_string())
     }
 }
 
@@ -1432,16 +1432,29 @@ fn desktop_open_external_url(url: String) -> Result<(), String> {
 #[tauri::command]
 fn desktop_get_launch_file_path(allowlist: tauri::State<'_, WorkspaceAllowlist>) -> Option<String> {
     let arg = std::env::args().nth(1)?;
-    let path = PathBuf::from(&arg);
-    if !path.is_file() {
+    if reject_nul_in_path(&arg).is_err() {
         return None;
     }
-    if !is_markdown_file(&path) {
+    let candidate = PathBuf::from(&arg);
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let absolute = if candidate.is_absolute() {
+        candidate
+    } else {
+        cwd.join(candidate)
+    };
+    if !absolute.is_file() {
+        return None;
+    }
+    if !is_markdown_file(&absolute) {
+        return None;
+    }
+    let normalized = path_to_string(&absolute);
+    if reject_symlink_or_reparse(&normalized).is_err() {
         return None;
     }
     // File-association / argv launch is an OS-mediated open; authorize the parent folder.
-    let _ = allowlist.authorize_workspace_path(&path);
-    Some(path_to_string(&path))
+    let _ = allowlist.authorize_workspace_path(&absolute);
+    Some(normalized)
 }
 
 // LAUNCH-RS-001: フロントエンドは desktop_frontend_ready の成功直後にこれを呼ぶ。

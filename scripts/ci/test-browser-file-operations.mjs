@@ -343,6 +343,7 @@ const saveContext = {
   setEncodingSelectValue: () => {},
   setDirtyState: () => {},
   ensureWritableHandle: async () => "existing",
+  detectEncodingLoss: () => false,
   encodeFileContent: (text) => new TextEncoder().encode(text),
   writeFileHandleBytes: async (handle, bytes) => { savedWrites.push({ handle, text: new TextDecoder().decode(bytes) }); },
 };

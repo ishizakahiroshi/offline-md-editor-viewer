@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.2 - 2026-09-23
+
+### Security
+
+- Middle-clicking a link in the preview no longer bypasses link handling. Only the left-click path was intercepted, so a middle click could open an external link in a new tab even when external links were disabled, or send a relative link to the browser instead of the app. Middle clicks now go through the same handling as left clicks.
+- Desktop edition: launching the app with a relative `.md` path (for example from a command prompt in the file's folder) now resolves the path against the current directory before authorizing its folder, and rejects a symlink or junction there the same way the other entry points do. Previously the parent folder came out empty, so the folder was never authorized and the file could not be read.
+- Desktop edition: file commands now operate on the canonical path returned by the workspace check instead of the raw path passed from the page, so the path that was checked and the path that is read, written or deleted are the same.
+- CI: the Microsoft Store workflow passes the tag and secrets to its scripts through environment variables instead of expanding them into the script text, and checks the downloaded exe against the release's `SHA256SUMS.txt` before packaging it.
+
+### Changed
+
+- Saving in Shift_JIS, EUC-JP or ISO-2022-JP now asks for confirmation when the text contains characters that encoding cannot represent (emoji, `〜` U+301C, `—` U+2014 and similar). Those characters used to be replaced with `?` without any warning, and the loss was only noticed after reopening the file. Cancelling leaves the file untouched.
+
+### Fixed
+
+- When source and preview scroll together, scrolling up no longer stops short of the top of the document and bounces back. The source side counted headings differently from the Markdown parser, so source and preview headings were paired with the wrong partners, and each pane's scroll echoed back into the other. Headings are now taken from the parser, the echo of a programmatic scroll is ignored by value, and reaching the top or bottom of one pane moves the other pane to its top or bottom.
+- Lines starting with `#` inside a fenced code block (for example shell comments) no longer appear in the outline.
+- Measuring line heights with word wrap on no longer freezes the editor for seconds on long documents. Rows are now added in one step and measured afterwards, instead of forcing a layout for every line.
+- Editing a very large document no longer risks running out of memory through the undo history. Each keystroke stores a full copy of the text, so the number of kept steps now shrinks as the document grows (200 up to 100,000 characters, down to 5 above 5,000,000).
+- When a search has more than 2,000 matches, the disabled Replace all button and the match counter now explain why in a tooltip.
+- CI: GitHub Actions dependencies were updated, and Dependabot now also watches the desktop app's Cargo and npm dependencies.
+
 ## 0.4.1 - 2026-09-13
 
 ### Security

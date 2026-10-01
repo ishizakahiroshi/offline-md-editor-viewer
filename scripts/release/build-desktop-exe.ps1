@@ -53,7 +53,11 @@ try {
   if (-not $SkipInstall) {
     npm ci
   }
-  npx tauri build --config src-tauri/tauri.release.conf.json
+  $generatedConf = Join-Path $DesktopDir "src-tauri/tauri.release.generated.conf.json"
+  if (-not (Test-Path -LiteralPath $generatedConf)) {
+    throw "Missing $generatedConf. Run scripts/release/build-browser-single-html.ps1 then scripts/release/stage-desktop-frontend.ps1 first."
+  }
+  npx tauri build --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.generated.conf.json
 } finally {
   if ($null -eq $previousCargoBuildJobs) {
     Remove-Item Env:CARGO_BUILD_JOBS -ErrorAction SilentlyContinue

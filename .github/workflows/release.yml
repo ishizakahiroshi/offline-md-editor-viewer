@@ -94,7 +94,7 @@ jobs:
           ./scripts/release/stage-desktop-frontend.ps1
 
       - name: Build desktop portable exe (release single HTML frontend)
-        run: npx tauri build --config src-tauri/tauri.release.conf.json
+        run: npx tauri build --config src-tauri/tauri.release.conf.json --config src-tauri/tauri.release.generated.conf.json
         working-directory: apps/desktop
 
       - name: Package portable exe as ZIP

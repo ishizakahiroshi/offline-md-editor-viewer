@@ -1,5 +1,11 @@
 # 変更履歴
 
+## Unreleased
+
+### Security
+
+- ブラウザ版・デスクトップ版の Content Security Policy から `script-src` / `style-src` の `'unsafe-inline'` を除去した。インラインの `<script>` / `<style>` は sha256 ハッシュで許可し、静的な `style="display:none"` 属性は `'unsafe-hashes'` で許可する。単一 HTML のリリースビルドは `lib/*` インライン化後にハッシュを再計算し、デスクトップ版のステージングはバンドル HTML に合わせた Tauri CSP オーバーレイを生成する。インライン script/style を編集したらハッシュ更新が必要（`scripts/ci/check-csp-hashes.mjs` で検証）。
+
 ## 0.4.2 - 2026-09-23
 
 ### Security

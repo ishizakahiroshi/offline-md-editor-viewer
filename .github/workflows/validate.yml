@@ -50,6 +50,9 @@ jobs:
       - name: Check inline JavaScript syntax (source HTML)
         run: node scripts/ci/check-html-inline-js.mjs apps/browser/offline-md-editor-viewer.html
 
+      - name: Check CSP sha256 hashes (no unsafe-inline)
+        run: node scripts/ci/check-csp-hashes.mjs
+
       - name: Check Browser runtime safety contracts
         run: node scripts/ci/check-browser-runtime-safety.mjs
 

@@ -136,6 +136,83 @@ foreach ($placeholder in $licensePlaceholders.Keys) {
 # equals single-asset HTML" check in the release workflow.
 $result = $result -replace "`r`n", "`n"
 
+# --- regenerate CSP hashes for inlined <script>/<style> blocks ---
+# Source HTML uses sha256 hashes instead of 'unsafe-inline'. Inlining libs
+# adds new inline blocks, so hashes must be recomputed on the final HTML.
+function Get-Sha256Base64([string]$Value) {
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Value)
+    return [Convert]::ToBase64String($sha.ComputeHash($bytes))
+  } finally {
+    $sha.Dispose()
+  }
+}
+
+function Get-CspHashesFromHtml([string]$Html) {
+  $scriptHashes = [System.Collections.Generic.List[string]]::new()
+  $styleHashes = [System.Collections.Generic.List[string]]::new()
+  $scriptMatches = [regex]::Matches($Html, '<script(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)</script>', 'IgnoreCase')
+  foreach ($m in $scriptMatches) {
+    $scriptHashes.Add("'sha256-$(Get-Sha256Base64 $m.Groups[1].Value)'")
+  }
+  $styleMatches = [regex]::Matches($Html, '<style[^>]*>([\s\S]*?)</style>', 'IgnoreCase')
+  foreach ($m in $styleMatches) {
+    $styleHashes.Add("'sha256-$(Get-Sha256Base64 $m.Groups[1].Value)'")
+  }
+  $attrHashes = [System.Collections.Generic.HashSet[string]]::new()
+  $attrMatches = [regex]::Matches($Html, '\sstyle\s*=\s*"([^"]*)"', 'IgnoreCase')
+  foreach ($m in $attrMatches) {
+    # Only count style attributes that appear in markup outside large script bodies
+    # by scanning the raw HTML; release HTML keeps the same display:none attrs.
+    [void]$attrHashes.Add("'sha256-$(Get-Sha256Base64 $m.Groups[1].Value)'")
+  }
+  return [pscustomobject]@{
+    ScriptHashes = $scriptHashes
+    StyleHashes = $styleHashes
+    AttrHashes = @($attrHashes)
+  }
+}
+
+$cspHashes = Get-CspHashesFromHtml $result
+if ($cspHashes.ScriptHashes.Count -lt 1) {
+  Write-Error 'FAIL: no inline <script> blocks found for CSP hashing'
+  exit 1
+}
+if ($cspHashes.StyleHashes.Count -lt 1) {
+  Write-Error 'FAIL: no inline <style> blocks found for CSP hashing'
+  exit 1
+}
+
+$scriptSrc = (@("script-src 'self'") + $cspHashes.ScriptHashes) -join ' '
+$styleSrcParts = [System.Collections.Generic.List[string]]::new()
+[void]$styleSrcParts.Add("style-src 'self'")
+foreach ($h in $cspHashes.StyleHashes) { [void]$styleSrcParts.Add($h) }
+if ($cspHashes.AttrHashes.Count -gt 0) {
+  [void]$styleSrcParts.Add("'unsafe-hashes'")
+  foreach ($h in $cspHashes.AttrHashes) { [void]$styleSrcParts.Add($h) }
+}
+$styleSrc = $styleSrcParts -join ' '
+
+$metaMatch = [regex]::Match($result, '<meta http-equiv="Content-Security-Policy" content="([^"]*)">', 'IgnoreCase')
+if (-not $metaMatch.Success) {
+  Write-Error 'FAIL: Content-Security-Policy meta tag not found after inlining'
+  exit 1
+}
+$oldCsp = $metaMatch.Groups[1].Value
+$newCsp = [regex]::Replace($oldCsp, "script-src\s[^;]*", $scriptSrc)
+$newCsp = [regex]::Replace($newCsp, "style-src\s[^;]*", $styleSrc)
+if ($newCsp -match "unsafe-inline") {
+  Write-Error 'FAIL: CSP still contains unsafe-inline after hash rewrite'
+  exit 1
+}
+$result = $result.Remove($metaMatch.Index, $metaMatch.Length).Insert(
+  $metaMatch.Index,
+  "<meta http-equiv=`"Content-Security-Policy`" content=`"$newCsp`">"
+)
+Write-Host ("CSP rewritten: {0} script hash(es), {1} style hash(es), {2} style-attr hash(es)" -f `
+  $cspHashes.ScriptHashes.Count, $cspHashes.StyleHashes.Count, $cspHashes.AttrHashes.Count)
+
 # --- write output (UTF-8 no BOM) ---
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($OutHtml, $result, $utf8NoBom)
@@ -199,6 +276,18 @@ if ($Verify) {
   }
   if ($html -match 'lib/hljs-github-dark\.min\.css') {
     $errors += 'FAIL: lib/hljs-github-dark.min.css reference still present'
+  }
+  $cspMeta = [regex]::Match($html, '<meta http-equiv="Content-Security-Policy" content="([^"]*)">', 'IgnoreCase')
+  if (-not $cspMeta.Success) {
+    $errors += 'FAIL: Content-Security-Policy meta tag missing in bundled HTML'
+  } elseif ($cspMeta.Groups[1].Value -match 'unsafe-inline') {
+    $errors += 'FAIL: CSP still contains unsafe-inline in bundled HTML'
+  }
+  if ($html -notmatch "script-src\s[^;]*sha256-") {
+    $errors += 'FAIL: bundled HTML CSP script-src is missing sha256 hashes'
+  }
+  if ($html -notmatch "style-src\s[^;]*sha256-") {
+    $errors += 'FAIL: bundled HTML CSP style-src is missing sha256 hashes'
   }
   if ($html -notmatch '\bmarked\b') {
     $errors += 'FAIL: "marked" not found in output'

@@ -21,7 +21,7 @@
     ],
     "withGlobalTauri": true,
     "security": {
-      "csp": "default-src 'none'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; frame-ancestors 'none'"
+      "csp": "default-src 'none'; script-src 'self' 'sha256-5GcC6LYNDCyHNWLwD3HrfYLewi3wqe3/GzgR9MTjnc8='; script-src-attr 'none'; style-src 'self' 'sha256-lMIQE36KW3h6srUFqztt3wDlnf2X5LCZiRlvgkJ3tQA=' 'unsafe-hashes' 'sha256-aqNNdDLnnrDOnTNdkJpYlAxKVJtLt9CtFLklmInuUAE='; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; child-src 'none'; worker-src 'none'; frame-ancestors 'none'"
     }
   },
   "bundle": {

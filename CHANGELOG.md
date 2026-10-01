@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Browser and desktop Content Security Policy no longer allow `script-src` / `style-src` `'unsafe-inline'`. Inline `<script>` and `<style>` blocks are allowlisted by sha256 hashes; the few static `style="display:none"` attributes use `'unsafe-hashes'`. The single-HTML release build recomputes those hashes after inlining `lib/*`, and desktop release staging writes a generated Tauri CSP overlay so the WebView policy matches the bundled file. Editing the inline script or style requires refreshing the hashes (enforced by `scripts/ci/check-csp-hashes.mjs`).
+
 ## 0.4.2 - 2026-09-23
 
 ### Security

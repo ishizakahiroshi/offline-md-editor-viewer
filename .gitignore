@@ -79,3 +79,6 @@ secrets.*
 .netrc
 .npmrc
 .pypirc
+
+# Generated at desktop release staging (CSP hashes for bundled HTML)
+apps/desktop/src-tauri/tauri.release.generated.conf.json

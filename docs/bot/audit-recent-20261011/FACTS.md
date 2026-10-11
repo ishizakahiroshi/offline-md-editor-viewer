@@ -8,7 +8,7 @@ last_reviewed: 2026-10-11
 ---
 
 # P-20261011-011 offline-md-editor-viewer：固定対象の事実
-> 最終更新: 2026-10-11(日) 23:41:43
+> 最終更新: 2026-10-12(月) 08:26:29
 
 確認日: 2026-10-11。以下は監査の所見ではなく、依頼準備時の対象情報。
 
@@ -28,6 +28,6 @@ developの合成差分は3ファイル、text 55行追加、削除0行。`.gitig
 
 `docs/local`と`docs/obsidian`は既存のjunctionであり、両entryは`.gitignore`で除外されている。公開する指示に私有の実体pathは含めない。
 
-指示公開、専用Issue、送信、本文read-back、dots受付、監査結果はまだない。準備時の取得情報を監査済みと扱わない。
+2026-10-11準備時点では指示公開、専用Issue、送信、本文read-back、dots受付、監査結果はなかった。2026-10-12に所有者のYESを取得し、初回指示commit 20727eb3c257be6ca71ec7315da57874804d9ff0と専用Issue #19を公開した。送信以降の状態はIssueコメントで追う。準備時の取得情報を監査済みと扱わない。
 
 `docsweep provenance check --path docs/bot/audit-recent-20261011/README.md --json`は「AI provenanceは無効」の応答だった。実効状態を未有効として記録し、設定を変更していない。作成AIはCodex、exact model IDは取得できずunknown/unavailable。

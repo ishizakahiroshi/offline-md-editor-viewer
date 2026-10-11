@@ -12,9 +12,11 @@ ai_author_model_source: unavailable
 ---
 
 # P-20261011-011 offline-md-editor-viewer：直近2週間の差分監査
-> 最終更新: 2026-10-11(日) 23:41:43
+> 最終更新: 2026-10-12(月) 08:26:29
 
 所有者は2026-10-12に、この指示一式の専用branchへのcommit/push、専用Issue作成、dotsへの送信、監査の往復までをYESで承認した。案件が送信された後に以下の固定対象を調査する。
+
+専用Issue: https://github.com/ishizakahiroshi/offline-md-editor-viewer/issues/19
 
 ## 目的と対象
 

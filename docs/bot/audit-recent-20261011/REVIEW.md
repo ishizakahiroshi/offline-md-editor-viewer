@@ -8,7 +8,7 @@ last_reviewed: 2026-10-11
 ---
 
 # P-20261011-011 offline-md-editor-viewer：反証と手元評価
-> 最終更新: 2026-10-11(日) 23:41:43
+> 最終更新: 2026-10-12(月) 08:26:29
 
 READMEの固定対象、範囲、権限に従う。dotsの探索報告を手元Codexが再読し、疑問点を同じ案件へ返す。別担当verifierにはcandidate ID、file/line、入力、想定経路、証拠、許可commandと判定形式を渡し、lead側の評価語は渡さない。
 

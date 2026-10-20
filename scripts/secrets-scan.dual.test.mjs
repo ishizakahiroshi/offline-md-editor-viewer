@@ -66,8 +66,8 @@ function syntheticRuntime() {
   const a=join(root,'node_modules','doxguard');
   const b=join(root,'node_modules','@ishizakahiroshi','doxguard-linux-x64');
   for(const dir of [a,b])mkdirSync(join(dir,'bin'),{recursive:true});
-  const rootMeta={name:'doxguard',version:'0.2.0',type:'module',bin:{doxguard:'bin/doxguard.js'},optionalDependencies:{'@ishizakahiroshi/doxguard-linux-x64':'0.2.0'}};
-  const platformMeta={name:'@ishizakahiroshi/doxguard-linux-x64',version:'0.2.0',bin:{doxguard:'bin/doxguard'},os:['linux'],cpu:['x64']};
+  const rootMeta={name:'doxguard',version:'0.2.1',type:'module',bin:{doxguard:'bin/doxguard.js'},optionalDependencies:{'@ishizakahiroshi/doxguard-linux-x64':'0.2.1'}};
+  const platformMeta={name:'@ishizakahiroshi/doxguard-linux-x64',version:'0.2.1',bin:{doxguard:'bin/doxguard'},os:['linux'],cpu:['x64']};
   const reset=()=>{writeFileSync(join(a,'package.json'),JSON.stringify(rootMeta));writeFileSync(join(b,'package.json'),JSON.stringify(platformMeta));writeFileSync(join(a,'bin','doxguard.js'),'synthetic-launcher');writeFileSync(join(b,'bin','doxguard'),'synthetic-native');chmodSync(join(b,'bin','doxguard'),0o755);};
   reset();
   const hash=value=>createHash('sha256').update(value).digest('hex');
@@ -82,16 +82,16 @@ test('runtime identity matches exact root/platform relationship and both hashes'
     assert.equal(identity.receipt.launcher_sha256,f.expected.launcher);
     assert.throws(()=>verifyRuntime(f.root,'x64',canonicalRuntime,syntheticExecutableStat), /canonical hash mismatch/); // synthetic bytes are never accepted as public release
     assert.throws(()=>verifyRuntime(f.root,'arm64',f.expected,syntheticExecutableStat));
-    assert.equal(canonicalRuntime.payload,'5458f08f85753cf6d33ad869063af16ca8f55a800bb9d17a78c4b6adc0651279');
+    assert.equal(canonicalRuntime.payload,'cde248828b8983b8f2d9ec6ca329f005b39f4e024293b91ba4ac28622546058e');
   } finally {rmSync(f.root,{recursive:true,force:true});}
 });
 test('runtime rejects wrong optional pin, bin, module type and platform metadata',()=>{
   const f=syntheticRuntime();
   try {
-    for(const change of [{version:'0.2.1'},{name:'other'},{type:'commonjs'},{bin:{doxguard:'other.js'}},{optionalDependencies:{}},{optionalDependencies:{'@ishizakahiroshi/doxguard-linux-x64':'^0.2.0'}}]) {
+    for(const change of [{version:'0.2.0'},{name:'other'},{type:'commonjs'},{bin:{doxguard:'other.js'}},{optionalDependencies:{}},{optionalDependencies:{'@ishizakahiroshi/doxguard-linux-x64':'^0.2.1'}}]) {
       f.reset();writeFileSync(join(f.a,'package.json'),JSON.stringify({...f.rootMeta,...change}));assert.throws(()=>verifyRuntime(f.root,'x64',f.expected,syntheticExecutableStat));
     }
-    for(const change of [{name:'other'},{version:'0.2.1'},{exports:{'./package.json':'./other.json'}},{bin:{doxguard:'elsewhere'}},{os:['darwin']},{os:['linux','darwin']},{cpu:['arm64']},{cpu:['x64','arm64']}]) {
+    for(const change of [{name:'other'},{version:'0.2.0'},{exports:{'./package.json':'./other.json'}},{bin:{doxguard:'elsewhere'}},{os:['darwin']},{os:['linux','darwin']},{cpu:['arm64']},{cpu:['x64','arm64']}]) {
       f.reset();writeFileSync(join(f.b,'package.json'),JSON.stringify({...f.platformMeta,...change}));assert.throws(()=>verifyRuntime(f.root,'x64',f.expected,syntheticExecutableStat));
     }
   } finally {rmSync(f.root,{recursive:true,force:true});}
@@ -148,7 +148,7 @@ const fakeLauncher = `
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 const args = process.argv.slice(2);
-if (args[0] === '--version') { console.log('doxguard 0.2.0'); process.exit(0); }
+if (args[0] === '--version') { console.log('doxguard 0.2.1'); process.exit(0); }
 const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split(/\\r?\\n/).filter(Boolean);
 const hits = [];
 for (const file of files) readFileSync(file, 'utf8').split(/\\r?\\n/).forEach((line, i) => {
@@ -167,7 +167,7 @@ function nativeOnlyFixture(content, withPackage = true) {
   writeFileSync(join(root, 'sample.txt'), content + '\n');
   const pkg = join(root, 'fake-pkg');
   mkdirSync(join(pkg, 'bin'), { recursive: true });
-  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: 'doxguard', version: '0.2.0', type: 'module' }));
+  writeFileSync(join(pkg, 'package.json'), JSON.stringify({ name: 'doxguard', version: '0.2.1', type: 'module' }));
   writeFileSync(join(pkg, 'bin', 'doxguard.js'), fakeLauncher);
   const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...a], { cwd: root, stdio: 'ignore' });
   git('init', '-q'); git('add', 'sample.txt', 'doxguard.ci.json', 'scripts'); git('commit', '-q', '-m', 'fixture');

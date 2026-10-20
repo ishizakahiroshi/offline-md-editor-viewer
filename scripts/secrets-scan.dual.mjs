@@ -9,12 +9,12 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { stagedSnapshot, gitEnvironment, gitContext } from './secrets-scan.staged.mjs';
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.1';
 // Runtime verification adopted from docsweep pilot f760ae4; no local install.
 export const canonicalRuntime = Object.freeze({
   arch: 'x64',
-  payload: '5458f08f85753cf6d33ad869063af16ca8f55a800bb9d17a78c4b6adc0651279',
-  // https://github.com/ishizakahiroshi/doxguard/blob/v0.2.0/bin/doxguard.js
+  payload: 'cde248828b8983b8f2d9ec6ca329f005b39f4e024293b91ba4ac28622546058e',
+  // https://github.com/ishizakahiroshi/doxguard/blob/v0.2.1/bin/doxguard.js
   launcher: '5374a0b83149b3ca78ad897c2475c6dbbbb44b55c4c6671f762c4e2bd8312b28',
 });
 export function verifyRuntime(root, arch = process.arch, expected = canonicalRuntime, fileStat = statSync) {
@@ -24,9 +24,9 @@ export function verifyRuntime(root, arch = process.arch, expected = canonicalRun
   const platformDir = join(root,'node_modules','@ishizakahiroshi','doxguard-linux-' + arch);
   const a = JSON.parse(readFileSync(join(rootDir,'package.json'),'utf8'));
   const b = JSON.parse(readFileSync(join(platformDir,'package.json'),'utf8'));
-  if (a.name !== 'doxguard' || a.version !== '0.2.0' || a.type !== 'module'
-      || a.bin?.doxguard !== 'bin/doxguard.js' || a.optionalDependencies?.[platformName] !== '0.2.0'
-      || b.name !== platformName || b.version !== '0.2.0' || b.bin?.doxguard !== 'bin/doxguard' || b.exports !== undefined
+  if (a.name !== 'doxguard' || a.version !== '0.2.1' || a.type !== 'module'
+      || a.bin?.doxguard !== 'bin/doxguard.js' || a.optionalDependencies?.[platformName] !== '0.2.1'
+      || b.name !== platformName || b.version !== '0.2.1' || b.bin?.doxguard !== 'bin/doxguard' || b.exports !== undefined
       || JSON.stringify(b.os) !== '["linux"]' || JSON.stringify(b.cpu) !== JSON.stringify([arch])) throw new Error('package identity mismatch');
   const launcher = join(rootDir,'bin','doxguard.js');
   const binary = join(platformDir,'bin','doxguard');
@@ -48,7 +48,7 @@ export function verifyRuntime(root, arch = process.arch, expected = canonicalRun
   const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex');
   const payload = hash(binary), launch = hash(launcher);
   if (payload !== expected.payload || launch !== expected.launcher) throw new Error('canonical hash mismatch');
-  return {launcher,binary,receipt:{package:'doxguard',version:'0.2.0',platform:'linux-' + arch,payload_sha256:payload,launcher_sha256:launch,canonical_match:true}};
+  return {launcher,binary,receipt:{package:'doxguard',version:'0.2.1',platform:'linux-' + arch,payload_sha256:payload,launcher_sha256:launch,canonical_match:true}};
 }
 const integer = value => Number.isSafeInteger(value) && value >= 0;
 const sha = value => typeof value === 'string' && /^[a-f0-9]{40,64}$/.test(value);

@@ -8,7 +8,29 @@
   },
   "allow": {
     "emails": [
-      "ishizakahiroshi.dev\u0040gmail.com"
+      "ishizakahiroshi.dev\u0040gmail.com",
+      "128x128\u00402x.png",
+      "AppIcon-20x20\u00401x.png",
+      "AppIcon-20x20\u00402x-1.png",
+      "AppIcon-20x20\u00402x.png",
+      "AppIcon-20x20\u00403x.png",
+      "AppIcon-29x29\u00401x.png",
+      "AppIcon-29x29\u00402x-1.png",
+      "AppIcon-29x29\u00402x.png",
+      "AppIcon-29x29\u00403x.png",
+      "AppIcon-40x40\u00401x.png",
+      "AppIcon-40x40\u00402x-1.png",
+      "AppIcon-40x40\u00402x.png",
+      "AppIcon-40x40\u00403x.png",
+      "AppIcon-512\u00402x.png",
+      "AppIcon-60x60\u00402x.png",
+      "AppIcon-60x60\u00403x.png",
+      "AppIcon-76x76\u00401x.png",
+      "AppIcon-76x76\u00402x.png",
+      "AppIcon-83.5x83.5\u00402x.png",
+      "tituswormer\u0040gmail.com",
+      "polygon.planet.aqua\u0040gmail.com",
+      "hello\u0040joshgoebel.com"
     ],
     "emailDomains": [
       "example.com",

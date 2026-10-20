@@ -1,0 +1,28 @@
+{
+  "watchlists": [],
+  "structural": {
+    "windowsPath": true,
+    "posixHome": true,
+    "privateIp": true,
+    "email": true
+  },
+  "allow": {
+    "emails": [
+      "ishizakahiroshi.dev\u0040gmail.com",
+      "tituswormer\u0040gmail.com",
+      "polygon.planet.aqua\u0040gmail.com",
+      "hello\u0040joshgoebel.com"
+    ],
+    "emailDomains": [
+      "example.com",
+      "example.net",
+      "example.org",
+      "example.invalid"
+    ],
+    "disallowBareAllow": true
+  },
+  "exemptPaths": [],
+  "includeDefaultExemptPaths": false,
+  "requireWatchlists": false,
+  "failOnSkip": true
+}

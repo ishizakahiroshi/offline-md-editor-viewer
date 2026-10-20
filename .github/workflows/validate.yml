@@ -61,6 +61,7 @@ jobs:
           node scripts/ci/test-tauri-filesystem-contracts.mjs
           node scripts/ci/test-tauri-ipc-lifecycle-contracts.mjs
           node scripts/ci/test-npm-launcher.mjs
+          node scripts/ci/test-encoding-fixtures.mjs
 
       # Same script CI uses to produce the release asset: verifies that no
       # placeholder is left unreplaced, no `<script src=` survives inlining, and

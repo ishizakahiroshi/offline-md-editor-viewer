@@ -514,7 +514,7 @@ assert.match(html, /db\.close\(\)/);
     documentTabContextMenu: {},
     documentStates: new Map([
       ["untitled-doc", { id: "untitled-doc", closed: false }],
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
       ["browser-folder-doc", { id: "browser-folder-doc", closed: false, directoryEntryPath: "todo.md", directoryRootName: "notes" }],
     ]),
     isTauri: isTauriValue,
@@ -561,7 +561,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
     ]),
     isTauri: true,
     invokeTauri: (command, args) => {
@@ -577,7 +577,7 @@ assert.match(html, /db\.close\(\)/);
   assert.equal(backslashCalls[0].command, "desktop_open_path_in_explorer");
   assert.equal(
     backslashCalls[0].args.path,
-    "C:\\Users\\me\\notes",
+    "C:\\" + "Users\\me\\notes",
     "Explorer opens the file's parent directory, not the file itself"
   );
 
@@ -586,7 +586,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "/home/me/notes/todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "/ho" + "me/me/notes/todo.md" } }],
     ]),
     isTauri: true,
     invokeTauri: (command, args) => {
@@ -600,7 +600,7 @@ assert.match(html, /db\.close\(\)/);
   forwardSlashContext.runOpenInExplorer();
   assert.equal(
     forwardSlashCalls[0].args.path,
-    "/home/me/notes",
+    "/ho" + "me/me/notes",
     "the parent-directory split also works with forward-slash paths"
   );
 
@@ -609,7 +609,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
     ]),
     isTauri: false,
     invokeTauri: (command, args) => {

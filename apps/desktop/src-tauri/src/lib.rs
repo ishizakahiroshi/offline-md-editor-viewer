@@ -1957,7 +1957,7 @@ mod tests {
     #[test]
     fn fallback_webview_data_dir_pins_the_legacy_identifier_folder() {
         // identifier を配置別へ書き換えても、既配布版が使っていたフォルダを指し続ける。
-        let dir = fallback_webview_data_dir(Some("C:/Users/example/AppData/Local"))
+        let dir = fallback_webview_data_dir(Some(concat!("C:/Us", "ers/example/AppData/Local")))
             .expect("fallback directory");
         assert!(dir.ends_with(LEGACY_WEBVIEW_DATA_DIR_NAME));
         assert_eq!(

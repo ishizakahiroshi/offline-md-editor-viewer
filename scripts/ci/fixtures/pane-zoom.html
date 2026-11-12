@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Pane zoom browser checks</title>
+<style>body { margin: 0; font: 14px sans-serif; } iframe { display: block; width: 1568px; height: 820px; border: 0; } #result { padding: 8px; }</style>
+<div id="result">Running pane zoom checks…</div>
+<button id="indicators">Show zoom indicators</button>
+<iframe title="Editor under test" src="../../../apps/browser/offline-md-editor-viewer.html"></iframe>
+<script>
+  // Browser integration fixture: serve the repository root over localhost.
+  // Uses only synthetic document content and DOM events in the real app.
+  document.querySelector('iframe').addEventListener('load', async (event) => {
+    const win = event.target.contentWindow;
+    const doc = win.document;
+    const result = document.getElementById('result');
+    let checks = 0;
+    function check(condition, label) {
+      if (!condition) throw new Error(label);
+      checks++;
+    }
+    const font = selector => parseFloat(win.getComputedStyle(doc.querySelector(selector)).fontSize);
+    const wheel = (target, deltaY, ctrlKey = true) => {
+      return target.dispatchEvent(new win.WheelEvent('wheel', { bubbles: true, cancelable: true, ctrlKey, deltaY }));
+    };
+    const near = (actual, expected) => Math.abs(actual - expected) < 0.02;
+    try {
+      doc.getElementById('newBtn').click();
+      const source = doc.getElementById('source');
+      const preview = doc.getElementById('preview');
+      const sample = '# 表示倍率の確認\n\nソースとプレビューを、それぞれ読みやすい大きさに調整します。\n\n## 本文と見出し\n\n- 行番号と文字の位置を揃えます。\n- 通常のスクロールも使えます。\n\n```js\nconst percent = 140;\n```\n';
+      source.value = sample;
+      source.dispatchEvent(new win.Event('input', { bubbles: true }));
+      await new Promise(resolve => win.setTimeout(resolve, 400));
+      const base = { source: font('#source'), preview: font('#preview'), heading: font('#preview h1'), code: font('#preview pre code'), toolbar: font('#newBtn') };
+      for (let i = 0; i < 4; i++) wheel(preview, -100);
+      check(near(font('#preview'), base.preview * 1.4), 'preview 140%');
+      check(near(font('#preview h1'), base.heading * 1.4), 'heading 140%');
+      check(near(font('#preview pre code'), base.code * 1.4), 'code 140%');
+      check(font('#source') === base.source, 'source stays independent');
+      check(font('#newBtn') === base.toolbar, 'toolbar size stays stable');
+      for (let i = 0; i < 2; i++) wheel(source, -100);
+      check(near(font('#source'), base.source * 1.2), 'source 120%');
+      check(near(font('#sourceHighlight'), font('#source')), 'source highlight alignment');
+      check(near(font('.line-number'), font('#source')), 'line number font alignment');
+      check(wheel(preview, 100, false), 'ordinary scrolling is not cancelled');
+      check(source.value === sample, 'document unchanged');
+      for (let i = 0; i < 30; i++) wheel(preview, -100);
+      check(near(font('#preview'), base.preview * 2), 'upper limit');
+      check(!wheel(preview, -100), 'native zoom blocked at upper limit');
+      for (let i = 0; i < 30; i++) wheel(preview, 100);
+      check(near(font('#preview'), base.preview * 0.5), 'lower limit');
+      preview.focus();
+      preview.dispatchEvent(new win.KeyboardEvent('keydown', { bubbles: true, cancelable: true, ctrlKey: true, key: '0' }));
+      check(near(font('#preview'), base.preview), 'Ctrl+0 resets preview');
+      check(near(font('#source'), base.source * 1.2), 'reset preserves source');
+      for (let i = 0; i < 4; i++) wheel(preview, -100);
+      const previewButton = doc.getElementById('previewZoomIndicator');
+      const sourceButton = doc.getElementById('sourceZoomIndicator');
+      const menu = doc.getElementById('paneZoomMenu');
+      check(!previewButton.hidden && !sourceButton.hidden, 'permanent buttons visible');
+      previewButton.click();
+      check(!menu.hidden && previewButton.getAttribute('aria-expanded') === 'true', 'click opens controls');
+      doc.getElementById('paneZoomIn').click();
+      check(near(font('#preview'), base.preview * 1.5), 'plus button');
+      doc.getElementById('paneZoomOut').click();
+      check(near(font('#preview'), base.preview * 1.4), 'minus button');
+      doc.getElementById('paneZoomReset').click();
+      check(near(font('#preview'), base.preview), 'reset button');
+      check(near(font('#source'), base.source * 1.2), 'button reset preserves source');
+      for (let i = 0; i < 10; i++) doc.getElementById('paneZoomIn').click();
+      check(doc.getElementById('paneZoomIn').disabled, 'plus disabled at upper limit');
+      for (let i = 0; i < 15; i++) doc.getElementById('paneZoomOut').click();
+      check(doc.getElementById('paneZoomOut').disabled, 'minus disabled at lower limit');
+      doc.getElementById('paneZoomReset').click();
+      menu.dispatchEvent(new win.KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+      check(menu.hidden && doc.activeElement === previewButton, 'Escape closes and restores focus');
+      sourceButton.click();
+      doc.body.dispatchEvent(new win.PointerEvent('pointerdown', { bubbles: true }));
+      check(menu.hidden, 'outside click closes');
+      for (let i = 0; i < 4; i++) wheel(preview, -100);
+      result.textContent = `PASS: ${checks} browser checks. Source 120%, preview 140%. Synthetic wheel/keyboard events; native Desktop input needs manual acceptance.`;
+      document.getElementById('indicators').onclick = () => {
+        wheel(source, 100); wheel(source, -100);
+        wheel(preview, 100); wheel(preview, -100);
+      };
+    } catch (error) {
+      result.textContent = `FAIL after ${checks} checks: ${error.message}`;
+    }
+  });
+</script>

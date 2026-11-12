@@ -56,6 +56,7 @@ jobs:
       - name: Run tracked browser and boundary tests
         run: |
           node scripts/ci/test-browser-editor-state.mjs
+          node scripts/ci/test-pane-zoom.mjs
           node scripts/ci/test-browser-file-operations.mjs
           node scripts/ci/test-browser-regex-worker.mjs
           node scripts/ci/test-tauri-filesystem-contracts.mjs

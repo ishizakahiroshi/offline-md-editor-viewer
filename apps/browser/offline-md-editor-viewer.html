@@ -2513,7 +2513,7 @@
       --source-gutter-width: 50px;
       --source-pad-x: 14px;
       --source-pad-y: 14px;
-      --source-font-size: calc(0.96rem * var(--app-font-scale));
+      --source-font-size: calc(0.96rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       --source-line-height: 1.65;
       display: grid;
       grid-template-rows: 1fr;
@@ -3110,11 +3110,47 @@
     }
 
     /* === Preview Panel === */
+    .pane-zoom-indicator {
+      flex: 0 0 auto;
+      min-width: 48px;
+      min-height: 28px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--badge-bg);
+      color: var(--accent);
+      font-size: 0.75rem;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pane-zoom-indicator:hover,
+    .pane-zoom-indicator[aria-expanded="true"] { border-color: var(--accent); }
+    .pane-zoom-menu {
+      position: fixed;
+      z-index: 60;
+      width: 260px;
+      max-width: calc(100vw - 16px);
+      box-sizing: border-box;
+      padding: 10px;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .pane-zoom-menu[hidden] { display: none; }
+    .pane-zoom-actions { display: flex; gap: 6px; }
+    .pane-zoom-actions button { flex: 1; white-space: nowrap; }
+    #paneZoomReset { flex: 2; }
+    .pane-zoom-hint { margin: 8px 0 0; font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
     #preview {
       min-height: 0;
       overflow: auto;
       padding: 16px 18px 24px;
-      font-size: calc(0.875rem * var(--app-font-scale));
+      font-size: calc(0.875rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     .preview-panel.wrap-off #preview {
@@ -3422,17 +3458,17 @@
     }
 
     #preview h1 {
-      font-size: calc(1.875rem * var(--app-font-scale));
+      font-size: calc(1.875rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       padding-bottom: .35em;
       border-bottom: 1px solid var(--h1-border);
     }
     #preview h2 {
-      font-size: calc(1.475rem * var(--app-font-scale));
+      font-size: calc(1.475rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       padding-bottom: .3em;
       border-bottom: 1px solid var(--h2-border);
     }
-    #preview h3 { font-size: calc(1.175rem * var(--app-font-scale)); }
-    #preview h4 { font-size: calc(1.025rem * var(--app-font-scale)); }
+    #preview h3 { font-size: calc(1.175rem * var(--app-font-scale) * var(--pane-font-scale, 1)); }
+    #preview h4 { font-size: calc(1.025rem * var(--app-font-scale) * var(--pane-font-scale, 1)); }
 
     #preview p, #preview ul, #preview ol, #preview table, #preview .markdown-table-wrap, #preview pre, #preview blockquote {
       margin-top: 0.8em;
@@ -3520,13 +3556,13 @@
       background: transparent;
       padding: 0;
       color: var(--pre-code-text);
-      font-size: calc(.775rem * var(--app-font-scale));
+      font-size: calc(.775rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     #preview pre code.hljs {
       background: transparent;
       padding: 0;
-      font-size: calc(.775rem * var(--app-font-scale));
+      font-size: calc(.775rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     .code-copy-btn {
@@ -4792,6 +4828,7 @@
 
       <section class="panel editor-panel" id="editorPanel">
         <div class="panel-header">
+          <button id="sourceZoomIndicator" class="pane-zoom-indicator" type="button" aria-expanded="false" aria-controls="paneZoomMenu">100%</button>
           <div id="sourceHeaderLeft" class="source-header-left">
             <span id="sourceExtBadge" class="source-ext-badge" style="display:none"></span>
             <span id="currentFileName"></span>
@@ -4938,6 +4975,7 @@
       <section class="panel preview-panel" id="previewPanel">
         <div class="panel-header">
           <span id="previewHeader"></span>
+          <button id="previewZoomIndicator" class="pane-zoom-indicator" type="button" aria-expanded="false" aria-controls="paneZoomMenu">100%</button>
           <button id="closePreviewBtn" class="icon-btn" type="button" aria-label="Close preview">
             <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -4945,9 +4983,18 @@
             </svg>
           </button>
         </div>
-        <div id="preview" class="hint"></div>
+        <div id="preview" class="hint" tabindex="0"></div>
       </section>
     </div>
+  </div>
+
+  <div id="paneZoomMenu" class="pane-zoom-menu" role="group" hidden>
+    <div class="pane-zoom-actions">
+      <button id="paneZoomOut" class="btn" type="button">−</button>
+      <button id="paneZoomReset" class="btn" type="button"></button>
+      <button id="paneZoomIn" class="btn" type="button">＋</button>
+    </div>
+    <p id="paneZoomHint" class="pane-zoom-hint"></p>
   </div>
 
   <script src="lib/marked.min.js"></script>
@@ -5257,6 +5304,8 @@ Edits on the left source pane update the right preview pane in real time. \`Save
 In edit mode, use \`Ctrl/Cmd+F\` to open the floating find bar and \`Ctrl/Cmd+H\` or \`Ctrl/Cmd+R\` to expand replace controls. \`Enter\` moves to the next match, \`Shift+Enter\` moves to the previous match, and \`Esc\` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. \`(?<=foo)bar\`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 Press \`Ctrl/Cmd+K\` (or \`Ctrl/Cmd+Shift+P\`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press \`Esc\` to exit.
+Click the percentage button (100%) in the source or preview header to open − / Reset to 100% / + controls. Ctrl + scroll over either pane also changes its text size in 10 percentage point steps (50–200%). Scroll up to enlarge and down to shrink. Ctrl+0 resets the last pointed-to or focused pane to 100%. The current percentage stays visible in the header. Pane zoom lasts until the app is reloaded; the App font size setting controls the whole interface and is the 100% baseline.
+
 Open documents are listed as tabs above the editor. Click a tab to switch. Each document keeps its own text, undo history, cursor position, encoding, BOM, line ending and read-only state, so switching tabs never mixes one document's settings into another. \`+\` opens a new untitled tab. \`New\` creates a file in the opened folder when a folder is open, and otherwise opens an untitled tab; either way it no longer replaces what you are currently editing. A tab with unsaved changes is marked, and closing it asks whether to save, discard, or go back. Closing the window asks the same for each unsaved document in turn, and cancelling any one of them stops the exit.
 
 Right-clicking a tab, or an empty area of the tab row, opens a context menu for creating a new tab, closing tabs (this one, others, or those to the right), and copying the file name or path. The desktop app also adds an item there to open the file's folder in Explorer.
@@ -5487,6 +5536,8 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 
 \`Ctrl/Cmd+K\`（または \`Ctrl/Cmd+Shift+P\`）でコマンドパレットを開き、主要な操作をキーボードから実行できます。Zen モードは周囲のパネルを隠して執筆に集中でき、\`Esc\` で終了します。
 開いている文書はエディタ上部にタブとして並びます。タブをクリックすると切り替わります。本文・アンドゥ履歴・カーソル位置・文字コード・BOM・改行コード・読み取り専用は文書ごとに保持されるので、タブを切り替えても別の文書の設定が混ざることはありません。\`+\` は無題のタブを新しく開きます。\`新規\` はフォルダを開いているときはそのフォルダ内にファイルを作り、開いていないときは無題のタブを開きます。どちらの場合も、いま編集中の内容を置き換えることはなくなりました。未保存のタブには印が付き、閉じるときに「保存して閉じる／破棄／戻る」を確認します。ウィンドウを閉じるときも未保存の文書を 1 件ずつ同じ形で確認し、どれか 1 つでも取り消すと終了しません。
+
+ソース・プレビューのヘッダーにある倍率ボタン（100%）をクリックすると、「−／100%に戻す／＋」で文字の大きさを変えられます。本文上の Ctrl＋ホイールでも10ポイント刻み（50〜200%）で調整できます。上に回すと拡大、下に回すと縮小し、Ctrl＋0で最後にポインターを置いた側、またはフォーカスした側を100%へ戻します。現在の倍率はヘッダーに常時表示し、再読み込みまで保持します。設定の「アプリ全体の文字サイズ」は画面全体に効き、その大きさを本文倍率の100%の基準にします。
 
 タブ、またはタブ列の空きを右クリックすると、新しいタブ・閉じる系（このタブ／他のタブ／右側のタブ）・コピー系（ファイル名／パス）のメニューが出ます。Desktop 版では、ファイルの場所をエクスプローラーで開く項目も出ます。
 
@@ -6191,7 +6242,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.showCard": ["Show {card}", "{card}を表示", "顯示{card}", "显示{card}", "Mostrar {card}", "{card} anzeigen", "{card} 표시", "Mostrar {card}", "Показать {card}", "Hiện {card}", "Afficher {card}", "Mostra {card}", "Tampilkan {card}"],
         "ui.hideCard": ["Hide {card}", "{card}を非表示", "隱藏{card}", "隐藏{card}", "Ocultar {card}", "{card} ausblenden", "{card} 숨기기", "Ocultar {card}", "Скрыть {card}", "Ẩn {card}", "Masquer {card}", "Nascondi {card}", "Sembunyikan {card}"],
         "ui.languageLabel": ["Language", "言語", "語言", "语言", "Idioma", "Sprache", "언어", "Idioma", "Язык", "Ngôn ngữ", "Langue", "Lingua", "Bahasa"],
-        "ui.fontSizeLabel": ["Font", "文字", "字型", "字号", "Fuente", "Schrift", "글꼴", "Fonte", "Шрифт", "Phông", "Police", "Carattere", "Fon"],
+        "ui.fontSizeLabel": ["App font size", "アプリ全体の文字サイズ", "應用程式字型大小", "应用整体字号", "Tamaño de letra de la aplicación", "Schriftgröße der App", "앱 전체 글자 크기", "Tamanho da fonte do aplicativo", "Размер шрифта приложения", "Cỡ chữ ứng dụng", "Taille du texte de l’application", "Dimensione testo dell’app", "Ukuran teks aplikasi"],
+        "ui.paneZoomLabel": ["Text size", "本文倍率", "文字縮放", "正文缩放", "Tamaño del texto", "Textgröße", "본문 배율", "Tamanho do texto", "Масштаб текста", "Cỡ văn bản", "Taille du texte", "Dimensione testo", "Ukuran teks"],
+        "ui.paneZoomReset": ["Reset to 100%", "100%に戻す", "重設為100%", "重置为100%", "Restablecer al 100%", "Auf 100% zurücksetzen", "100%로 재설정", "Voltar a 100%", "Сбросить до 100%", "Đặt lại 100%", "Rétablir 100%", "Ripristina 100%", "Kembali ke 100%"],
+        "ui.paneZoomHint": ["Ctrl + scroll also changes text size. Ctrl+0 resets to 100%.", "Ctrl＋ホイールでも変更できます。Ctrl＋0で100%に戻します。", "也可用Ctrl＋滾輪調整。Ctrl＋0重設為100%。", "也可用Ctrl＋滚轮调整。Ctrl＋0重置为100%。", "Ctrl + rueda ajusta el texto. Ctrl+0 vuelve al 100%.", "Auch mit Strg + Mausrad. Strg+0 setzt auf 100% zurück.", "Ctrl＋휠로도 조정합니다. Ctrl＋0으로 100%로 돌아갑니다.", "Ctrl + roda ajusta o texto. Ctrl+0 volta a 100%.", "Ctrl + колесо меняет масштаб. Ctrl+0 возвращает 100%.", "Ctrl + cuộn để chỉnh. Ctrl+0 đặt lại 100%.", "Ctrl + molette ajuste le texte. Ctrl+0 rétablit 100%.", "Ctrl + rotella regola il testo. Ctrl+0 ripristina 100%.", "Ctrl + gulir mengubah ukuran. Ctrl+0 kembali ke 100%."],
         "ui.densityLabel": ["Density", "密度", "密度", "密度", "Densidad", "Dichte", "밀도", "Densidade", "Плотность", "Mật độ", "Densité", "Densita", "Kepadatan"],
         "ui.themeLabel": ["Theme", "テーマ", "佈景主題", "主题", "Tema", "Design", "테마", "Tema", "Тема", "Giao diện", "Thème", "Tema", "Tema"],
         "ui.themeDark": ["Dark", "ダーク", "深色", "深色", "Oscuro", "Dunkel", "다크", "Escuro", "Тёмная", "Tối", "Sombre", "Scuro", "Gelap"],
@@ -15458,6 +15512,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       window.addEventListener("keydown", (e) => {
         // --- Escape: close dialogs / bars / menus ---
         if (e.key === "Escape") {
+          if (!paneZoomMenu.hidden) { closePaneZoomMenu(true); return; }
           if (!documentCloseOverlay.hidden) { closeDocumentCloseDialog("cancel"); return; }
           if (!confirmOverlay.hidden) { closeConfirmDialog(false); return; }
           if (!promptOverlay.hidden) { closeTextPrompt(null); return; }
@@ -15633,6 +15688,119 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         applyLanguage(langSelect.value);
       });
 
+      // Pane zoom changes text metrics only; document contents and app chrome stay intact.
+      const paneZoomStates = [
+        { panel: editorPanel, body: source.closest(".editor-body"), indicator: document.getElementById("sourceZoomIndicator"), percent: 100, delta: 0, lastTime: 0 },
+        { panel: previewPanel, body: preview, indicator: document.getElementById("previewZoomIndicator"), percent: 100, delta: 0, lastTime: 0 }
+      ];
+      let activeZoomPane = paneZoomStates[0];
+      const paneZoomMenu = document.getElementById("paneZoomMenu");
+      const paneZoomOut = document.getElementById("paneZoomOut");
+      const paneZoomReset = document.getElementById("paneZoomReset");
+      const paneZoomIn = document.getElementById("paneZoomIn");
+      let menuZoomPane = null;
+
+      function closePaneZoomMenu(restoreFocus = false) {
+        const state = menuZoomPane;
+        paneZoomMenu.hidden = true;
+        menuZoomPane = null;
+        if (state) {
+          state.indicator.setAttribute("aria-expanded", "false");
+          if (restoreFocus) state.indicator.focus();
+        }
+      }
+
+      function renderPaneZoomControls() {
+        paneZoomStates.forEach((state) => {
+          state.indicator.textContent = `${state.percent}%`;
+          setUiTooltip(state.indicator, `${t("ui", "paneZoomLabel")}: ${state.percent}% — ${t("ui", "paneZoomHint")}`);
+        });
+        paneZoomMenu.setAttribute("aria-label", t("ui", "paneZoomLabel"));
+        paneZoomOut.setAttribute("aria-label", `${t("ui", "paneZoomLabel")} −10%`);
+        paneZoomIn.setAttribute("aria-label", `${t("ui", "paneZoomLabel")} +10%`);
+        paneZoomReset.textContent = t("ui", "paneZoomReset");
+        document.getElementById("paneZoomHint").textContent = t("ui", "paneZoomHint");
+        if (menuZoomPane) {
+          paneZoomOut.disabled = menuZoomPane.percent <= 50;
+          paneZoomIn.disabled = menuZoomPane.percent >= 200;
+        }
+      }
+
+      function openPaneZoomMenu(state) {
+        if (menuZoomPane === state) { closePaneZoomMenu(); return; }
+        closePaneZoomMenu();
+        activeZoomPane = state;
+        menuZoomPane = state;
+        state.indicator.setAttribute("aria-expanded", "true");
+        renderPaneZoomControls();
+        paneZoomMenu.hidden = false;
+        const rect = state.indicator.getBoundingClientRect();
+        paneZoomMenu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - paneZoomMenu.offsetWidth - 8))}px`;
+        paneZoomMenu.style.top = `${Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - paneZoomMenu.offsetHeight - 8))}px`;
+        paneZoomReset.focus();
+      }
+
+      [paneZoomOut, paneZoomReset, paneZoomIn].forEach((button, index) => {
+        button.addEventListener("click", () => {
+          if (!menuZoomPane) return;
+          menuZoomPane.delta = 0;
+          applyPaneZoom(menuZoomPane, index === 1 ? 100 : menuZoomPane.percent + (index === 0 ? -10 : 10));
+        });
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (menuZoomPane && !paneZoomMenu.contains(event.target) &&
+            !paneZoomStates.some((state) => state.indicator.contains(event.target))) closePaneZoomMenu();
+      });
+      document.addEventListener("focusin", (event) => {
+        if (menuZoomPane && !paneZoomMenu.contains(event.target) && !menuZoomPane.indicator.contains(event.target)) closePaneZoomMenu();
+      });
+      window.addEventListener("resize", () => closePaneZoomMenu());
+      document.addEventListener("scroll", () => closePaneZoomMenu(), true);
+
+      function applyPaneZoom(state, percent) {
+        state.percent = Math.max(50, Math.min(200, Math.round(percent / 10) * 10));
+        state.body.style.setProperty("--pane-font-scale", String(state.percent / 100));
+        renderPaneZoomControls();
+        activeZoomPane = state;
+        scheduleEditorMetricsUpdate();
+      }
+
+      function handlePaneZoomWheel(event, state) {
+        if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+          state.delta = 0;
+          return;
+        }
+        // Cancel native page zoom even when the pane has reached its limit.
+        event.preventDefault();
+        activeZoomPane = state;
+        const delta = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 100 : 1);
+        if (!Number.isFinite(delta) || delta === 0) return;
+        if (event.timeStamp - state.lastTime > 250 || Math.sign(delta) !== Math.sign(state.delta)) state.delta = 0;
+        state.lastTime = event.timeStamp;
+        state.delta += delta;
+        if (Math.abs(state.delta) < 100) return;
+        applyPaneZoom(state, state.percent + (state.delta < 0 ? 10 : -10));
+        state.delta = 0;
+      }
+
+      paneZoomStates.forEach((state) => {
+        state.indicator.addEventListener("click", () => openPaneZoomMenu(state));
+        state.body.addEventListener("wheel", (event) => handlePaneZoomWheel(event, state), { passive: false });
+        state.panel.addEventListener("pointerenter", () => { activeZoomPane = state; });
+        state.panel.addEventListener("focusin", () => { activeZoomPane = state; });
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.key !== "0" || event.defaultPrevented) return;
+        // Leave menu/dialog inputs and hidden panes to their native shortcuts.
+        if (event.target !== document.body && event.target !== document.documentElement &&
+            !paneZoomStates.some((state) => state.body.contains(event.target) || state.indicator.contains(event.target))) return;
+        if (!activeZoomPane.body.getClientRects().length) return;
+        event.preventDefault();
+        activeZoomPane.delta = 0;
+        applyPaneZoom(activeZoomPane, 100);
+      });
+
       function detectInitialFontScale() {
         const saved = safeLocalStorageGet(STORAGE_FONT_SCALE_KEY);
         if (FONT_SCALE_OPTIONS.some((opt) => opt.key === saved)) return saved;
@@ -15658,6 +15826,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
         fontSizeSelect.value = current;
         fontSizeLabel.textContent = t("ui", "fontSizeLabel");
+        renderPaneZoomControls();
       }
 
       fontSizeSelect.addEventListener("change", () => {

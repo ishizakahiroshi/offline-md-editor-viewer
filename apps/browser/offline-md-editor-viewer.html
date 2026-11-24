@@ -4273,6 +4273,32 @@
     .editing-dialog button { white-space: normal; }
     .editing-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
     .editing-dialog ol { padding-inline-start: 1.8rem; }
+    .sharing-dialog { width:min(48rem,92vw); max-height:85vh; padding:1rem; background:var(--panel); color:var(--text); border:1px solid var(--muted); border-radius:.7rem; overflow:auto; }
+    .sharing-dialog::backdrop { background:#0008; }
+    .sharing-dialog header { display:flex; align-items:center; justify-content:space-between; gap:.7rem; }
+    .sharing-dialog h2 { margin:0; font-size:1.1rem; }
+    .sharing-dialog ul { padding:0; list-style:none; }
+    .sharing-dialog li { margin:.25rem 0; }
+    .sharing-dialog li button { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:start; }
+    .sharing-copy-menu { position:fixed; z-index:9999; padding:4px; border:1px solid var(--muted); border-radius:.5rem; background:var(--panel); color:var(--text); }
+    .sharing-copy-menu button { display:block; width:100%; text-align:start; }
+    .sharing-paper { color:#181818; background:#fff; padding:1.5rem; margin:.8rem 0; line-height:1.5; overflow-wrap:anywhere; }
+    .sharing-paper :is(h1,h2,h3,h4,h5,h6) { break-after:avoid; margin-block:.8em .4em; }
+    .sharing-paper pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+    .sharing-paper table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    .sharing-paper td,.sharing-paper th { border:1px solid #aaa; padding:.25em; }
+    .sharing-paper img { max-width:100%; height:auto; }
+    .sharing-paper a { color:#163e78; }
+    .sharing-paper :is(pre,code,span) { color:inherit; background:transparent; }
+    .sharing-paper .paper-title { border-bottom:1px solid #aaa; padding-bottom:.4em; font-weight:bold; }
+    body > #sharingPaper { display:none; }
+    @media print {
+      @page { size:A4; margin:15mm; }
+      html:has(body.sharing-print) { height:auto!important; overflow:visible!important; }
+      body.sharing-print { display:block!important; background:#fff!important; margin:0!important; padding:0!important; height:auto!important; overflow:visible!important; }
+      body.sharing-print > :not(#sharingPaper),body.sharing-print #sharingDialog::backdrop { display:none!important; }
+      body.sharing-print > #sharingPaper { display:block!important; margin:0; padding:0; font:11pt/1.5 sans-serif; box-shadow:none; }
+    }
   </style>
 </head>
 <body>
@@ -5051,6 +5077,17 @@
     <p id="paneZoomHint" class="pane-zoom-hint"></p>
   </div>
 
+  <dialog id="sharingDialog" class="sharing-dialog" aria-labelledby="sharingTitle">
+    <header><h2 id="sharingTitle"></h2><button id="sharingClose" class="btn" type="button"></button></header>
+    <p id="sharingMessage" role="status"></p>
+    <ul id="sharingResults" hidden></ul>
+    <article id="sharingPaper" class="sharing-paper" hidden></article>
+    <button id="sharingPrint" type="button" class="btn" hidden></button>
+  </dialog>
+  <div id="sharingCopyMenu" class="sharing-copy-menu" role="menu" hidden>
+    <button id="sharingCopyMarkdown" class="btn" type="button" role="menuitem"></button>
+    <button id="sharingCopyRich" class="btn" type="button" role="menuitem"></button>
+  </div>
   <script src="lib/marked.min.js"></script>
   <script src="lib/purify.min.js"></script>
   <script src="lib/highlight.min.js"></script>
@@ -6145,6 +6182,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "editing.alt": ["Image description","画像の説明","圖片說明","图片说明","Descripción","Bildbeschreibung","이미지 설명","Descrição da imagem","Описание изображения","Mô tả ảnh","Description de l’image","Descrizione immagine","Deskripsi gambar"],
         "editing.folder": ["Open the saved document from its folder first.","先にフォルダを開き、その中の保存済み文書を選んでください。","請先從資料夾開啟已儲存的文件。","请先从文件夹打开已保存的文档。","Abra el documento desde su carpeta.","Öffnen Sie das Dokument aus seinem Ordner.","먼저 폴더에서 저장된 문서를 여세요.","Abra o documento pela pasta.","Откройте сохранённый документ из папки.","Hãy mở tài liệu đã lưu từ thư mục.","Ouvrez le document enregistré depuis son dossier.","Apri il documento salvato dalla sua cartella.","Buka dokumen tersimpan dari foldernya."],
         "editing.stale": ["The document changed. Open the action again.","文書が変わりました。もう一度操作してください。","文件已變更，請重新操作。","文档已更改，请重新操作。","El documento cambió. Repita la acción.","Dokument geändert. Aktion erneut öffnen.","문서가 변경되었습니다. 다시 실행하세요.","O documento mudou. Repita a operação.","Документ изменился. Повторите действие.","Tài liệu đã đổi. Vui lòng thử lại.","Le document a changé. Réessayez.","Documento modificato. Riprova.","Dokumen berubah. Silakan ulangi."],
+        "preview.share.links": ["Check document links","リンクを点検","檢查文件連結","检查文档链接","Comprobar enlaces","Dokumentlinks prüfen","문서 링크 검사","Verificar links","Проверить ссылки","Kiểm tra liên kết","Vérifier les liens","Verifica collegamenti","Periksa tautan"],
+        "preview.share.print": ["Print / PDF","印刷・PDF","列印 / PDF","打印 / PDF","Imprimir / PDF","Drucken / PDF","인쇄 / PDF","Imprimir / PDF","Печать / PDF","In / PDF","Imprimer / PDF","Stampa / PDF","Cetak / PDF"],
+        "preview.share.markdown": ["Copy as Markdown","Markdownでコピー","複製為 Markdown","复制为 Markdown","Copiar como Markdown","Als Markdown kopieren","Markdown으로 복사","Copiar como Markdown","Копировать как Markdown","Sao chép dạng Markdown","Copier en Markdown","Copia come Markdown","Salin sebagai Markdown"],
+        "preview.share.rich": ["Copy as displayed","表示どおりにコピー","依顯示格式複製","按显示格式复制","Copiar con formato","Formatiert kopieren","서식 있게 복사","Copiar com formatação","Копировать с оформлением","Sao chép kèm định dạng","Copier avec mise en forme","Copia con formattazione","Salin dengan format"],
+        "preview.share.good": ["Found","参照先あり","已找到","已找到","Encontrado","Gefunden","찾음","Encontrado","Найдено","Đã tìm thấy","Trouvé","Trovato","Ditemukan"],
+        "preview.share.missing": ["Missing","見つからない","找不到","找不到","No encontrado","Fehlt","찾을 수 없음","Ausente","Не найдено","Không tìm thấy","Introuvable","Mancante","Tidak ditemukan"],
+        "preview.share.unknown": ["Unchecked","未確認","未檢查","未检查","Sin comprobar","Ungeprüft","미확인","Não verificado","Не проверено","Chưa kiểm tra","Non vérifié","Non verificato","Belum diperiksa"],
+        "preview.share.external": ["External","外部リンク","外部連結","外部链接","Externo","Extern","외부 링크","Externo","Внешняя ссылка","Bên ngoài","Externe","Esterno","Eksternal"],
+        "preview.share.outside": ["Outside folder","フォルダの範囲外","資料夾以外","文件夹范围外","Fuera de carpeta","Außerhalb des Ordners","폴더 범위 밖","Fora da pasta","Вне папки","Ngoài thư mục","Hors dossier","Fuori cartella","Di luar folder"],
+        "preview.share.paperHelp": ["Turn off print headers and footers to omit the local path.","印刷設定のヘッダーとフッターをオフにすると、ファイルの場所を紙面に載せずに済みます。","關閉頁首及頁尾即可隱藏本機路徑。","关闭页眉和页脚可隐藏本地路径。","Desactiva encabezados y pies para omitir la ruta local.","Für Ausdrucke ohne lokalen Pfad Kopf- und Fußzeilen ausschalten.","로컬 경로를 숨기려면 머리글과 바닥글을 끄세요.","Desative cabeçalhos e rodapés para ocultar o caminho local.","Отключите колонтитулы, чтобы скрыть локальный путь.","Tắt đầu và chân trang để ẩn đường dẫn cục bộ.","Désactivez les en-têtes et pieds de page pour masquer le chemin local.","Disattiva intestazioni e piè di pagina per nascondere il percorso locale.","Nonaktifkan header dan footer untuk menyembunyikan jalur lokal."],
+        "preview.share.images": ["Unavailable images","表示できない画像","無法顯示的圖片","无法显示的图片","Imágenes no disponibles","Fehlende Bilder","표시할 수 없는 이미지","Imagens indisponíveis","Недоступные изображения","Hình ảnh không khả dụng","Images indisponibles","Immagini non disponibili","Gambar tidak tersedia"],
+        "preview.share.unavailable": ["Open a rendered Markdown document.","描画できるMarkdown文書を開いてください。","請開啟已預覽的 Markdown 文件。","请打开可预览的 Markdown 文档。","Abre un documento Markdown con vista previa.","Ein Markdown-Dokument mit Vorschau öffnen.","미리 볼 수 있는 Markdown 문서를 여세요.","Abra um documento Markdown com visualização.","Откройте документ Markdown с предпросмотром.","Mở tài liệu Markdown có bản xem trước.","Ouvrez un document Markdown avec aperçu.","Apri un documento Markdown con anteprima.","Buka dokumen Markdown dengan pratinjau."],
+        "preview.share.copied": ["Selection copied.","選択範囲をコピーしました。","已複製選取範圍。","已复制选中内容。","Selección copiada.","Auswahl kopiert.","선택 영역을 복사했습니다.","Seleção copiada.","Выделение скопировано.","Đã sao chép vùng chọn.","Sélection copiée.","Selezione copiata.","Pilihan disalin."],
+        "preview.share.plainOnly": ["Copied as plain text. Formatted copy is unavailable.","書式付きコピーを利用できないため、文字だけをコピーしました。","無法使用格式，已複製純文字。","无法使用格式，已复制纯文本。","Formato no disponible. Texto sin formato copiado.","Formatierung nicht verfügbar. Nur Text kopiert.","서식 없이 텍스트만 복사했습니다.","Formatação indisponível. Texto simples copiado.","Скопирован только текст, форматирование недоступно.","Đã sao chép văn bản thuần do định dạng không khả dụng.","Texte brut copié, le formatage est indisponible.","Formattazione non disponibile. Copiato solo testo.","Format tidak tersedia. Teks biasa disalin."],
+        "preview.share.failed": ["Could not copy the selection.","選択範囲をコピーできませんでした。","無法複製選取範圍。","无法复制选中内容。","No se pudo copiar la selección.","Auswahl konnte nicht kopiert werden.","선택 영역을 복사할 수 없습니다.","Não foi possível copiar a seleção.","Не удалось скопировать выделение.","Không thể sao chép vùng chọn.","Impossible de copier la sélection.","Impossibile copiare la selezione.","Tidak dapat menyalin pilihan."],
         // ===== ui group =====
         "ui.appTitle": [APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME],
         "ui.newBtn": ["New", "新規作成", "新增", "新建", "Nuevo", "Neu", "새로 만들기", "Novo", "Новый", "Mới", "Nouveau", "Nuovo", "Baru"],
@@ -7938,6 +7990,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function applyLanguage(lang) {
         currentLang = hasLanguage(lang) ? lang : FALLBACK_LANG;
+        sharingApplyLanguage();
         document.documentElement.lang = LANG_META[currentLang]?.htmlLang ?? LANG_META[FALLBACK_LANG].htmlLang;
         const appTitleText = appTitle.querySelector(".title-text");
         if (appTitleText) appTitleText.textContent = t("ui", "appTitle");
@@ -8365,6 +8418,442 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       setupMarkdownCodeHighlight();
+
+      const sharingDialog = document.getElementById("sharingDialog");
+      const sharingMenu = document.getElementById("sharingCopyMenu");
+      const sharingTitle = document.getElementById("sharingTitle");
+      const sharingMessage = document.getElementById("sharingMessage");
+      const sharingResults = document.getElementById("sharingResults");
+      const sharingPaper = document.getElementById("sharingPaper");
+      const sharingPrintButton = document.getElementById("sharingPrint");
+      let sharingRender = null;
+      let sharingSelection = null;
+      let sharingTask = 0;
+
+      function sharingApplyLanguage() {
+        document.getElementById("sharingClose").textContent = t("about", "close");
+        document.getElementById("sharingCopyMarkdown").textContent = t("preview", "share.markdown");
+        document.getElementById("sharingCopyRich").textContent = t("preview", "share.rich");
+        sharingPrintButton.textContent = t("preview", "share.print");
+      }
+
+      function sharingInvalidatePreview() {
+        sharingRender = null;
+        sharingSelection = null;
+        sharingMenu.hidden = true;
+        if (sharingDialog.open) sharingDialog.close();
+      }
+
+      function sharingFresh(snapshot) {
+        return Boolean(snapshot && snapshot === sharingRender && snapshot.id === activeDocumentId &&
+          source.value === snapshot.text && fileState.viewMode === "markdown" && !preview.classList.contains("hint"));
+      }
+
+      function sharingChildren(token) {
+        if (token.type === "table") return [token.header, ...token.rows].flat().flatMap(cell => cell.tokens || []);
+        return token.items || token.tokens || [];
+      }
+
+      function sharingHeadingNames(tokens) {
+        const used = new Set();
+        const names = [];
+        function headingText(token) {
+          if (token.type === "html") return "";
+          const children = sharingChildren(token);
+          return children.length ? children.map(headingText).join("") : token.text || "";
+        }
+        function visit(token) {
+          if (token.type === "heading") {
+            const text = headingText(token).replace(/&(?:amp|lt|gt|quot|#39);/g, entity =>
+              ({ "&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"', "&#39;":"'" })[entity]);
+            const base = text.normalize("NFC").toLowerCase().trim().replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "").replace(/\s+/g, "-") || "section";
+            let name = base;
+            let index = 0;
+            while (used.has(name)) name = base + "-" + (++index);
+            used.add(name);
+            names.push(name);
+          }
+          sharingChildren(token).forEach(visit);
+        }
+        tokens.forEach(visit);
+        return names;
+      }
+
+      function sharingRecordPreview(tokens, text) {
+        const names = sharingHeadingNames(tokens);
+        const allHeadings = Array.from(preview.querySelectorAll("h1,h2,h3,h4,h5,h6"));
+        const targets = new Map();
+        if (names.length === allHeadings.length) {
+          names.forEach((name, index) => targets.set(name, allHeadings[index]));
+        }
+        // Raw HTML can render an arbitrary number of top-level elements. Only keep
+        // original block spelling when correspondence is provable for this render.
+        const elements = Array.from(preview.children);
+        const blocks = tokens.filter(token => !["space", "def"].includes(token.type));
+        const rawBlocks = new WeakMap();
+        const tags = { paragraph:"P", code:"PRE", table:"TABLE", blockquote:"BLOCKQUOTE", hr:"HR" };
+        if (elements.length === blocks.length && blocks.every((token, index) => {
+          const tag = token.type === "heading" ? "H" + token.depth :
+            token.type === "list" ? (token.ordered ? "OL" : "UL") : tags[token.type];
+          return elements[index].tagName === tag || (tag === "TABLE" && elements[index].classList.contains("markdown-table-wrap"));
+        })) {
+          blocks.forEach((token, index) => rawBlocks.set(elements[index], token.raw.trimEnd()));
+        }
+        sharingRender = { id: activeDocumentId, text, tokens, targets, rawBlocks };
+      }
+
+      function sharingFollowHeading(event, anchor) {
+        const href = anchor.getAttribute("href") || "";
+        if (!href.startsWith("#") || !sharingFresh(sharingRender)) return false;
+        const heading = sharingRender.targets.get(safeDecodeUriComponent(href.slice(1)));
+        if (!heading) return false;
+        event.preventDefault();
+        heading.scrollIntoView({ block:"start" });
+        return true;
+      }
+
+      function sharingOpenDialog(kind) {
+        const snapshot = sharingRender;
+        if (!sharingFresh(snapshot)) {
+          setStatus(t("preview", "share.unavailable"), true);
+          return null;
+        }
+        sharingTitle.textContent = t("preview", "share." + kind);
+        sharingMessage.textContent = "";
+        sharingResults.hidden = kind !== "links";
+        sharingResults.replaceChildren();
+        sharingPrintButton.hidden = kind !== "print";
+        sharingPrintButton.disabled = true;
+        sharingPaper.hidden = kind !== "print";
+        sharingPaper.replaceChildren();
+        if (!sharingDialog.open) sharingDialog.showModal();
+        return snapshot;
+      }
+
+      function sharingReferences(tokens, text) {
+        const refs = [];
+        const lineStarts = [0];
+        for (let i = 0; i < text.length; i++) if (text[i] === "\n") lineStarts.push(i + 1);
+        function walk(list, start, limit) {
+          let cursor = start;
+          for (const token of list) {
+            const raw = token.raw || "";
+            if (!raw) continue;
+            const found = text.indexOf(raw, cursor);
+            // Nested quoted/list blocks may contain a prefix on each source
+            // line. Their unprefixed children still locate the precise link.
+            const located = found >= cursor && found + raw.length <= limit;
+            const offset = located ? found : cursor;
+            const end = located ? offset + raw.length : limit;
+            if ((token.type === "link" || token.type === "image") && token.href) {
+              let low = 0, high = lineStarts.length;
+              while (low + 1 < high) {
+                const mid = (low + high) >>> 1;
+                if (lineStarts[mid] <= offset) low = mid; else high = mid;
+              }
+              refs.push({ href:token.href, line:low + 1, offset });
+            }
+            const consumed = walk(sharingChildren(token), offset, end);
+            cursor = located ? end : consumed;
+          }
+          return cursor;
+        }
+        walk(tokens, 0, text.length);
+        return refs;
+      }
+
+      async function openSharingLinks() {
+        const snapshot = sharingOpenDialog("links");
+        if (!snapshot) return;
+        const task = ++sharingTask;
+        const current = () => task === sharingTask && sharingDialog.open && sharingFresh(snapshot);
+        const base = documentBelongsToCurrentDirectory(fileState) ? fileState.directoryEntryPath || "" : "";
+        const counts = {good:0, missing:0, unknown:0};
+        const targetNames = new Map();
+        const resolutions = new Map();
+        const summarize = () => Object.keys(counts).map(key => t("preview", "share." + key) + " " + counts[key]).join(" / ");
+        sharingMessage.textContent = summarize();
+        for (const reference of sharingReferences(snapshot.tokens, snapshot.text)) {
+          if (!current()) return;
+          const key = reference.href;
+          let category = "unknown";
+          let detail = "";
+          try {
+            if (!resolutions.has(key)) resolutions.set(key, await inspectWorkspaceReference(key, base));
+            const target = resolutions.get(key);
+            if (target.kind === "anchor") {
+              category = !target.fragment || snapshot.targets.has(target.fragment) ? "good" : "missing";
+            } else if (target.kind === "file") {
+              category = "good";
+              if (target.fragment && /\.(md|markdown)$/i.test(target.path)) {
+                if (!targetNames.has(target.path)) {
+                  const contents = await readingEntryText(target.entry);
+                  if (contents.length > PREVIEW_RENDER_SOFT_LIMIT_CHARS) throw new Error("Preview limit");
+                  targetNames.set(target.path, new Set(sharingHeadingNames(marked.lexer(contents))));
+                }
+                category = targetNames.get(target.path).has(target.fragment) ? "good" : "missing";
+              } else if (target.fragment) category = "unknown";
+            } else if (target.kind === "missing") category = "missing";
+            else if (["external", "outside"].includes(target.kind)) detail = " · " + t("preview", "share." + target.kind);
+          } catch (_) { category = "unknown"; }
+          if (!current()) return;
+          counts[category]++;
+          const item = document.createElement("li");
+          const jump = document.createElement("button");
+          jump.type = "button";
+          jump.className = "btn";
+          jump.textContent = t("preview", "share." + category) + detail + " · L" + reference.line + " · " + key;
+          jump.addEventListener("click", () => {
+            if (!current()) return;
+            sharingDialog.close();
+            if (!cardVisibility.source) setCardVisibility("source", true);
+            setLineSelection(reference.line, reference.line);
+            revealFindMatch({ start:reference.offset });
+          });
+          item.appendChild(jump);
+          sharingResults.appendChild(item);
+          sharingMessage.textContent = summarize();
+        }
+      }
+
+      function sharingClean(root) {
+        root.querySelectorAll("button,input,select,textarea,form,iframe,script,style,.code-copy-btn,.table-copy-btn").forEach(node => node.remove());
+        [root, ...root.querySelectorAll("*")].forEach(node => {
+          for (const attr of Array.from(node.attributes)) {
+            if (!["href","src","alt","title","start","colspan","rowspan","data-local-image-path"].includes(attr.name)) node.removeAttribute(attr.name);
+          }
+        });
+      }
+
+      async function openSharingPrint() {
+        const snapshot = sharingOpenDialog("print");
+        if (!snapshot) return;
+        const task = ++sharingTask;
+        const current = () => sharingFresh(snapshot) && sharingDialog.open && task === sharingTask;
+        try {
+          // The image handler owns object URLs. Wait for its current render before
+          // cloning; shared URLs stay valid while this source document is active.
+          if (typeof pendingLocalPreviewImages !== "undefined") await pendingLocalPreviewImages;
+          if (!current()) return;
+          const title = document.createElement("div");
+          title.className = "paper-title";
+          title.textContent = getPathFileName(getDocumentTabLabel(fileState));
+          const body = preview.cloneNode(true);
+          sharingClean(body);
+          sharingPaper.replaceChildren(title, ...Array.from(body.childNodes));
+          const images = Array.from(sharingPaper.querySelectorAll("img"));
+          await Promise.allSettled(images.map(image => image.decode()));
+          if (!current()) return;
+          const missing = images.filter(image => !image.naturalWidth).length;
+          sharingMessage.textContent = t("preview", "share.paperHelp") +
+            (missing ? " " + t("preview", "share.images") + ": " + missing : "");
+          sharingPrintButton.disabled = false;
+        } catch (error) {
+          if (current()) sharingMessage.textContent = String(error.message || error);
+        }
+      }
+
+      function sharingPreparePrint() {
+        if (!sharingFresh(sharingRender) || !sharingDialog.open || sharingPaper.hidden || sharingPrintButton.disabled) return false;
+        // A modal's top layer may be limited to one viewport in print. Put the
+        // already decoded paper in normal document flow for page fragmentation.
+        document.body.appendChild(sharingPaper);
+        document.body.classList.add("sharing-print");
+        return true;
+      }
+      function sharingFinishPrint() {
+        document.body.classList.remove("sharing-print");
+        if (sharingPaper.parentNode === document.body) sharingDialog.insertBefore(sharingPaper, sharingPrintButton);
+      }
+      function sharingPrintCurrent() {
+        if (!sharingPreparePrint()) return;
+        try { window.print(); }
+        catch (error) {
+          sharingFinishPrint();
+          sharingMessage.textContent = String(error.message || error);
+        }
+      }
+      window.addEventListener("beforeprint", sharingPreparePrint);
+      window.addEventListener("afterprint", sharingFinishPrint);
+      sharingDialog.addEventListener("close", () => {
+        if (sharingDialog.open) return;
+        sharingTask++;
+        sharingFinishPrint();
+        sharingPaper.replaceChildren();
+        sharingResults.replaceChildren();
+      });
+      document.getElementById("sharingClose").addEventListener("click", () => sharingDialog.close());
+      sharingPrintButton.addEventListener("click", sharingPrintCurrent);
+      sharingPaper.addEventListener("click", event => {
+        if (event.target.closest("a")) event.preventDefault();
+      });
+
+      // Clone the selected nodes and their semantic ancestors. Range.cloneContents
+      // on text inside a strong/link alone loses both the wrapper and its URL.
+      function sharingSelectedBlock(range, block) {
+        if (!range.intersectsNode(block)) return null;
+        const outer = document.createRange();
+        outer.selectNodeContents(block);
+        const part = range.cloneRange();
+        if (part.compareBoundaryPoints(Range.START_TO_START, outer) < 0) part.setStart(outer.startContainer, outer.startOffset);
+        if (part.compareBoundaryPoints(Range.END_TO_END, outer) > 0) part.setEnd(outer.endContainer, outer.endOffset);
+        if (part.collapsed) return null;
+        let fragment = part.cloneContents();
+        const common = part.commonAncestorContainer;
+        let node = common.nodeType === Node.ELEMENT_NODE ? common : common.parentElement;
+        while (node && block.contains(node)) {
+          const shell = node.cloneNode(false);
+          shell.appendChild(fragment);
+          fragment = shell;
+          if (node === block) break;
+          node = node.parentElement;
+        }
+        const holder = document.createElement("div");
+        holder.appendChild(fragment);
+        sharingClean(holder);
+        return holder;
+      }
+
+      function sharingMarkdown(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.data.replace(/([\\`*_\[\]~])/g, "\\$1");
+        if (node.nodeType !== Node.ELEMENT_NODE) return "";
+        const inner = () => Array.from(node.childNodes, sharingMarkdown).join("");
+        const destination = value => /[()<>\s]/.test(value || "")
+          ? "<" + String(value).replace(/[<>\s]/g, c => encodeURIComponent(c)) + ">" : String(value || "");
+        switch (node.tagName) {
+          case "STRONG": case "B": return "**" + inner() + "**";
+          case "EM": case "I": return "*" + inner() + "*";
+          case "DEL": case "S": return "~~" + inner() + "~~";
+          case "A": return node.hasAttribute("href") ? "[" + inner() + "](" + destination(node.getAttribute("href")) + ")" : inner();
+          case "IMG": return "![" + (node.getAttribute("alt") || "").replace(/]/g, "\\]") + "](" +
+            destination(node.dataset.localImagePath || node.getAttribute("src")) + ")";
+          case "CODE": case "PRE": {
+            const body = node.textContent;
+            const longest = Math.max(0, ...(body.match(/`+/g) || []).map(run => run.length));
+            const fence = "`".repeat(Math.max(node.tagName === "PRE" ? 3 : 1, longest + 1));
+            if (node.tagName === "PRE") return fence + "\n" + body.replace(/\n$/, "") + "\n" + fence + "\n\n";
+            const pad = /^[` ]|[` ]$/.test(body) ? " " : "";
+            return fence + pad + body + pad + fence;
+          }
+          case "BR": return "  \n";
+          case "HR": return "---\n\n";
+          case "BLOCKQUOTE": return inner().trimEnd().split("\n").map(line => "> " + line).join("\n") + "\n\n";
+          case "P": return inner() + "\n\n";
+          case "H1": case "H2": case "H3": case "H4": case "H5": case "H6":
+            return "#".repeat(Number(node.tagName[1])) + " " + inner() + "\n\n";
+          case "OL": case "UL": {
+            let n = Number(node.getAttribute("start") || 1);
+            return Array.from(node.children).filter(li => li.tagName === "LI").map(li =>
+              (node.tagName === "OL" ? (n++) + ". " : "- ") +
+              sharingMarkdown(li).trim().split("\n").join("\n  ")).join("\n") + "\n\n";
+          }
+          case "TABLE": {
+            const rows = Array.from(node.rows, row => Array.from(row.cells, cell =>
+              sharingMarkdown(cell).trim().replace(/\|/g, "\\|").replace(/\n+/g, "<br>")));
+            if (!rows.length) return "";
+            const width = Math.max(...rows.map(row => row.length));
+            if (!node.rows[0].querySelector("th")) rows.unshift(Array(width).fill(""));
+            rows.splice(1, 0, Array(width).fill("---"));
+            return rows.map(row => "| " + Array.from({length:width}, (_, i) => row[i] || "").join(" | ") + " |").join("\n") + "\n\n";
+          }
+          default: return inner();
+        }
+      }
+
+      function sharingPlain(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.data;
+        if (node.nodeType !== Node.ELEMENT_NODE) return "";
+        if (node.tagName === "TABLE") return tableToTsv(node) + "\n\n";
+        if (node.tagName === "BR") return "\n";
+        if (node.tagName === "IMG") return node.getAttribute("alt") || "";
+        const body = Array.from(node.childNodes, sharingPlain).join("");
+        return /^(P|H[1-6]|PRE|LI|BLOCKQUOTE)$/.test(node.tagName) ? body + "\n" : body;
+      }
+
+      function sharingCapture(range) {
+        const snapshot = sharingRender;
+        if (!sharingFresh(snapshot) || !range || range.collapsed || !preview.contains(range.commonAncestorContainer)) return null;
+        const selected = document.createElement("div");
+        const markdown = [];
+        for (const block of preview.children) {
+          const holder = sharingSelectedBlock(range, block);
+          if (!holder || (!holder.textContent && !holder.querySelector("img,hr"))) continue;
+          const full = block.cloneNode(true);
+          sharingClean(full);
+          const raw = snapshot.rawBlocks.get(block);
+          const completelySelected = raw && holder.firstElementChild?.isEqualNode(full);
+          markdown.push(completelySelected ? raw : sharingMarkdown(holder).replace(/\n+$/, ""));
+          selected.append(...Array.from(holder.childNodes));
+        }
+        if (!markdown.length) return null;
+        const plain = sharingPlain(selected).replace(/\n+$/, "");
+        selected.querySelectorAll("[data-local-image-path]").forEach(img => img.removeAttribute("data-local-image-path"));
+        return {snapshot, markdown:markdown.join("\n\n"), html:sanitizeMarkdownHtml(selected.innerHTML), plain};
+      }
+
+      function closeSharingMenu(restoreFocus = false) {
+        sharingMenu.hidden = true;
+        sharingSelection = null;
+        if (restoreFocus) preview.focus({preventScroll:true});
+      }
+
+      function openSharingMenu(event, keyboard) {
+        const selection = window.getSelection();
+        if (!selection?.rangeCount || selection.isCollapsed) return;
+        const range = selection.getRangeAt(0);
+        if (!preview.contains(range.commonAncestorContainer)) return;
+        if (!keyboard && !Array.from(range.getClientRects()).some(rect =>
+          event.clientX >= rect.left && event.clientX <= rect.right &&
+          event.clientY >= rect.top && event.clientY <= rect.bottom)) return;
+        const payload = sharingCapture(range);
+        if (!payload) return;
+        event.preventDefault();
+        sharingSelection = payload;
+        sharingMenu.hidden = false;
+        const rect = range.getBoundingClientRect();
+        const x = keyboard ? rect.left : event.clientX;
+        const y = keyboard ? rect.bottom : event.clientY;
+        sharingMenu.style.left = Math.max(0, Math.min(x, window.innerWidth - sharingMenu.offsetWidth)) + "px";
+        sharingMenu.style.top = Math.max(0, Math.min(y, window.innerHeight - sharingMenu.offsetHeight)) + "px";
+        sharingMenu.firstElementChild.focus({preventScroll:true});
+      }
+
+      async function copySharingSelection(rich) {
+        const payload = sharingSelection;
+        closeSharingMenu(true);
+        if (!payload || !sharingFresh(payload.snapshot)) return;
+        try {
+          let status = "copied";
+          if (rich && navigator.clipboard?.write && window.ClipboardItem) {
+            await navigator.clipboard.write([new ClipboardItem({
+              "text/html":new Blob([payload.html], {type:"text/html"}),
+              "text/plain":new Blob([payload.plain], {type:"text/plain"})
+            })]);
+          } else {
+            await navigator.clipboard.writeText(rich ? payload.plain : payload.markdown);
+            if (rich) status = "plainOnly";
+          }
+          setStatus(t("preview", "share." + status), false);
+        } catch (_) { setStatus(t("preview", "share.failed"), true); }
+      }
+      preview.addEventListener("contextmenu", event => openSharingMenu(event, event.detail === 0 && event.clientX === 0 && event.clientY === 0));
+      preview.addEventListener("keydown", event => {
+        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) openSharingMenu(event, true);
+      });
+      sharingMenu.addEventListener("keydown", event => {
+        if (event.key === "Escape") { event.preventDefault(); closeSharingMenu(true); }
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          event.preventDefault();
+          const next = document.activeElement === sharingMenu.firstElementChild ? sharingMenu.lastElementChild : sharingMenu.firstElementChild;
+          next.focus();
+        }
+        if (event.key === "Tab") closeSharingMenu();
+      });
+      document.addEventListener("pointerdown", event => {
+        if (!sharingMenu.hidden && !sharingMenu.contains(event.target)) closeSharingMenu();
+      });
+      document.getElementById("sharingCopyMarkdown").addEventListener("click", () => copySharingSelection(false));
+      document.getElementById("sharingCopyRich").addEventListener("click", () => copySharingSelection(true));
 
       function normalizeSelectionText(value) {
         return String(value || "").replace(/\s+/g, " ").trim();
@@ -10240,6 +10729,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function renderMarkdown(markdownText) {
         releaseLocalImages();
+        sharingInvalidatePreview();
         try {
           const normalized = markdownText || "";
           if (
@@ -10269,6 +10759,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           });
           enhanceCodeBlocks(preview);
           enhanceTables(preview);
+          sharingRecordPreview(tokens, normalized);
           updateExternalLinkAvailability();
           updateScrollSyncAnchors();
           syncScroll(source, preview);
@@ -14538,6 +15029,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (e.type === "auxclick" && e.button !== 1) return;
         const a = e.target.closest("a");
         if (!a) return;
+        if (preview.contains(a) && sharingFollowHeading(e, a)) return;
         if (handleDirectoryRelativeLinkClick(e, a)) return;
         if (handleTauriRelativeLinkClick(e, a)) return;
         if (handleExternalLinkClick(e, a)) return;
@@ -16476,6 +16968,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           { id: "insertPng", label: editingText("image"), shortcut: "", run: () => runEditingAction(() => openImageInsertion()) },
           { id: "diff", label: t("ui", "cmdDiff"), shortcut: "", run: () => openDiffView() },
           { id: "recent", label: t("ui", "cmdRecent"), shortcut: "", run: () => openRecentFiles() },
+          { id: "checkLinks", label: t("preview", "share.links"), shortcut: "", run: openSharingLinks },
+          { id: "printDocument", label: t("preview", "share.print"), shortcut: "", run: openSharingPrint },
           { id: "themeDark", label: t("ui", "cmdThemeDark"), shortcut: "", run: () => applyTheme("dark") },
           { id: "themeBlue", label: t("ui", "cmdThemeBlue"), shortcut: "", run: () => applyTheme("blue") },
           { id: "themeLight", label: t("ui", "cmdThemeLight"), shortcut: "", run: () => applyTheme("light") },

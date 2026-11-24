@@ -32,7 +32,7 @@ ai_author_model_source: unavailable
 
 ## 監査の契約
 
-参照: `prompt/audit_app.md` と `prompt/README_invariants.md`（理由: 長大な正典を未改変のまま同梱し、監査契約の再定義を避ける）。元repoは `ishizakahiroshi/ai-audit-prompts`、固定commitは `2d957dd93dae011cf5d595d8d2b96bef01bf2aa0`、prompt版は2026-10-09。
+参照: `prompt/audit_app.md` と `prompt/README_invariants.md`（理由: 正典を同梱し、監査契約の再定義を避ける。公開用にbotのメール表記例1件を説明に置き換えた）。元repoは `ishizakahiroshi/ai-audit-prompts`、固定commitは `2d957dd93dae011cf5d595d8d2b96bef01bf2aa0`、prompt版は2026-10-09。
 
 解決済み引数: DB区分=自動、強度=ハイ、スコープ=調査まで、検証モード=安全なローカル検証、観点=全部、対象=上記commit差分、Git管理=ignore、HTML出力=あり、点数評価=なし、確認=なし。所有者の実行前承認は取得済み。
 

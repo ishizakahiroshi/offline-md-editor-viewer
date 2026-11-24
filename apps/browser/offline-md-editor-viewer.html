@@ -4293,11 +4293,14 @@
     .sharing-paper .paper-title { border-bottom:1px solid #aaa; padding-bottom:.4em; font-weight:bold; }
     body > #sharingPaper { display:none; }
     @media print {
-      @page { size:A4; margin:15mm; background:white; }
+      /* WebView2 may add its app URL in a reserved page margin even when
+         its PDF destination offers no header/footer checkbox. Keep the same
+         inset on every fragment of the article, inside the printable page. */
+      @page { size:A4; margin:0; background:white; }
       html:has(body.sharing-print) { height:auto!important; overflow:visible!important; background:white!important; color-scheme:only light!important; }
       body.sharing-print { display:block!important; background:#fff!important; margin:0!important; padding:0!important; height:auto!important; overflow:visible!important; }
       body.sharing-print > :not(#sharingPaper),body.sharing-print #sharingDialog::backdrop { display:none!important; }
-      body.sharing-print > #sharingPaper { display:block!important; margin:0; padding:0; font:11pt/1.5 sans-serif; box-shadow:none; }
+      body.sharing-print > #sharingPaper { display:block!important; margin:0; padding:15mm; -webkit-box-decoration-break:clone; box-decoration-break:clone; font:11pt/1.5 sans-serif; box-shadow:none; }
     }
   </style>
 </head>

@@ -10753,7 +10753,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         releaseLocalImages();
         sharingInvalidatePreview();
         try {
-          const normalized = markdownText || "";
+          // Textarea offsets and Marked token offsets both use LF, including a
+          // newly opened Windows file with CRLF in its decoded text.
+          const normalized = (markdownText || "").replace(/\r\n?/g, "\n");
           if (
             normalized.length > PREVIEW_RENDER_SOFT_LIMIT_CHARS
             || normalized.split(/\r\n|\r|\n/).some((line) => line.length > PREVIEW_RENDER_SOFT_LIMIT_LINE_CHARS)

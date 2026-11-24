@@ -63,7 +63,7 @@ if (process.argv[2] === "--chromium") {
       }
       const md = "# Heading\n\n__repeat__ [same](a.md) [same](b.md)\n\nplain\n\n| A | B |\n|---|---|\n| 1 | 2 |";
       source.value = md;
-      renderMarkdown(md);
+      renderMarkdown(md.replace(/\n/g, "\r\n"));
       check(sharingFresh(sharingRender), "fresh preview");
       const para = preview.querySelector("p");
       const bold = para.querySelector("strong").firstChild;

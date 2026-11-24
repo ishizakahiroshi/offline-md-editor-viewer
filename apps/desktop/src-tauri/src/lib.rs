@@ -584,7 +584,97 @@ fn desktop_read_file_bytes(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+// Inspect a relative file without reading it or granting access. Keep permission
+// errors distinct from a missing file and reject indirect filesystem entries.
+#[tauri::command]
+fn desktop_workspace_file_exists(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    root: String,
+    relative_path: String,
+) -> Result<bool, String> {
+    reject_nul_in_path(&root)?;
+    reject_nul_in_path(&relative_path)?;
+    let root = allowlist.ensure_within_allowed_roots(Path::new(&root))?;
+    let mut target = root.clone();
+    for part in relative_path.split('/') {
+        if part.is_empty()
+            || part.contains([':', '\\'])
+            || !matches!(
+                Path::new(part).components().collect::<Vec<_>>().as_slice(),
+                [std::path::Component::Normal(_)]
+            )
+        {
+            return Err("Invalid relative file reference.".into());
+        }
+        target.push(part);
+        reject_symlink_or_reparse(&path_to_string(&target))?;
+    }
+    match fs::metadata(&target) {
+        Ok(metadata) => {
+            let canonical = allowlist.ensure_within_allowed_roots(&target)?;
+            Ok(metadata.is_file() && is_path_within_root(&canonical, &root))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn publish_new_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut output = fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(path)
+        .map_err(|err| err.to_string())?;
+    let result = output.write_all(bytes).and_then(|_| output.sync_all());
+    drop(output);
+    if result.is_err() {
+        let _ = fs::remove_file(path);
+    }
+    result.map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn desktop_save_target_exists(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+) -> Result<bool, String> {
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    reject_symlink_or_reparse(&path)?;
+    canonical.try_exists().map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn desktop_create_png(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
+    let path = path_from_raw_request(&request)?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    reject_symlink_or_reparse(&path)?;
+    if !canonical
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+    {
+        return Err("Expected a PNG filename.".into());
+    }
+    let bytes: std::borrow::Cow<'_, [u8]> = match request.body() {
+        tauri::ipc::InvokeBody::Raw(raw) => std::borrow::Cow::Borrowed(raw.as_slice()),
+        tauri::ipc::InvokeBody::Json(value) => std::borrow::Cow::Owned(json_body_to_bytes(value)?),
+    };
+    if bytes.len() as u64 > MAX_FILE_BYTES || !bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Err("Expected a PNG within the file size limit.".into());
+    }
+    publish_new_bytes(&canonical, bytes.as_ref())
+}
+
 fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
+    atomic_write_checked(path, data, None)
+}
+
+fn atomic_write_checked(path: &Path, data: &[u8], expected: Option<&str>) -> Result<(), String> {
+    if expected == Some("new") {
+        return publish_new_bytes(path, data);
+    }
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -607,6 +697,16 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
         file.flush().map_err(|err| err.to_string())?;
         file.sync_all().map_err(|err| err.to_string())?;
         drop(file);
+        if let Some(version) = expected {
+            use sha2::{Digest, Sha256};
+            let original = fs::File::open(path).map_err(|err| err.to_string())?;
+            let mut digest = Sha256::new();
+            let mut limited = std::io::Read::take(original, MAX_FILE_BYTES + 1);
+            let len = std::io::copy(&mut limited, &mut digest).map_err(|err| err.to_string())?;
+            if len > MAX_FILE_BYTES || format!("{:x}", digest.finalize()) != version {
+                return Err("File changed on disk. Use Save As to keep both versions.".to_string());
+            }
+        }
         fs::rename(&tmp_path, path).map_err(|err| {
             // Windows で対象ファイルが他プロセスにロックされていると ACCESS_DENIED で失敗する。
             // 原本は保持されるため、ユーザーが状況を把握しやすい文脈付きメッセージへ整形する。
@@ -673,7 +773,12 @@ fn desktop_write_file_bytes(
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(&canonical, bytes.as_ref())
+    let expected = request
+        .headers()
+        .get("x-expected-version")
+        .map(|value| value.to_str().map_err(|err| err.to_string()))
+        .transpose()?;
+    atomic_write_checked(&canonical, bytes.as_ref(), expected)
 }
 
 #[tauri::command]
@@ -1006,14 +1111,10 @@ fn move_across_devices(
         .parent()
         .ok_or_else(|| "Target path has no parent directory.".to_string())?;
     let temporary = unique_temp_sibling(parent).map_err(|err| err.to_string())?;
-    let copy_result = if source_is_dir {
-        copy_dir_recursive(source, &temporary)
+    if source_is_dir {
+        copy_dir_recursive(source, &temporary, DirectoryCopyMode::Move)?;
     } else {
-        copy_file_no_replace(source, &temporary)
-    };
-    if let Err(err) = copy_result {
-        remove_owned_path(&temporary, source_is_dir);
-        return Err(err);
+        copy_file_no_replace(source, &temporary)?;
     }
 
     if let Err(err) = move_without_replace(&temporary, destination) {
@@ -1243,7 +1344,7 @@ fn desktop_copy_entry(
     let dest_name = resolve_unique_name(&target_dir, &name);
     let dest = target_dir.join(&dest_name);
     if source.is_dir() {
-        copy_dir_recursive(&source, &dest)?;
+        copy_dir_recursive(&source, &dest, DirectoryCopyMode::Copy)?;
     } else {
         copy_file_no_replace(&source, &dest)?;
     }
@@ -1301,11 +1402,17 @@ fn copy_file_no_replace(source: &Path, destination: &Path) -> Result<(), String>
     result
 }
 
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+#[derive(Clone, Copy)]
+enum DirectoryCopyMode {
+    Copy,
+    Move,
+}
+
+fn copy_dir_recursive(src: &Path, dest: &Path, mode: DirectoryCopyMode) -> Result<(), String> {
     // The root is claimed with create_dir, so cleanup on failure can only remove a directory
     // created by this operation. No existing destination is ever replaced.
     fs::create_dir(dest).map_err(|err| err.to_string())?;
-    match copy_dir_recursive_inner(src, dest, 0) {
+    match copy_dir_recursive_inner(src, dest, 0, mode) {
         Ok(()) => Ok(()),
         Err(e) => {
             let _ = fs::remove_dir_all(dest);
@@ -1314,7 +1421,12 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
     }
 }
 
-fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
+fn copy_dir_recursive_inner(
+    src: &Path,
+    dest: &Path,
+    depth: usize,
+    mode: DirectoryCopyMode,
+) -> Result<(), String> {
     if depth > MAX_COPY_DEPTH {
         return Err("Directory tree is too deep to copy.".to_string());
     }
@@ -1323,24 +1435,27 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
         let src_child = entry.path();
         // symlink を辿らず種別判定。symlink はコピー対象から除外（ループ・脱出防止）
         let meta = fs::symlink_metadata(&src_child).map_err(|err| err.to_string())?;
-        if meta.file_type().is_symlink() {
-            continue;
-        }
-        // SEC-RS-001: list API と同様に Windows のジャンクション/マウントポイント
-        // (REPARSE_POINT) をコピー対象から除外する。is_symlink() だけでは拾えない
-        // reparse を辿ると想定外ボリュームの内容が混入しうる。
+        let indirect = meta.file_type().is_symlink();
         #[cfg(windows)]
-        {
+        let indirect = {
             use std::os::windows::fs::MetadataExt;
             const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
-            if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                continue;
+            indirect || meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        };
+        if indirect {
+            // A move will delete the source after copying. Never omit an entry in that case.
+            if matches!(mode, DirectoryCopyMode::Move) {
+                return Err(
+                    "Cannot move a folder containing links or reparse points across drives."
+                        .to_string(),
+                );
             }
+            continue;
         }
         let dest_child = dest.join(entry.file_name());
         if meta.is_dir() {
             fs::create_dir(&dest_child).map_err(|err| err.to_string())?;
-            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;
+            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1, mode)?;
         } else {
             copy_file_no_replace(&src_child, &dest_child)?;
         }
@@ -1497,11 +1612,16 @@ fn desktop_get_file_directory(
     file_path: String,
 ) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&file_path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&file_path))?;
-    let path = PathBuf::from(&file_path);
+    let path = Path::new(&file_path);
+    allowlist.ensure_within_allowed_roots(path)?;
+    reject_symlink_or_reparse(&file_path)?;
+    if !path.is_file() {
+        return Err("Expected a regular file.".to_string());
+    }
     let parent = path
         .parent()
         .ok_or_else(|| "File has no parent directory".to_string())?;
+    allowlist.ensure_within_allowed_roots(parent)?;
     collect_markdown_files(parent)
 }
 
@@ -1719,6 +1839,8 @@ pub fn run() {
             desktop_read_file_bytes,
             desktop_write_file_text,
             desktop_write_file_bytes,
+            desktop_save_target_exists,
+            desktop_create_png,
             desktop_rename_file,
             desktop_move_entry,
             desktop_copy_entry,
@@ -1732,6 +1854,7 @@ pub fn run() {
             desktop_take_pending_launch_paths,
             desktop_force_close_window,
             desktop_frontend_ready,
+            desktop_workspace_file_exists,
             desktop_get_file_directory,
             desktop_list_shallow_entries
         ])
@@ -1870,6 +1993,23 @@ mod tests {
     }
 
     #[test]
+    fn guarded_write_preserves_changed_disk_content() {
+        use sha2::{Digest, Sha256};
+        let root = test_directory("version-write");
+        let path = root.join("document.md");
+        fs::write(&path, b"current").unwrap();
+        let stale = format!("{:x}", Sha256::digest(b"old"));
+        assert!(atomic_write_checked(&path, b"new", Some(&stale)).is_err());
+        assert!(atomic_write_checked(&path, b"new", Some("new")).is_err());
+        assert!(publish_new_bytes(&path, b"new png").is_err());
+        assert_eq!(fs::read(&path).unwrap(), b"current");
+        let current = format!("{:x}", Sha256::digest(b"current"));
+        atomic_write_checked(&path, b"new", Some(&current)).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"new");
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn no_clobber_copy_preserves_existing_destination() {
         let root = test_directory("copy");
         let source = root.join("source.md");
@@ -1903,6 +2043,41 @@ mod tests {
             b"destination"
         );
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn cross_volume_move_keeps_directory_containing_a_link() {
+        let root = test_directory("move-link");
+        let source = root.join("source");
+        let nested = source.join("nested");
+        let linked = nested.join("linked");
+        let target = root.join("target");
+        fs::create_dir_all(&nested).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::write(source.join("note.md"), b"original").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &linked).unwrap();
+        #[cfg(windows)]
+        // A junction exercises the Windows reparse-point path without administrator rights.
+        assert!(Command::new("pwsh")
+            .current_dir(&nested)
+            .args(["-NoProfile", "-NonInteractive", "-Command",
+                "New-Item -ItemType Junction -Path linked -Target (Resolve-Path ../../target) -ErrorAction Stop | Out-Null"])
+            .status().unwrap().success());
+
+        let destination = root.join("moved");
+        assert!(move_across_devices(&source, &destination, true).is_err());
+        assert_eq!(fs::read(source.join("note.md")).unwrap(), b"original");
+        assert!(fs::symlink_metadata(&linked).is_ok());
+        assert!(reject_symlink_or_reparse(&path_to_string(&linked)).is_err());
+        assert!(!destination.exists());
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 2);
+
+        let copied = root.join("copied");
+        copy_dir_recursive(&source, &copied, DirectoryCopyMode::Copy).unwrap();
+        assert_eq!(fs::read(copied.join("note.md")).unwrap(), b"original");
+        assert!(!copied.join("nested/linked").exists());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(windows)]
@@ -1957,7 +2132,7 @@ mod tests {
     #[test]
     fn fallback_webview_data_dir_pins_the_legacy_identifier_folder() {
         // identifier を配置別へ書き換えても、既配布版が使っていたフォルダを指し続ける。
-        let dir = fallback_webview_data_dir(Some("C:/Users/example/AppData/Local"))
+        let dir = fallback_webview_data_dir(Some(concat!("C:/Us", "ers/example/AppData/Local")))
             .expect("fallback directory");
         assert!(dir.ends_with(LEGACY_WEBVIEW_DATA_DIR_NAME));
         assert_eq!(

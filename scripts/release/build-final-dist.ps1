@@ -92,7 +92,9 @@ Push-Location (Join-Path $RepoRoot.Path "apps/desktop")
 try {
   $env:CARGO_BUILD_JOBS = "$CargoBuildJobs"
   npm ci
+  if ($LASTEXITCODE -ne 0) { throw "npm ci failed with exit code $LASTEXITCODE" }
   npx tauri build --config src-tauri/tauri.release.conf.json
+  if ($LASTEXITCODE -ne 0) { throw "Tauri build failed with exit code $LASTEXITCODE" }
 } finally {
   if ($null -eq $previousCargoBuildJobs) {
     Remove-Item Env:CARGO_BUILD_JOBS -ErrorAction SilentlyContinue

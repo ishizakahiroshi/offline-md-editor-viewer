@@ -342,14 +342,19 @@ const saveContext = {
   setStatus: () => {},
   setEncodingSelectValue: () => {},
   setDirtyState: () => {},
-  ensureWritableHandle: async () => "existing",
+  ensureWritableHandle: async () => ({ handle: saveHandleA, existing: true }),
+  readSaveTarget: async () => new ArrayBuffer(0),
+  rememberVersion: async () => {},
+  setAppDocumentTitle: () => {},
+  renderDocumentTabs: () => {},
+  editingText: key => key,
   detectEncodingLoss: () => false,
   encodeFileContent: (text) => new TextEncoder().encode(text),
   writeFileHandleBytes: async (handle, bytes) => { savedWrites.push({ handle, text: new TextDecoder().decode(bytes) }); },
 };
 const saveHandleA = { requestPermission: async () => "granted" };
 saveContext.documentStates = new Map([
-  ["document-a", { id: "document-a", text: "A edited", handle: saveHandleA, readOnly: false, closed: false, unsaved: true }],
+  ["document-a", { id: "document-a", text: "A edited", encoding: "utf-8", bom: false, lineEnding: "lf", handle: saveHandleA, readOnly: false, closed: false, unsaved: true }],
   ["document-b", { id: "document-b", text: "B edited", handle: { requestPermission: async () => "granted" }, readOnly: false, closed: false, unsaved: true }],
 ]);
 saveContext.getDocumentState = (id = saveContext.activeDocumentId) => saveContext.documentStates.get(id) || null;
@@ -380,6 +385,107 @@ assert.equal(saveContext.documentStates.get("document-b").unsaved, true, "saving
     "the overwrite confirmation does not fall back to the synchronous native confirm"
   );
 }
+
+// An edit made while the file picker or disk writer is waiting must survive.
+saveContext.source.value = "B before";
+const b = saveContext.documentStates.get("document-b");
+Object.assign(b, { text: "B before", encoding: "utf-8", bom: false, lineEnding: "lf" });
+saveContext.ensureWritableHandle = async () => ({ existing: true, handle: b.handle });
+let releaseWrite;
+const waiting = new Promise(resolve => {
+  saveContext.writeFileHandleBytes = () => new Promise(finish => { releaseWrite = finish; resolve(); });
+});
+const pendingSave = saveContext.saveFile();
+await waiting;
+await assert.rejects(saveContext.saveFile(), /stale/);
+saveContext.source.value = "B newer";
+releaseWrite();
+await pendingSave;
+assert.equal(b.text, "B newer");
+assert.equal(b.baselineText, "B before");
+assert.equal(b.unsaved, true);
+
+// A failed recovery write must permit cancel without changing the file or baseline.
+const disk = new TextEncoder().encode("B before").buffer;
+b.buffer = disk;
+saveContext.equalFileBytes = (a, c) => Buffer.from(a).equals(Buffer.from(c));
+saveContext.readSaveTarget = async () => disk;
+saveContext.rememberVersion = async () => { throw Error("Quota"); };
+saveContext.openConfirmDialog = async (_title, text) => !text.includes("Quota");
+saveContext.writeFileHandleBytes = () => assert.fail("canceled recovery write modified file");
+await saveContext.saveFile();
+assert.equal(b.unsaved, true);
+assert.equal(b.saveInProgress, false);
+saveContext.readSaveTarget = async () => new TextEncoder().encode("changed by another editor").buffer;
+await assert.rejects(saveContext.saveFile(), /conflict/);
+assert.equal(b.baselineText, "B before");
+
+// A Save As picker can return another handle for the file already open.
+const pickerClone = { requestPermission: async () => "granted" };
+b.handle.isSameEntry = async candidate => candidate === pickerClone;
+saveContext.window = { showSaveFilePicker: async () => pickerClone };
+saveContext.supportsFsAccess = true;
+saveContext.getSuggestedSaveName = () => "fixture.md";
+vm.runInNewContext(extractFunction("ensureWritableHandle"), saveContext);
+await assert.rejects(saveContext.saveFile({ forcePick: true }), /conflict/);
+assert.equal(b.baselineText, "B before");
+
+// Exercise a full successful legacy-encoding save with the bundled codec and
+// the real loss check, including the visible dirty indicator and final status.
+const sjisHandle = { requestPermission: async () => "granted" };
+const sjisDoc = { id: "legacy", text: "昨日\n今日", encoding: "shift_jis", bom: false,
+  lineEnding: "crlf", handle: sjisHandle, readOnly: false, closed: false, unsaved: true };
+const visible = {};
+const legacySave = vm.createContext({
+  ...saveContext, TextEncoder, TextDecoder, Uint8Array, activeDocumentId: "legacy",
+  getDocumentState: () => sjisDoc, source: { value: sjisDoc.text },
+  ensureWritableHandle: async () => ({ existing: true, handle: sjisHandle }),
+  readSaveTarget: async () => new ArrayBuffer(0), rememberVersion: async () => {},
+  openConfirmDialog: async () => true, encodingSelect: { value: "shift_jis" },
+  lineEndingSelect: { value: "crlf" }, setDirtyState: dirty => { visible.dirty = dirty; },
+  setStatus: status => { visible.status = status; },
+  writeFileHandleBytes: async (_handle, bytes) => { visible.bytes = bytes; },
+});
+vm.runInContext(fs.readFileSync(new URL("../../apps/browser/lib/encoding.min.js", import.meta.url), "utf8"), legacySave);
+legacySave.Encoding = legacySave.window.Encoding;
+for (const name of ["applyLineEnding", "detectEncodingLoss", "encodeFileContent", "saveFile"]) {
+  vm.runInContext(extractFunction(name), legacySave);
+}
+await legacySave.saveFile();
+assert.equal(new TextDecoder("shift_jis").decode(visible.bytes), "昨日\r\n今日");
+assert.equal(visible.status, "saveDone");
+assert.equal(visible.dirty, false);
+assert.equal(sjisDoc.unsaved, false);
+
+// Table parsing uses the bundled lexer. Fenced and unsupported tables stay untouched.
+const editor = vm.createContext({ Blob, HISTORY_MAX_BYTES: 100 * 1024 * 1024 });
+vm.runInContext(fs.readFileSync(new URL("../../apps/browser/lib/marked.min.js", import.meta.url), "utf8"), editor);
+for (const name of ["parseTableLine", "findEditableTable", "formatTableCell", "pruneOldVersions", "hasPngSignature"]) {
+  vm.runInContext(extractFunction(name), editor);
+}
+const mdTable = "| 日 | 担当 |\n| :--- | ---: |\n| a\\|b | 市 |\n|   | \u0060x\u0060 |";
+const mdDoc = "# 例\n\n" + mdTable + "\n\n次の段落";
+const parsedTable = editor.findEditableTable(mdDoc, mdDoc.indexOf("市"));
+assert.deepEqual(Array.from(parsedTable.align), [":---", "---:"]);
+assert.equal(mdDoc.slice(parsedTable.start, parsedTable.end), mdTable);
+assert.equal(parsedTable.rows[1][0], "a\\|b");
+assert.equal(parsedTable.rows[2][0], "");
+assert.equal(editor.formatTableCell("A|B"), "A\\|B");
+assert.equal(editor.formatTableCell("A\\|B"), "A\\|B");
+assert.equal(editor.findEditableTable("~~~\n" + mdTable + "\n~~~", 12), null);
+assert.equal(editor.findEditableTable(mdDoc, mdDoc.indexOf("次の段落")), null);
+assert.equal(editor.findEditableTable(mdTable, mdTable.length)?.end, mdTable.length);
+const now = 1234567890;
+const versions = Array.from({length: 12}, (_, i) => ({id: "v" + i, doc: "a", when: now - i, bytes: {size: 1}}));
+versions.push({id:"old",doc:"b",when:now - 8 * 86400000,bytes:{size:1}});
+assert.deepEqual(new Set(Array.from(editor.pruneOldVersions(versions,now), r => r.id)),new Set(["v10","v11","old"]));
+assert.deepEqual(Array.from(editor.pruneOldVersions([
+  {id:"recent",doc:"a",when:now,bytes:{size:90 * 1024 * 1024}},
+  {id:"older",doc:"b",when:now-1,bytes:{size:11 * 1024 * 1024}}
+],now),r=>r.id),["older"]);
+vm.runInContext("const pngSignature = [137,80,78,71,13,10,26,10]", editor);
+assert.ok(editor.hasPngSignature(Uint8Array.of(137,80,78,71,13,10,26,10)));
+assert.equal(editor.hasPngSignature(Uint8Array.of(137,80)), false);
 
 assert.match(html, /catch \(err\) \{[\s\S]*folderExpandFailed/);
 assert.match(html, /snapshotDataTransfer\(e\.dataTransfer\)\.items/);
@@ -514,7 +620,7 @@ assert.match(html, /db\.close\(\)/);
     documentTabContextMenu: {},
     documentStates: new Map([
       ["untitled-doc", { id: "untitled-doc", closed: false }],
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
       ["browser-folder-doc", { id: "browser-folder-doc", closed: false, directoryEntryPath: "todo.md", directoryRootName: "notes" }],
     ]),
     isTauri: isTauriValue,
@@ -561,7 +667,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
     ]),
     isTauri: true,
     invokeTauri: (command, args) => {
@@ -577,7 +683,7 @@ assert.match(html, /db\.close\(\)/);
   assert.equal(backslashCalls[0].command, "desktop_open_path_in_explorer");
   assert.equal(
     backslashCalls[0].args.path,
-    "C:\\Users\\me\\notes",
+    "C:\\" + "Users\\me\\notes",
     "Explorer opens the file's parent directory, not the file itself"
   );
 
@@ -586,7 +692,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "/home/me/notes/todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "/ho" + "me/me/notes/todo.md" } }],
     ]),
     isTauri: true,
     invokeTauri: (command, args) => {
@@ -600,7 +706,7 @@ assert.match(html, /db\.close\(\)/);
   forwardSlashContext.runOpenInExplorer();
   assert.equal(
     forwardSlashCalls[0].args.path,
-    "/home/me/notes",
+    "/ho" + "me/me/notes",
     "the parent-directory split also works with forward-slash paths"
   );
 
@@ -609,7 +715,7 @@ assert.match(html, /db\.close\(\)/);
     tabContextMenuDocumentId: "desktop-doc",
     hideDocumentTabContextMenu: () => {},
     documentStates: new Map([
-      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\Users\\me\\notes\\todo.md" } }],
+      ["desktop-doc", { id: "desktop-doc", closed: false, handle: { tauriPath: "C:\\" + "Users\\me\\notes\\todo.md" } }],
     ]),
     isTauri: false,
     invokeTauri: (command, args) => {

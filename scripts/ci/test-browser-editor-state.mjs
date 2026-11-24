@@ -262,6 +262,7 @@ const context = {
 };
 
 for (const name of [
+  "updateEncodingControls",
   "prepareSourceChange",
   "scheduleSourceRender",
   "runSourceChangePipeline",
@@ -271,6 +272,8 @@ for (const name of [
   "handleSourceCompositionEnd",
   "handleSourceInput",
   "restoreDocumentHistorySnapshot",
+  "stepSourceHistory",
+  "handleSourceHistoryKey",
   "handleSourceBeforeInput",
   "setCardVisibility",
   "setOutlineVisible",
@@ -324,6 +327,14 @@ assert.equal(undoPrevented, true, "document history intercepts native undo after
 assert.equal(context.source.value, "before", "undo restores only the active document snapshot");
 assert.equal(context.fileState.redoStack[0].text, "first", "undo keeps an active-document redo snapshot");
 
+const historyKey = (key, shiftKey = false) => context.handleSourceHistoryKey({
+  ctrlKey: true, key, shiftKey, preventDefault() {},
+});
+historyKey("z", true);
+assert.equal(context.source.value, "first", "the source redo shortcut uses the active document stack");
+historyKey("z");
+assert.equal(context.source.value, "before", "one shortcut can undo a programmatic edit without a native history event");
+
 // Seeded as composing: switching tabs mid-conversion must clear the marker, otherwise the next
 // document keeps the overlay hidden and the textarea opaque.
 const switchShellClasses = new Set(["is-composing"]);
@@ -345,8 +356,9 @@ const switchContext = {
     setSelectionRange(start, end) { this.selectionStart = start; this.selectionEnd = end; },
   },
   preview: { scrollTop: 8 },
-  bomCheckbox: { checked: false },
-  lineEndingSelect: { value: "lf" },
+  encodingSelect: { disabled: true },
+  bomCheckbox: { checked: false, disabled: true },
+  lineEndingSelect: { value: "lf", disabled: true },
   clearTimeout: () => {},
   disposeRegexFindWorker: () => {},
   findState: { matches: [], currentIndex: -1, error: "", capped: false, pending: false },
@@ -371,22 +383,38 @@ vm.runInNewContext(`
   let sourceCompositionChanged = false;
   let sourceCompositionFlushText = null;
   documentStates.set("document-a", createDocumentState("document-a", { text: "A" }));
-  documentStates.set("document-b", createDocumentState("document-b", { text: "B edited", selectionStart: 1, selectionEnd: 1 }));
+  documentStates.set("document-b", createDocumentState("document-b", { hasContent: true, text: "B edited", selectionStart: 1, selectionEnd: 1 }));
   ${extractFunction("getDocumentState")}
+  ${extractFunction("updateEncodingControls")}
   ${extractFunction("captureActiveDocumentState")}
   ${extractFunction("activateDocumentState")}
   this.documents = documentStates;
   this.activateDocumentState = activateDocumentState;
   this.activeId = () => activeDocumentId;
 `, switchContext);
+switchContext.bomCheckbox.checked = true;
+switchContext.lineEndingSelect.value = "crlf";
 assert.equal(switchContext.activateDocumentState("document-b"), true, "B can be activated without replacing A");
+function assertEncodingControls(harness, disabled, message) {
+  for (const name of ["encodingSelect", "bomCheckbox", "lineEndingSelect"]) {
+    assert.equal(harness[name].disabled, disabled, `${name}: ${message}`);
+  }
+}
+assertEncodingControls(switchContext, false, "activating a loaded document enables its format controls");
+assert.equal(switchContext.documents.get("document-a").bom, true, "background saves keep A's chosen BOM");
+assert.equal(switchContext.documents.get("document-a").lineEnding, "crlf", "background saves keep A's chosen line ending");
+assert.equal(switchContext.bomCheckbox.checked, false, "B keeps its own BOM setting");
+assert.equal(switchContext.lineEndingSelect.value, "lf", "B keeps its own line ending");
 assert.ok(!switchShellClasses.has("is-composing"), "switching documents clears the composing marker");
 assert.equal(switchContext.documents.get("document-a").text, "A edited", "switching captures A's edited text");
 assert.equal(switchContext.source.value, "B edited", "switching restores B's edited text");
 switchContext.source.value = "B newer";
 assert.equal(switchContext.activateDocumentState("document-a"), true, "A can be reactivated");
+assertEncodingControls(switchContext, true, "the empty tab keeps its format controls disabled");
 assert.equal(switchContext.documents.get("document-b").text, "B newer", "switching back captures B's edited text");
 assert.equal(switchContext.source.value, "A edited", "switching back restores A's text");
+assert.equal(switchContext.bomCheckbox.checked, true, "switching back restores A's chosen BOM");
+assert.equal(switchContext.lineEndingSelect.value, "crlf", "switching back restores A's chosen line ending");
 
 classes.clear();
 context.cardVisibility = { fileList: true, source: true, preview: true };
@@ -476,8 +504,8 @@ assert.equal(counters.persistedOutline, 1, "normal outline changes persist");
 {
   function buildEncodingHarness(startUnsaved) {
     const docs = new Map([
-      ["document-a", { id: "document-a", unsaved: startUnsaved, buffer: new ArrayBuffer(4), bom: false, encoding: "utf-8", text: "before-a" }],
-      ["document-b", { id: "document-b", unsaved: false, buffer: new ArrayBuffer(4), bom: false, encoding: "utf-8", text: "before-b" }],
+      ["document-a", { id: "document-a", hasContent: true, unsaved: startUnsaved, buffer: new ArrayBuffer(4), bom: false, encoding: "utf-8", text: "before-a" }],
+      ["document-b", { id: "document-b", hasContent: true, unsaved: false, buffer: new ArrayBuffer(4), bom: false, encoding: "utf-8", text: "before-b" }],
     ]);
     const harness = {
       activeDocumentId: "document-a",
@@ -490,7 +518,6 @@ assert.equal(counters.persistedOutline, 1, "normal outline changes persist");
       setEncodingSelectValue: () => {},
       updateByteCountStatus: () => {},
       updateEditorMetrics: () => {},
-      setEncodingControlsBusy: () => {},
       decodeMarkdownBuffer: () => ({ text: "auto-decoded", encoding: "utf-8", hasBom: false }),
       decodeBuffer: (_buffer, encoding) => `decoded-as-${encoding}`,
       detectLineEnding: () => "lf",
@@ -523,6 +550,7 @@ assert.equal(counters.persistedOutline, 1, "normal outline changes persist");
     harness.waitForPaint = () => paintDeferred.promise;
     harness.resolvePaint = paintDeferred.resolve;
     vm.runInNewContext(`
+      ${extractFunction("updateEncodingControls")}
       async function runEncodingChange() ${extractArrowFunctionBody('encodingSelect.addEventListener("change", async () => {')}
       this.runEncodingChange = runEncodingChange;
     `, harness);
@@ -532,12 +560,18 @@ assert.equal(counters.persistedOutline, 1, "normal outline changes persist");
 
   const driftedDuringConfirm = buildEncodingHarness(true);
   const pendingConfirmDrift = driftedDuringConfirm.runEncodingChange();
+  assertEncodingControls(driftedDuringConfirm, true, "format controls are busy while confirming");
   driftedDuringConfirm.activeDocumentId = "document-b";
+  const pendingSecondDecode = driftedDuringConfirm.runEncodingChange();
   driftedDuringConfirm.resolveConfirm(true);
   await pendingConfirmDrift;
   assert.equal(driftedDuringConfirm.setLoadedMarkdownCalls.length, 0, "leaving the tab during the encoding confirm skips applying the decode anywhere");
   assert.equal(driftedDuringConfirm.docs.get("document-a").text, "before-a", "the original document's text is untouched after the tab was left");
   assert.equal(driftedDuringConfirm.docs.get("document-b").text, "before-b", "the newly active document is not overwritten by another tab's encoding change");
+  assertEncodingControls(driftedDuringConfirm, true, "completion in A keeps the in-progress B controls disabled");
+  driftedDuringConfirm.resolvePaint();
+  await pendingSecondDecode;
+  assertEncodingControls(driftedDuringConfirm, false, "finishing B enables B's format controls");
 
   const driftedDuringPaint = buildEncodingHarness(false);
   const pendingPaintDrift = driftedDuringPaint.runEncodingChange();

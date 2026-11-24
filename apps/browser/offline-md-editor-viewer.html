@@ -2513,7 +2513,7 @@
       --source-gutter-width: 50px;
       --source-pad-x: 14px;
       --source-pad-y: 14px;
-      --source-font-size: calc(0.96rem * var(--app-font-scale));
+      --source-font-size: calc(0.96rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       --source-line-height: 1.65;
       display: grid;
       grid-template-rows: 1fr;
@@ -3110,11 +3110,76 @@
     }
 
     /* === Preview Panel === */
+
+    .reading-dialog {
+      box-sizing: border-box; width: min(38rem, calc(100vw - 1rem));
+      max-height: 80vh; padding: 14px; background: var(--panel-bg);
+      border: 1px solid var(--line); border-radius: 10px; color: var(--text);
+    }
+    .reading-dialog::backdrop { background: rgba(0, 0, 0, .46); }
+    .reading-tools, .reading-mark-row { display: flex; align-items: center; gap: 6px; }
+    .reading-tools { flex-wrap: wrap; }
+    .reading-tools h2 { flex: 1; font-size: 1rem; margin: 0; }
+    .reading-dialog input[type=search] { width: 100%; padding: 8px; margin: 8px 0; font: inherit; }
+    .reading-list { max-height: 42vh; overflow-y: auto; margin-top: 6px; }
+    .reading-result { display: block; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line);
+      padding: 7px; color: var(--text); font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+    .reading-result:is(:focus-visible,:hover,[aria-current=true]) { background: var(--bg-elev); }
+    .reading-result strong, .reading-result small { display: block; }
+    .reading-mark-row .outline-item { flex: 1; min-width: 0; }
+    .reading-mark-row .reading-star { background: transparent; border: 0; color: var(--accent); cursor: pointer; padding: 3px 8px; }
+    .reading-tools select { font: inherit; max-width: 100%; }
+    .reading-progress { margin: 6px 0; font-size: .86rem; }
+    #preview[data-reading-preset="relaxed"] {
+      box-sizing: border-box; padding-inline: max(.65em, calc((100% - 34em) / 2));
+      overflow-wrap: anywhere; line-height: 1.9; white-space: normal;
+    }
+    #preview[data-reading-preset="relaxed"] pre, #preview[data-reading-preset="relaxed"] .markdown-table-wrap {
+      max-width: 100%; box-sizing: border-box; overflow-x: auto;
+    }
+    #preview[data-reading-preset="relaxed"] pre { white-space: pre; overflow-wrap: normal; }
+    #preview[data-reading-preset="relaxed"] .markdown-table-wrap table { min-width: 0; }
+    .pane-zoom-indicator {
+      flex: 0 0 auto;
+      min-width: 48px;
+      min-height: 28px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: var(--badge-bg);
+      color: var(--accent);
+      font-size: 0.75rem;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .pane-zoom-indicator:hover,
+    .pane-zoom-indicator[aria-expanded="true"] { border-color: var(--accent); }
+    .pane-zoom-menu {
+      position: fixed;
+      z-index: 60;
+      width: 260px;
+      max-width: calc(100vw - 16px);
+      box-sizing: border-box;
+      padding: 10px;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .pane-zoom-menu[hidden] { display: none; }
+    .pane-zoom-actions { display: flex; gap: 6px; }
+    .pane-zoom-actions button { flex: 1; white-space: nowrap; }
+    #paneZoomReset { flex: 2; }
+    .pane-zoom-hint { margin: 8px 0 0; font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
     #preview {
       min-height: 0;
       overflow: auto;
       padding: 16px 18px 24px;
-      font-size: calc(0.875rem * var(--app-font-scale));
+      font-size: calc(0.875rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     .preview-panel.wrap-off #preview {
@@ -3422,17 +3487,17 @@
     }
 
     #preview h1 {
-      font-size: calc(1.875rem * var(--app-font-scale));
+      font-size: calc(1.875rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       padding-bottom: .35em;
       border-bottom: 1px solid var(--h1-border);
     }
     #preview h2 {
-      font-size: calc(1.475rem * var(--app-font-scale));
+      font-size: calc(1.475rem * var(--app-font-scale) * var(--pane-font-scale, 1));
       padding-bottom: .3em;
       border-bottom: 1px solid var(--h2-border);
     }
-    #preview h3 { font-size: calc(1.175rem * var(--app-font-scale)); }
-    #preview h4 { font-size: calc(1.025rem * var(--app-font-scale)); }
+    #preview h3 { font-size: calc(1.175rem * var(--app-font-scale) * var(--pane-font-scale, 1)); }
+    #preview h4 { font-size: calc(1.025rem * var(--app-font-scale) * var(--pane-font-scale, 1)); }
 
     #preview p, #preview ul, #preview ol, #preview table, #preview .markdown-table-wrap, #preview pre, #preview blockquote {
       margin-top: 0.8em;
@@ -3520,13 +3585,13 @@
       background: transparent;
       padding: 0;
       color: var(--pre-code-text);
-      font-size: calc(.775rem * var(--app-font-scale));
+      font-size: calc(.775rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     #preview pre code.hljs {
       background: transparent;
       padding: 0;
-      font-size: calc(.775rem * var(--app-font-scale));
+      font-size: calc(.775rem * var(--app-font-scale) * var(--pane-font-scale, 1));
     }
 
     .code-copy-btn {
@@ -4199,6 +4264,44 @@
       .outline-panel { width: 150px; }
     }
 
+    .editing-dialog { background: var(--panel, Canvas); color: var(--text, CanvasText); border: 1px solid var(--border, GrayText); border-radius: 10px; max-width: min(92vw, 52rem); max-height: 85vh; overflow: auto; padding: 1.2rem; }
+    .editing-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+    .editing-dialog h2 { margin: 0 0 1rem; font-size: 1.2rem; }
+    .editing-dialog table { border-collapse: collapse; }
+    .editing-dialog td { padding: 2px; }
+    .editing-dialog input:not([type=checkbox]) { padding: .45rem; width: min(13em, 40vw); font: inherit; }
+    .editing-dialog button { white-space: normal; }
+    .editing-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .editing-dialog ol { padding-inline-start: 1.8rem; }
+    .sharing-dialog { width:min(48rem,92vw); max-height:85vh; padding:1rem; background:var(--panel); color:var(--text); border:1px solid var(--muted); border-radius:.7rem; overflow:auto; }
+    .sharing-dialog::backdrop { background:#0008; }
+    .sharing-dialog header { display:flex; align-items:center; justify-content:space-between; gap:.7rem; }
+    .sharing-dialog h2 { margin:0; font-size:1.1rem; }
+    .sharing-dialog ul { padding:0; list-style:none; }
+    .sharing-dialog li { margin:.25rem 0; }
+    .sharing-dialog li button { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:start; }
+    .sharing-copy-menu { position:fixed; z-index:9999; padding:4px; border:1px solid var(--muted); border-radius:.5rem; background:var(--panel); color:var(--text); }
+    .sharing-copy-menu button { display:block; width:100%; text-align:start; }
+    .sharing-paper { color:#181818; background:#fff; padding:1.5rem; margin:.8rem 0; line-height:1.5; overflow-wrap:anywhere; }
+    .sharing-paper :is(h1,h2,h3,h4,h5,h6) { break-after:avoid; margin-block:.8em .4em; }
+    .sharing-paper pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+    .sharing-paper table { width:100%; border-collapse:collapse; table-layout:fixed; }
+    .sharing-paper td,.sharing-paper th { border:1px solid #aaa; padding:.25em; }
+    .sharing-paper img { max-width:100%; height:auto; }
+    .sharing-paper a { color:#163e78; }
+    .sharing-paper :is(pre,code,span) { color:inherit; background:transparent; }
+    .sharing-paper .paper-title { border-bottom:1px solid #aaa; padding-bottom:.4em; font-weight:bold; }
+    body > #sharingPaper { display:none; }
+    @media print {
+      /* WebView2 may add its app URL in a reserved page margin even when
+         its PDF destination offers no header/footer checkbox. Keep the same
+         inset on every fragment of the article, inside the printable page. */
+      @page { size:A4; margin:0; background:white; }
+      html:has(body.sharing-print) { height:auto!important; overflow:visible!important; background:white!important; color-scheme:only light!important; }
+      body.sharing-print { display:block!important; background:#fff!important; margin:0!important; padding:0!important; height:auto!important; overflow:visible!important; }
+      body.sharing-print > :not(#sharingPaper),body.sharing-print #sharingDialog::backdrop { display:none!important; }
+      body.sharing-print > #sharingPaper { display:block!important; margin:0; padding:15mm; -webkit-box-decoration-break:clone; box-decoration-break:clone; font:11pt/1.5 sans-serif; box-shadow:none; }
+    }
   </style>
 </head>
 <body>
@@ -4456,6 +4559,7 @@
           </span>
           <span id="aboutButtonText" class="app-menu-action-text"></span>
         </button>
+        <button id="versionHistoryBtn" class="app-menu-action" type="button" aria-haspopup="dialog"></button>
         <button id="resetSettingsBtn" class="app-menu-action" type="button" aria-label="Reset settings">
           <span class="app-menu-action-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4739,6 +4843,7 @@
                 <line x1="9" y1="13" x2="15" y2="13"/>
               </svg>
             </button>
+            <button id="readingSearchTrigger" class="icon-btn" type="button">⌕</button>
             <button id="toggleFileToolsBtn" class="icon-btn" type="button" aria-pressed="false">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/>
@@ -4792,6 +4897,7 @@
 
       <section class="panel editor-panel" id="editorPanel">
         <div class="panel-header">
+          <button id="sourceZoomIndicator" class="pane-zoom-indicator" type="button" aria-expanded="false" aria-controls="paneZoomMenu">100%</button>
           <div id="sourceHeaderLeft" class="source-header-left">
             <span id="sourceExtBadge" class="source-ext-badge" style="display:none"></span>
             <span id="currentFileName"></span>
@@ -4876,6 +4982,7 @@
             <aside id="outlinePanel" class="outline-panel hidden" aria-label="Document outline">
               <div class="outline-header">
                 <span id="outlineHeaderLabel"></span>
+                <button id="readingBookmarkTrigger" class="icon-btn" type="button">★</button>
                 <button id="outlineCloseBtn" class="icon-btn" type="button" aria-label="Close outline">
                   <svg class="close-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"/>
@@ -4938,6 +5045,7 @@
       <section class="panel preview-panel" id="previewPanel">
         <div class="panel-header">
           <span id="previewHeader"></span>
+          <button id="previewZoomIndicator" class="pane-zoom-indicator" type="button" aria-expanded="false" aria-controls="paneZoomMenu">100%</button>
           <button id="closePreviewBtn" class="icon-btn" type="button" aria-label="Close preview">
             <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -4945,11 +5053,44 @@
             </svg>
           </button>
         </div>
-        <div id="preview" class="hint"></div>
+        <div id="preview" class="hint" tabindex="0"></div>
       </section>
     </div>
   </div>
 
+  <dialog id="readingSearch" class="reading-dialog" aria-labelledby="readingSearchTitle">
+    <div class="reading-tools"><h2 id="readingSearchTitle"></h2><button type="button" class="btn" data-reading-close></button></div>
+    <label for="readingQuery" id="readingScope"></label><input type="search" id="readingQuery" autocomplete="off">
+    <div class="reading-tools"><button type="button" class="btn" id="readingRun"></button><button type="button" class="btn" id="readingStop"></button><button type="button" class="btn" id="readingFolder"></button></div>
+    <p class="reading-progress" id="readingProgress" role="status"></p><div id="readingResults" class="reading-list"></div>
+  </dialog>
+  <dialog id="readingBookmarks" class="reading-dialog" aria-labelledby="readingBookmarkTitle">
+    <div class="reading-tools"><h2 id="readingBookmarkTitle"></h2><button type="button" class="btn" data-reading-close></button></div>
+    <p class="reading-progress" id="readingBookmarkStatus" role="status"></p><div id="readingBookmarkList" class="reading-list"></div>
+  </dialog>
+  <div id="paneZoomMenu" class="pane-zoom-menu" role="group" hidden>
+    <div class="pane-zoom-actions">
+      <button id="paneZoomOut" class="btn" type="button">−</button>
+      <button id="paneZoomReset" class="btn" type="button"></button>
+      <button id="paneZoomIn" class="btn" type="button">＋</button>
+    </div>
+    <div id="readingWidthTools" hidden><label id="readingWidthTitle" for="readingWidth"></label>
+      <select id="readingWidth"><option id="readingWidthStandard" value="standard"></option><option id="readingWidthRelaxed" value="relaxed"></option></select>
+    </div>
+    <p id="paneZoomHint" class="pane-zoom-hint"></p>
+  </div>
+
+  <dialog id="sharingDialog" class="sharing-dialog" aria-labelledby="sharingTitle">
+    <header><h2 id="sharingTitle"></h2><button id="sharingClose" class="btn" type="button"></button></header>
+    <p id="sharingMessage" role="status"></p>
+    <ul id="sharingResults" hidden></ul>
+    <article id="sharingPaper" class="sharing-paper" hidden></article>
+    <button id="sharingPrint" type="button" class="btn" hidden></button>
+  </dialog>
+  <div id="sharingCopyMenu" class="sharing-copy-menu" role="menu" hidden>
+    <button id="sharingCopyMarkdown" class="btn" type="button" role="menuitem"></button>
+    <button id="sharingCopyRich" class="btn" type="button" role="menuitem"></button>
+  </div>
   <script src="lib/marked.min.js"></script>
   <script src="lib/purify.min.js"></script>
   <script src="lib/highlight.min.js"></script>
@@ -5198,7 +5339,7 @@
         return _svgTemplates;
       }
       const APP_NAME = "offline-md-editor-viewer";
-      const APP_VERSION = "v0.4.2";
+      const APP_VERSION = "v0.5.0";
       const UI_HOVER_TOOLTIP_SHOW_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_HIDE_DELAY_MS = 0;
       const UI_HOVER_TOOLTIP_FADE_MS = 0;
@@ -5241,6 +5382,13 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
+## Working with a Markdown folder
+
+- Search the text of files in the open folder. Results show their relative paths. Use heading bookmarks to return to a section. Reading settings adjust preview width and line spacing independently of zoom.
+- Enable save history for an individual document to keep earlier file contents locally. Open a revision in a new tab for comparison. History keeps up to 10 revisions for 7 days, within a shared 100 MiB limit.
+- Edit Markdown tables as cells, or insert a PNG into the document's folder. Review the preview and save the document to keep the changes.
+- Check local links, images and headings before sharing. Print the document or choose PDF in the print dialog. In the preview, select text and open the context menu to copy Markdown or formatted content. Plain-text paste destinations receive readable text.
+
 ## Security / Privacy
 
 - **No file uploads.** Markdown files are read and rendered locally in your browser or desktop WebView.
@@ -5257,6 +5405,8 @@ Edits on the left source pane update the right preview pane in real time. \`Save
 In edit mode, use \`Ctrl/Cmd+F\` to open the floating find bar and \`Ctrl/Cmd+H\` or \`Ctrl/Cmd+R\` to expand replace controls. \`Enter\` moves to the next match, \`Shift+Enter\` moves to the previous match, and \`Esc\` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. \`(?<=foo)bar\`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 Press \`Ctrl/Cmd+K\` (or \`Ctrl/Cmd+Shift+P\`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press \`Esc\` to exit.
+Click the percentage button (100%) in the source or preview header to open − / Reset to 100% / + controls. Ctrl + scroll over either pane also changes its text size in 10 percentage point steps (50–200%). Scroll up to enlarge and down to shrink. Ctrl+0 resets the last pointed-to or focused pane to 100%. The current percentage stays visible in the header. Pane zoom lasts until the app is reloaded; the App font size setting controls the whole interface and is the 100% baseline.
+
 Open documents are listed as tabs above the editor. Click a tab to switch. Each document keeps its own text, undo history, cursor position, encoding, BOM, line ending and read-only state, so switching tabs never mixes one document's settings into another. \`+\` opens a new untitled tab. \`New\` creates a file in the opened folder when a folder is open, and otherwise opens an untitled tab; either way it no longer replaces what you are currently editing. A tab with unsaved changes is marked, and closing it asks whether to save, discard, or go back. Closing the window asks the same for each unsaved document in turn, and cancelling any one of them stops the exit.
 
 Right-clicking a tab, or an empty area of the tab row, opens a context menu for creating a new tab, closing tabs (this one, others, or those to the right), and copying the file name or path. The desktop app also adds an item there to open the file's folder in Explorer.
@@ -5470,6 +5620,13 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 - **読みやすいデフォルト。** 見出し・表・引用・シンタックスハイライト付きコードブロックに調整したダーク/ブルー/ライトテーマ、文字サイズ変更にも対応。
 - **UI は 13 言語。** English / 日本語 / 简体中文 / 繁體中文 / Español / Deutsch / 한국어 / Português (Brasil) / Русский / Tiếng Việt / Français / Italiano / Bahasa Indonesia
 
+## Markdown フォルダでの作業
+
+- 開いたフォルダ全体を本文検索できます。結果の相対パスで同名ファイルを区別し、繰り返し読む節には見出しのしおりを付けられます。プレビューの読み幅・行間はペイン倍率と別に調整できます。
+- 保存履歴は文書ごとに有効にします。上書き前の版を新しいタブで開き、現在の原稿と見比べられます。履歴は直近10版、7日間、全体で100 MiBまで保持します。
+- Markdown の表をセル単位で編集したり、PNG を文書のフォルダへ挿入したりできます。プレビューで確認し、原稿を保存してください。
+- 渡す前にリンク・画像・見出しの参照先を点検できます。本文を印刷するときは印刷画面でPDFも選べます。プレビューで文字を選択し、右クリックすると Markdown と書式付きのコピーを選べます。プレーンテキスト欄には表示文字が貼り付きます。
+
 ## セキュリティ / プライバシー
 
 - **ファイルをアップロードしません。** Markdown ファイルはブラウザまたはデスクトップ WebView 内でローカルに読み込み・描画します。
@@ -5487,6 +5644,8 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 
 \`Ctrl/Cmd+K\`（または \`Ctrl/Cmd+Shift+P\`）でコマンドパレットを開き、主要な操作をキーボードから実行できます。Zen モードは周囲のパネルを隠して執筆に集中でき、\`Esc\` で終了します。
 開いている文書はエディタ上部にタブとして並びます。タブをクリックすると切り替わります。本文・アンドゥ履歴・カーソル位置・文字コード・BOM・改行コード・読み取り専用は文書ごとに保持されるので、タブを切り替えても別の文書の設定が混ざることはありません。\`+\` は無題のタブを新しく開きます。\`新規\` はフォルダを開いているときはそのフォルダ内にファイルを作り、開いていないときは無題のタブを開きます。どちらの場合も、いま編集中の内容を置き換えることはなくなりました。未保存のタブには印が付き、閉じるときに「保存して閉じる／破棄／戻る」を確認します。ウィンドウを閉じるときも未保存の文書を 1 件ずつ同じ形で確認し、どれか 1 つでも取り消すと終了しません。
+
+ソース・プレビューのヘッダーにある倍率ボタン（100%）をクリックすると、「−／100%に戻す／＋」で文字の大きさを変えられます。本文上の Ctrl＋ホイールでも10ポイント刻み（50〜200%）で調整できます。上に回すと拡大、下に回すと縮小し、Ctrl＋0で最後にポインターを置いた側、またはフォーカスした側を100%へ戻します。現在の倍率はヘッダーに常時表示し、再読み込みまで保持します。設定の「アプリ全体の文字サイズ」は画面全体に効き、その大きさを本文倍率の100%の基準にします。
 
 タブ、またはタブ列の空きを右クリックすると、新しいタブ・閉じる系（このタブ／他のタブ／右側のタブ）・コピー系（ファイル名／パス）のメニューが出ます。Desktop 版では、ファイルの場所をエクスプローラーで開く項目も出ます。
 
@@ -5765,6 +5924,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           directoryEntryPath: "",
           directoryEntryTauriPath: "",
           encoding: "utf-8",              // 旧: currentFileEncoding
+          encodingChangeInProgress: false,
           bom: false,                     // 旧: currentFileBom
           lineEnding: "lf",               // 旧: currentFileLineEnding
           buffer: null,                   // 旧: currentFileBuffer
@@ -5832,6 +5992,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const state = getDocumentState();
         if (!state) return null;
         state.text = source.value;
+        state.bom = bomCheckbox.checked;
+        state.lineEnding = lineEndingSelect.value;
         state.selectionStart = source.selectionStart || 0;
         state.selectionEnd = source.selectionEnd || 0;
         state.sourceScrollTop = source.scrollTop || 0;
@@ -5865,6 +6027,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setEncodingSelectValue(next.encoding);
         bomCheckbox.checked = next.bom;
         lineEndingSelect.value = next.lineEnding;
+        updateEncodingControls();
         setReadOnlyMode(next.readOnly);
         updateCardLayout();
         updateEditorMetrics();
@@ -6007,6 +6170,41 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "id":    { label: "Bahasa Indonesia",    htmlLang: "id",     bcp47Match: /^id(\b|-|_)/i },
       };
       const STR = {
+        "editing.imageSaved": ["The image was saved at {path}.","画像を {path} に保存しました。","圖片已儲存在 {path}。","图片已保存至 {path}。","La imagen se guardó en {path}.","Das Bild wurde in {path} gespeichert.","이미지를 {path}에 저장했습니다.","A imagem foi salva em {path}.","Изображение сохранено в {path}.","Ảnh đã lưu tại {path}.","Image enregistrée dans {path}.","Immagine salvata in {path}.","Gambar disimpan di {path}."],
+        "editing.storage": ["Local profile storage (IndexedDB)","このアプリのローカルプロファイル内（IndexedDB）","本機設定檔儲存空間（IndexedDB）","本机配置文件存储（IndexedDB）","Almacenamiento del perfil local (IndexedDB)","Lokaler Profilspeicher (IndexedDB)","로컬 프로필 저장소(IndexedDB)","Armazenamento do perfil local (IndexedDB)","Локальное хранилище профиля (IndexedDB)","Bộ nhớ hồ sơ cục bộ (IndexedDB)","Stockage du profil local (IndexedDB)","Archivio del profilo locale (IndexedDB)","Penyimpanan profil lokal (IndexedDB)"],
+        "editing.usage": ["This document: {doc} · All documents: {total}","この文書 {doc} · 全文書の合計 {total}","本文件 {doc} · 全部文件 {total}","此文档 {doc} · 全部文档 {total}","Este documento: {doc} · Todos: {total}","Dieses Dokument: {doc} · Alle: {total}","이 문서 {doc} · 전체 {total}","Este documento: {doc} · Todos: {total}","Документ: {doc} · Всего: {total}","Tệp này: {doc} · Tổng: {total}","Ce document : {doc} · Total : {total}","Documento: {doc} · Totale: {total}","Dokumen ini: {doc} · Total: {total}"],
+        "editing.expires": ["Expires by {date}","削除予定 {date}","預定刪除 {date}","预计删除 {date}","Caduca el {date}","Ablauf: {date}","삭제 예정 {date}","Expira em {date}","Удалить до {date}","Hết hạn {date}","Expiration le {date}","Scadenza {date}","Kedaluwarsa {date}"],
+        "editing.history": ["Save history","保存履歴","儲存記錄","保存历史","Historial de guardado","Speicherverlauf","저장 기록","Histórico de salvamento","История сохранений","Lịch sử lưu","Historique des sauvegardes","Cronologia salvataggi","Riwayat simpan"],
+        "editing.keep": ["Keep earlier versions of this document","この文書の保存前の版を残す","保留此文件的舊版本","保留此文档的旧版本","Conservar versiones anteriores","Frühere Versionen behalten","이 문서의 이전 버전 보관","Manter versões anteriores","Хранить предыдущие версии","Giữ phiên bản trước","Conserver les versions précédentes","Conserva le versioni precedenti","Simpan versi sebelumnya"],
+        "editing.limits": ["On this device · 10 versions per file · 7 days · 100 MiB total","この端末内に保存 · 1文書10版 · 7日間 · 全体100 MiB","本機 · 每檔10版 · 7天 · 共100 MiB","本机 · 每文件10版 · 7天 · 共100 MiB","Este dispositivo · 10 versiones · 7 días · 100 MiB en total","Lokal · 10 Versionen · 7 Tage · insgesamt 100 MiB","이 기기에 저장 · 파일당 10개 · 7일 · 총 100 MiB","Neste dispositivo · 10 versões · 7 dias · total 100 MiB","На устройстве · 10 версий · 7 дней · всего 100 МиБ","Trên thiết bị · 10 bản/tệp · 7 ngày · tổng 100 MiB","Sur cet appareil · 10 versions · 7 jours · 100 Mio au total","Sul dispositivo · 10 versioni · 7 giorni · 100 MiB totali","Di perangkat ini · 10 versi · 7 hari · total 100 MiB"],
+        "editing.clear": ["Delete this file’s history","この文書の履歴を消去","刪除此檔案的記錄","删除此文件的历史","Borrar el historial de este archivo","Verlauf dieser Datei löschen","이 파일의 기록 지우기","Apagar histórico deste arquivo","Удалить историю файла","Xóa lịch sử tệp này","Effacer l’historique de ce fichier","Cancella cronologia del file","Hapus riwayat berkas ini"],
+        "editing.restore": ["Open a copy in a new tab","コピーを新しいタブで開く","在新分頁開啟副本","在新标签页打开副本","Abrir copia en otra pestaña","Kopie in neuem Tab öffnen","새 탭에서 사본 열기","Abrir cópia em nova aba","Открыть копию в новой вкладке","Mở bản sao ở thẻ mới","Ouvrir une copie dans un onglet","Apri copia in una nuova scheda","Buka salinan di tab baru"],
+        "editing.noHistory": ["No saved versions","保存履歴はありません","沒有已儲存版本","无已保存版本","Sin versiones","Keine Versionen","저장된 버전 없음","Sem versões","Версий нет","Chưa có phiên bản","Aucune version","Nessuna versione","Belum ada versi"],
+        "editing.historyFail": ["History unavailable. Save once without a recovery copy?","履歴を保存できません。今回だけ控えを作らず保存しますか？","無法儲存記錄。略過這次備份？","无法保存历史。本次跳过备份？","Historial no disponible. ¿Guardar sin copia?","Verlauf nicht verfügbar. Ohne Kopie speichern?","기록을 보관할 수 없습니다. 이번만 사본 없이 저장할까요?","Histórico indisponível. Salvar sem cópia?","История недоступна. Сохранить без копии?","Không thể lưu lịch sử. Lưu không tạo bản sao?","Historique indisponible. Enregistrer sans copie ?","Cronologia non disponibile. Salvare senza copia?","Riwayat tidak tersedia. Simpan tanpa salinan?"],
+        "editing.conflict": ["File changed on disk. Use Save As to keep both versions.","元ファイルが更新されています。両方残すには別名で保存してください。","檔案已變更。請另存新檔以保留兩個版本。","文件已更改。请另存以保留两个版本。","El archivo cambió. Use Guardar como.","Datei geändert. Bitte Speichern unter verwenden.","파일이 변경되었습니다. 다른 이름으로 저장하세요.","O arquivo mudou. Use Salvar como.","Файл изменён. Используйте «Сохранить как».","Tệp đã đổi. Hãy lưu với tên khác.","Le fichier a changé. Utilisez Enregistrer sous.","File modificato. Usa Salva con nome.","Berkas berubah. Gunakan Simpan sebagai."],
+        "editing.table": ["Edit table at cursor","カーソル位置の表を編集","編輯游標處的表格","编辑光标处的表格","Editar tabla en el cursor","Tabelle am Cursor bearbeiten","커서 위치 표 편집","Editar tabela no cursor","Изменить таблицу у курсора","Sửa bảng tại con trỏ","Modifier le tableau au curseur","Modifica tabella al cursore","Edit tabel di posisi kursor"],
+        "editing.noTable": ["Place the cursor in a simple Markdown table.","標準のMarkdown表にカーソルを置いてください。","請將游標放在標準 Markdown 表格中。","请将光标放在标准 Markdown 表格中。","Sitúe el cursor en una tabla Markdown sencilla.","Cursor in eine einfache Markdown-Tabelle setzen.","일반 Markdown 표에 커서를 두세요.","Posicione o cursor em uma tabela Markdown simples.","Поместите курсор в обычную таблицу Markdown.","Đặt con trỏ vào bảng Markdown đơn giản.","Placez le curseur dans un tableau Markdown simple.","Posiziona il cursore in una tabella Markdown semplice.","Letakkan kursor pada tabel Markdown sederhana."],
+        "editing.row": ["Add row","行を追加","新增列","添加行","Añadir fila","Zeile hinzufügen","행 추가","Adicionar linha","Добавить строку","Thêm hàng","Ajouter une ligne","Aggiungi riga","Tambah baris"],
+        "editing.column": ["Add column","列を追加","新增欄","添加列","Añadir columna","Spalte hinzufügen","열 추가","Adicionar coluna","Добавить столбец","Thêm cột","Ajouter une colonne","Aggiungi colonna","Tambah kolom"],
+        "editing.image": ["Insert PNG image","PNG画像を挿入","插入 PNG 圖片","插入 PNG 图片","Insertar imagen PNG","PNG-Bild einfügen","PNG 이미지 삽입","Inserir imagem PNG","Вставить изображение PNG","Chèn ảnh PNG","Insérer une image PNG","Inserisci immagine PNG","Sisipkan gambar PNG"],
+        "editing.alt": ["Image description","画像の説明","圖片說明","图片说明","Descripción","Bildbeschreibung","이미지 설명","Descrição da imagem","Описание изображения","Mô tả ảnh","Description de l’image","Descrizione immagine","Deskripsi gambar"],
+        "editing.folder": ["Open the saved document from its folder first.","先にフォルダを開き、その中の保存済み文書を選んでください。","請先從資料夾開啟已儲存的文件。","请先从文件夹打开已保存的文档。","Abra el documento desde su carpeta.","Öffnen Sie das Dokument aus seinem Ordner.","먼저 폴더에서 저장된 문서를 여세요.","Abra o documento pela pasta.","Откройте сохранённый документ из папки.","Hãy mở tài liệu đã lưu từ thư mục.","Ouvrez le document enregistré depuis son dossier.","Apri il documento salvato dalla sua cartella.","Buka dokumen tersimpan dari foldernya."],
+        "editing.stale": ["The document changed. Open the action again.","文書が変わりました。もう一度操作してください。","文件已變更，請重新操作。","文档已更改，请重新操作。","El documento cambió. Repita la acción.","Dokument geändert. Aktion erneut öffnen.","문서가 변경되었습니다. 다시 실행하세요.","O documento mudou. Repita a operação.","Документ изменился. Повторите действие.","Tài liệu đã đổi. Vui lòng thử lại.","Le document a changé. Réessayez.","Documento modificato. Riprova.","Dokumen berubah. Silakan ulangi."],
+        "preview.share.links": ["Check document links","リンクを点検","檢查文件連結","检查文档链接","Comprobar enlaces","Dokumentlinks prüfen","문서 링크 검사","Verificar links","Проверить ссылки","Kiểm tra liên kết","Vérifier les liens","Verifica collegamenti","Periksa tautan"],
+        "preview.share.print": ["Print / PDF","印刷・PDF","列印 / PDF","打印 / PDF","Imprimir / PDF","Drucken / PDF","인쇄 / PDF","Imprimir / PDF","Печать / PDF","In / PDF","Imprimer / PDF","Stampa / PDF","Cetak / PDF"],
+        "preview.share.markdown": ["Copy as Markdown","Markdownでコピー","複製為 Markdown","复制为 Markdown","Copiar como Markdown","Als Markdown kopieren","Markdown으로 복사","Copiar como Markdown","Копировать как Markdown","Sao chép dạng Markdown","Copier en Markdown","Copia come Markdown","Salin sebagai Markdown"],
+        "preview.share.rich": ["Copy as displayed","表示どおりにコピー","依顯示格式複製","按显示格式复制","Copiar con formato","Formatiert kopieren","서식 있게 복사","Copiar com formatação","Копировать с оформлением","Sao chép kèm định dạng","Copier avec mise en forme","Copia con formattazione","Salin dengan format"],
+        "preview.share.good": ["Found","参照先あり","已找到","已找到","Encontrado","Gefunden","찾음","Encontrado","Найдено","Đã tìm thấy","Trouvé","Trovato","Ditemukan"],
+        "preview.share.missing": ["Missing","見つからない","找不到","找不到","No encontrado","Fehlt","찾을 수 없음","Ausente","Не найдено","Không tìm thấy","Introuvable","Mancante","Tidak ditemukan"],
+        "preview.share.unknown": ["Unchecked","未確認","未檢查","未检查","Sin comprobar","Ungeprüft","미확인","Não verificado","Не проверено","Chưa kiểm tra","Non vérifié","Non verificato","Belum diperiksa"],
+        "preview.share.external": ["External","外部リンク","外部連結","外部链接","Externo","Extern","외부 링크","Externo","Внешняя ссылка","Bên ngoài","Externe","Esterno","Eksternal"],
+        "preview.share.outside": ["Outside folder","フォルダの範囲外","資料夾以外","文件夹范围外","Fuera de carpeta","Außerhalb des Ordners","폴더 범위 밖","Fora da pasta","Вне папки","Ngoài thư mục","Hors dossier","Fuori cartella","Di luar folder"],
+        "preview.share.paperHelp": ["Turn off print headers and footers to omit the local path.","印刷設定のヘッダーとフッターをオフにすると、ファイルの場所を紙面に載せずに済みます。","關閉頁首及頁尾即可隱藏本機路徑。","关闭页眉和页脚可隐藏本地路径。","Desactiva encabezados y pies para omitir la ruta local.","Für Ausdrucke ohne lokalen Pfad Kopf- und Fußzeilen ausschalten.","로컬 경로를 숨기려면 머리글과 바닥글을 끄세요.","Desative cabeçalhos e rodapés para ocultar o caminho local.","Отключите колонтитулы, чтобы скрыть локальный путь.","Tắt đầu và chân trang để ẩn đường dẫn cục bộ.","Désactivez les en-têtes et pieds de page pour masquer le chemin local.","Disattiva intestazioni e piè di pagina per nascondere il percorso locale.","Nonaktifkan header dan footer untuk menyembunyikan jalur lokal."],
+        "preview.share.images": ["Unavailable images","表示できない画像","無法顯示的圖片","无法显示的图片","Imágenes no disponibles","Fehlende Bilder","표시할 수 없는 이미지","Imagens indisponíveis","Недоступные изображения","Hình ảnh không khả dụng","Images indisponibles","Immagini non disponibili","Gambar tidak tersedia"],
+        "preview.share.unavailable": ["Open a rendered Markdown document.","描画できるMarkdown文書を開いてください。","請開啟已預覽的 Markdown 文件。","请打开可预览的 Markdown 文档。","Abre un documento Markdown con vista previa.","Ein Markdown-Dokument mit Vorschau öffnen.","미리 볼 수 있는 Markdown 문서를 여세요.","Abra um documento Markdown com visualização.","Откройте документ Markdown с предпросмотром.","Mở tài liệu Markdown có bản xem trước.","Ouvrez un document Markdown avec aperçu.","Apri un documento Markdown con anteprima.","Buka dokumen Markdown dengan pratinjau."],
+        "preview.share.copied": ["Selection copied.","選択範囲をコピーしました。","已複製選取範圍。","已复制选中内容。","Selección copiada.","Auswahl kopiert.","선택 영역을 복사했습니다.","Seleção copiada.","Выделение скопировано.","Đã sao chép vùng chọn.","Sélection copiée.","Selezione copiata.","Pilihan disalin."],
+        "preview.share.plainOnly": ["Copied as plain text. Formatted copy is unavailable.","書式付きコピーを利用できないため、文字だけをコピーしました。","無法使用格式，已複製純文字。","无法使用格式，已复制纯文本。","Formato no disponible. Texto sin formato copiado.","Formatierung nicht verfügbar. Nur Text kopiert.","서식 없이 텍스트만 복사했습니다.","Formatação indisponível. Texto simples copiado.","Скопирован только текст, форматирование недоступно.","Đã sao chép văn bản thuần do định dạng không khả dụng.","Texte brut copié, le formatage est indisponible.","Formattazione non disponibile. Copiato solo testo.","Format tidak tersedia. Teks biasa disalin."],
+        "preview.share.failed": ["Could not copy the selection.","選択範囲をコピーできませんでした。","無法複製選取範圍。","无法复制选中内容。","No se pudo copiar la selección.","Auswahl konnte nicht kopiert werden.","선택 영역을 복사할 수 없습니다.","Não foi possível copiar a seleção.","Не удалось скопировать выделение.","Không thể sao chép vùng chọn.","Impossible de copier la sélection.","Impossibile copiare la selezione.","Tidak dapat menyalin pilihan."],
         // ===== ui group =====
         "ui.appTitle": [APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME],
         "ui.newBtn": ["New", "新規作成", "新增", "新建", "Nuevo", "Neu", "새로 만들기", "Novo", "Новый", "Mới", "Nouveau", "Nuovo", "Baru"],
@@ -6125,6 +6323,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.commandPalette": ["Command palette","コマンドパレット","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette","Command palette"],
         "ui.commandPalettePlaceholder": ["Type a command…","コマンドを入力…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…","Type a command…"],
         "ui.commandPaletteEmpty": ["No matching commands","一致するコマンドがありません","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands","No matching commands"],
+        "ui.readingSearch": ["Folder search","フォルダ本文検索","搜尋資料夾內文","搜索文件夹正文","Buscar en carpeta","Ordner durchsuchen","폴더 본문 검색","Pesquisar na pasta","Поиск по папке","Tìm trong thư mục","Rechercher dans le dossier","Cerca nella cartella","Cari dalam folder"],
+        "ui.readingTabs": ["Search open Markdown tabs","開いているMarkdownタブを検索","搜尋已開啟的 Markdown 分頁","搜索已打开的 Markdown 标签页","Buscar en pestañas Markdown abiertas","Offene Markdown-Tabs durchsuchen","열린 Markdown 탭 검색","Pesquisar nas abas Markdown abertas","Поиск в открытых вкладках Markdown","Tìm trong các thẻ Markdown đang mở","Rechercher dans les onglets Markdown ouverts","Cerca nelle schede Markdown aperte","Cari di tab Markdown terbuka"],
+        "ui.readingBookmarks": ["Heading bookmarks","見出しのしおり","標題書籤","标题书签","Marcadores de títulos","Überschriften-Lesezeichen","제목 책갈피","Marcadores de títulos","Закладки заголовков","Dấu trang tiêu đề","Signets de titres","Segnalibri dei titoli","Markah judul"],
+        "ui.readingBookmark": ["Toggle bookmark","しおりを登録・解除","切換書籤","切换书签","Alternar marcador","Lesezeichen umschalten","책갈피 전환","Alternar marcador","Переключить закладку","Bật/tắt dấu trang","Basculer le signet","Attiva/disattiva segnalibro","Alihkan markah"],
+        "ui.readingMarkMissing": ["Choose the heading again","見出しを選び直してください","重新選擇標題","重新选择标题","Vuelva a elegir el título","Überschrift erneut wählen","제목을 다시 선택하세요","Selecione o título novamente","Выберите заголовок снова","Chọn lại tiêu đề","Choisissez à nouveau le titre","Scegli di nuovo il titolo","Pilih kembali judul"],
+        "ui.readingFileNeeded": ["Open the original file again","元のファイルを開き直してください","請重新開啟原始檔案","请重新打开原文件","Abra el archivo original","Originaldatei erneut öffnen","원본 파일을 다시 여세요","Abra o arquivo original novamente","Снова откройте исходный файл","Mở lại tệp gốc","Rouvrez le fichier d’origine","Riapri il file originale","Buka kembali berkas asli"],
+        "ui.readingRun": ["Search","検索","搜尋","搜索","Buscar","Suchen","검색","Pesquisar","Найти","Tìm","Rechercher","Cerca","Cari"],
+        "ui.readingStop": ["Stop","中止","停止","停止","Detener","Stoppen","중지","Parar","Остановить","Dừng","Arrêter","Interrompi","Hentikan"],
+        "ui.readingDone": ["Complete","完了","完成","完成","Completado","Abgeschlossen","완료","Concluído","Завершено","Hoàn tất","Terminé","Completato","Selesai"],
+        "ui.readingStopped": ["Stopped","中止済み","已停止","已停止","Detenida","Gestoppt","중지됨","Interrompida","Остановлено","Đã dừng","Arrêté","Interrotta","Dihentikan"],
+        "ui.readingStats": ["Matches {n} · unread/partial {u} · excluded {s}","一致 {n} ・ 未読／一部のみ {u} ・ 除外 {s}","符合 {n} · 未讀／部分 {u} · 略過 {s}","匹配 {n} · 未读／部分 {u} · 跳过 {s}","Coincidencias {n} · sin leer/parcial {u} · excluidos {s}","Treffer {n} · ungelesen/teilweise {u} · ausgeschlossen {s}","일치 {n} · 미확인/일부 {u} · 제외 {s}","Resultados {n} · não lidos/parciais {u} · excluídos {s}","Совпадения {n} · пропуски/частично {u} · исключено {s}","Khớp {n} · chưa đọc/một phần {u} · bỏ qua {s}","Résultats {n} · non lus/partiels {u} · exclus {s}","Risultati {n} · non letti/parziali {u} · esclusi {s}","Cocok {n} · tak terbaca/sebagian {u} · dilewati {s}"],
+        "ui.readingLimit": ["Result limit reached","結果件数の上限に達しました","已達結果上限","已达结果上限","Límite de resultados","Trefferlimit erreicht","결과 한도 도달","Limite de resultados atingido","Достигнут лимит","Đã đạt giới hạn","Limite de résultats atteinte","Limite dei risultati raggiunto","Batas hasil tercapai"],
+        "ui.readingChanged": ["Results changed. Search again.","内容が変わりました。再検索してください。","結果已變更，請重新搜尋。","内容已更改，请重新搜索。","Los resultados cambiaron. Repita la búsqueda.","Ergebnisse geändert. Erneut suchen.","내용이 변경되었습니다. 다시 검색하세요.","Os resultados mudaram. Pesquise novamente.","Результаты изменились. Повторите поиск.","Kết quả đã đổi. Hãy tìm lại.","Le contenu a changé. Relancez la recherche.","Risultati modificati. Cerca di nuovo.","Hasil berubah. Cari lagi."],
+        "ui.readingWidth": ["Reading layout","読みやすさ","閱讀版面","阅读版式","Diseño de lectura","Leselayout","읽기 레이아웃","Layout de leitura","Режим чтения","Bố cục đọc","Mise en page de lecture","Layout di lettura","Tata letak baca"],
+        "ui.readingDefault": ["Standard","標準","標準","标准","Estándar","Standard","표준","Padrão","Обычный","Tiêu chuẩn","Standard","Standard","Standar"],
+        "ui.readingRelaxed": ["Relaxed","ゆったり","寬鬆","宽松","Espaciado","Weit","여유롭게","Espaçado","Свободный","Thoáng","Aéré","Ampio","Lapang"],
+        "ui.readingEmpty": ["No bookmarks","しおりはありません","沒有書籤","没有书签","Sin marcadores","Keine Lesezeichen","책갈피 없음","Sem marcadores","Нет закладок","Không có dấu trang","Aucun signet","Nessun segnalibro","Belum ada markah"],
+        "ui.readingRemoved": ["Bookmark removed","しおりを解除しました","已移除書籤","已移除书签","Marcador eliminado","Lesezeichen entfernt","책갈피 삭제됨","Marcador removido","Закладка удалена","Đã xóa dấu trang","Signet supprimé","Segnalibro rimosso","Markah dihapus"],
+        "ui.readingSaved": ["Bookmark saved","しおりを登録しました","已儲存書籤","已保存书签","Marcador guardado","Lesezeichen gespeichert","책갈피 저장됨","Marcador salvo","Закладка сохранена","Đã lưu dấu trang","Signet enregistré","Segnalibro salvato","Markah disimpan"],
+        "ui.readingRemove": ["Remove","解除","移除","移除","Eliminar","Entfernen","삭제","Remover","Удалить","Xóa","Supprimer","Rimuovi","Hapus"],
+        "ui.readingClose": ["Close","閉じる","關閉","关闭","Cerrar","Schließen","닫기","Fechar","Закрыть","Đóng","Fermer","Chiudi","Tutup"],
         "ui.outlineTitle": ["Outline","アウトライン","Outline","Outline","Outline","Outline","Outline","Outline","Outline","Outline","Outline","Outline","Outline"],
         "ui.outlineEmpty": ["No headings","見出しがありません","No headings","No headings","No headings","No headings","No headings","No headings","No headings","No headings","No headings","No headings","No headings"],
         "ui.outlineToggle": ["Toggle outline","アウトライン表示切替","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline","Toggle outline"],
@@ -6191,7 +6410,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "ui.showCard": ["Show {card}", "{card}を表示", "顯示{card}", "显示{card}", "Mostrar {card}", "{card} anzeigen", "{card} 표시", "Mostrar {card}", "Показать {card}", "Hiện {card}", "Afficher {card}", "Mostra {card}", "Tampilkan {card}"],
         "ui.hideCard": ["Hide {card}", "{card}を非表示", "隱藏{card}", "隐藏{card}", "Ocultar {card}", "{card} ausblenden", "{card} 숨기기", "Ocultar {card}", "Скрыть {card}", "Ẩn {card}", "Masquer {card}", "Nascondi {card}", "Sembunyikan {card}"],
         "ui.languageLabel": ["Language", "言語", "語言", "语言", "Idioma", "Sprache", "언어", "Idioma", "Язык", "Ngôn ngữ", "Langue", "Lingua", "Bahasa"],
-        "ui.fontSizeLabel": ["Font", "文字", "字型", "字号", "Fuente", "Schrift", "글꼴", "Fonte", "Шрифт", "Phông", "Police", "Carattere", "Fon"],
+        "ui.fontSizeLabel": ["App font size", "アプリ全体の文字サイズ", "應用程式字型大小", "应用整体字号", "Tamaño de letra de la aplicación", "Schriftgröße der App", "앱 전체 글자 크기", "Tamanho da fonte do aplicativo", "Размер шрифта приложения", "Cỡ chữ ứng dụng", "Taille du texte de l’application", "Dimensione testo dell’app", "Ukuran teks aplikasi"],
+        "ui.paneZoomLabel": ["Text size", "本文倍率", "文字縮放", "正文缩放", "Tamaño del texto", "Textgröße", "본문 배율", "Tamanho do texto", "Масштаб текста", "Cỡ văn bản", "Taille du texte", "Dimensione testo", "Ukuran teks"],
+        "ui.paneZoomReset": ["Reset to 100%", "100%に戻す", "重設為100%", "重置为100%", "Restablecer al 100%", "Auf 100% zurücksetzen", "100%로 재설정", "Voltar a 100%", "Сбросить до 100%", "Đặt lại 100%", "Rétablir 100%", "Ripristina 100%", "Kembali ke 100%"],
+        "ui.paneZoomHint": ["Ctrl + scroll also changes text size. Ctrl+0 resets to 100%.", "Ctrl＋ホイールでも変更できます。Ctrl＋0で100%に戻します。", "也可用Ctrl＋滾輪調整。Ctrl＋0重設為100%。", "也可用Ctrl＋滚轮调整。Ctrl＋0重置为100%。", "Ctrl + rueda ajusta el texto. Ctrl+0 vuelve al 100%.", "Auch mit Strg + Mausrad. Strg+0 setzt auf 100% zurück.", "Ctrl＋휠로도 조정합니다. Ctrl＋0으로 100%로 돌아갑니다.", "Ctrl + roda ajusta o texto. Ctrl+0 volta a 100%.", "Ctrl + колесо меняет масштаб. Ctrl+0 возвращает 100%.", "Ctrl + cuộn để chỉnh. Ctrl+0 đặt lại 100%.", "Ctrl + molette ajuste le texte. Ctrl+0 rétablit 100%.", "Ctrl + rotella regola il testo. Ctrl+0 ripristina 100%.", "Ctrl + gulir mengubah ukuran. Ctrl+0 kembali ke 100%."],
         "ui.densityLabel": ["Density", "密度", "密度", "密度", "Densidad", "Dichte", "밀도", "Densidade", "Плотность", "Mật độ", "Densité", "Densita", "Kepadatan"],
         "ui.themeLabel": ["Theme", "テーマ", "佈景主題", "主题", "Tema", "Design", "테마", "Tema", "Тема", "Giao diện", "Thème", "Tema", "Tema"],
         "ui.themeDark": ["Dark", "ダーク", "深色", "深色", "Oscuro", "Dunkel", "다크", "Escuro", "Тёмная", "Tối", "Sombre", "Scuro", "Gelap"],
@@ -7776,6 +7998,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function applyLanguage(lang) {
         currentLang = hasLanguage(lang) ? lang : FALLBACK_LANG;
+        sharingApplyLanguage();
         document.documentElement.lang = LANG_META[currentLang]?.htmlLang ?? LANG_META[FALLBACK_LANG].htmlLang;
         const appTitleText = appTitle.querySelector(".title-text");
         if (appTitleText) appTitleText.textContent = t("ui", "appTitle");
@@ -7919,6 +8142,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (langSelect) {
           renderLangOptions();
           langSelect.value = currentLang;
+          document.getElementById("versionHistoryBtn").textContent = editingText("history");
         }
         safeLocalStorageSet(STORAGE_LANG_KEY, currentLang);
       }
@@ -8202,6 +8426,462 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       setupMarkdownCodeHighlight();
+
+      const sharingDialog = document.getElementById("sharingDialog");
+      const sharingMenu = document.getElementById("sharingCopyMenu");
+      const sharingTitle = document.getElementById("sharingTitle");
+      const sharingMessage = document.getElementById("sharingMessage");
+      const sharingResults = document.getElementById("sharingResults");
+      const sharingPaper = document.getElementById("sharingPaper");
+      const sharingPrintButton = document.getElementById("sharingPrint");
+      let sharingRender = null;
+      let sharingSelection = null;
+      let sharingTask = 0;
+
+      function sharingApplyLanguage() {
+        document.getElementById("sharingClose").textContent = t("about", "close");
+        document.getElementById("sharingCopyMarkdown").textContent = t("preview", "share.markdown");
+        document.getElementById("sharingCopyRich").textContent = t("preview", "share.rich");
+        sharingPrintButton.textContent = t("preview", "share.print");
+      }
+
+      function sharingInvalidatePreview() {
+        sharingRender = null;
+        sharingSelection = null;
+        sharingMenu.hidden = true;
+        if (sharingDialog.open) sharingDialog.close();
+      }
+
+      function sharingFresh(snapshot) {
+        return Boolean(snapshot && snapshot === sharingRender && snapshot.id === activeDocumentId &&
+          source.value === snapshot.text && fileState.viewMode === "markdown" && !preview.classList.contains("hint"));
+      }
+
+      function sharingChildren(token) {
+        if (token.type === "table") return [token.header, ...token.rows].flat().flatMap(cell => cell.tokens || []);
+        return token.items || token.tokens || [];
+      }
+
+      function sharingHeadingNames(tokens) {
+        const nextSuffix = new Map();
+        const names = [];
+        function headingText(token) {
+          if (token.type === "html") return "";
+          const children = sharingChildren(token);
+          return children.length ? children.map(headingText).join("") : token.text || "";
+        }
+        function visit(token) {
+          if (token.type === "heading") {
+            const text = headingText(token).replace(/&(?:amp|lt|gt|quot|#39);/g, entity =>
+              ({ "&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"', "&#39;":"'" })[entity]);
+            const base = text.normalize("NFC").toLowerCase().trim().replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "").replace(/\s+/g, "-") || "section";
+            let name = base;
+            if (nextSuffix.has(base)) {
+              let index = nextSuffix.get(base);
+              do { name = base + "-" + index++; } while (nextSuffix.has(name));
+              nextSuffix.set(base, index);
+            }
+            nextSuffix.set(name, 1);
+            names.push(name);
+          }
+          sharingChildren(token).forEach(visit);
+        }
+        tokens.forEach(visit);
+        return names;
+      }
+
+      function sharingRecordPreview(tokens, text) {
+        const names = sharingHeadingNames(tokens);
+        const allHeadings = Array.from(preview.querySelectorAll("h1,h2,h3,h4,h5,h6"));
+        const targets = new Map();
+        if (names.length === allHeadings.length) {
+          names.forEach((name, index) => targets.set(name, allHeadings[index]));
+        }
+        // Raw HTML can render an arbitrary number of top-level elements. Only keep
+        // original block spelling when correspondence is provable for this render.
+        const elements = Array.from(preview.children);
+        const blocks = tokens.filter(token => !["space", "def"].includes(token.type));
+        const rawBlocks = new WeakMap();
+        const tags = { paragraph:"P", code:"PRE", table:"TABLE", blockquote:"BLOCKQUOTE", hr:"HR" };
+        if (elements.length === blocks.length && blocks.every((token, index) => {
+          const tag = token.type === "heading" ? "H" + token.depth :
+            token.type === "list" ? (token.ordered ? "OL" : "UL") : tags[token.type];
+          return elements[index].tagName === tag || (tag === "TABLE" && elements[index].classList.contains("markdown-table-wrap"));
+        })) {
+          blocks.forEach((token, index) => rawBlocks.set(elements[index], token.raw.trimEnd()));
+        }
+        sharingRender = { id: activeDocumentId, text, tokens, targets, rawBlocks };
+      }
+
+      function sharingFollowHeading(event, anchor) {
+        const href = anchor.getAttribute("href") || "";
+        if (!href.startsWith("#") || !sharingFresh(sharingRender)) return false;
+        const heading = sharingRender.targets.get(safeDecodeUriComponent(href.slice(1)));
+        if (!heading) return false;
+        event.preventDefault();
+        heading.scrollIntoView({ block:"start" });
+        return true;
+      }
+
+      function sharingOpenDialog(kind) {
+        const snapshot = sharingRender;
+        if (!sharingFresh(snapshot)) {
+          setStatus(t("preview", "share.unavailable"), true);
+          return null;
+        }
+        sharingTitle.textContent = t("preview", "share." + kind);
+        sharingMessage.textContent = "";
+        sharingResults.hidden = kind !== "links";
+        sharingResults.replaceChildren();
+        sharingPrintButton.hidden = kind !== "print";
+        sharingPrintButton.disabled = true;
+        sharingPaper.hidden = kind !== "print";
+        sharingPaper.replaceChildren();
+        if (!sharingDialog.open) sharingDialog.showModal();
+        return snapshot;
+      }
+
+      function sharingReferences(tokens, text) {
+        const refs = [];
+        const lineStarts = [0];
+        for (let i = 0; i < text.length; i++) if (text[i] === "\n") lineStarts.push(i + 1);
+        function walk(list, start, limit) {
+          let cursor = start;
+          for (const token of list) {
+            const raw = token.raw || "";
+            if (!raw) continue;
+            const found = text.indexOf(raw, cursor);
+            // Nested quoted/list blocks may contain a prefix on each source
+            // line. Their unprefixed children still locate the precise link.
+            const located = found >= cursor && found + raw.length <= limit;
+            const offset = located ? found : cursor;
+            const end = located ? offset + raw.length : limit;
+            if ((token.type === "link" || token.type === "image") && token.href) {
+              let low = 0, high = lineStarts.length;
+              while (low + 1 < high) {
+                const mid = (low + high) >>> 1;
+                if (lineStarts[mid] <= offset) low = mid; else high = mid;
+              }
+              refs.push({ href:token.href, line:low + 1, offset });
+            }
+            const consumed = walk(sharingChildren(token), offset, end);
+            cursor = located ? end : consumed;
+          }
+          return cursor;
+        }
+        walk(tokens, 0, text.length);
+        return refs;
+      }
+
+      async function openSharingLinks() {
+        const snapshot = sharingOpenDialog("links");
+        if (!snapshot) return;
+        const task = ++sharingTask;
+        const current = () => task === sharingTask && sharingDialog.open && sharingFresh(snapshot);
+        const base = documentBelongsToCurrentDirectory(fileState) ? fileState.directoryEntryPath || "" : "";
+        const counts = {good:0, missing:0, unknown:0};
+        const targetNames = new Map();
+        const resolutions = new Map();
+        const summarize = () => Object.keys(counts).map(key => t("preview", "share." + key) + " " + counts[key]).join(" / ");
+        sharingMessage.textContent = summarize();
+        for (const reference of sharingReferences(snapshot.tokens, snapshot.text)) {
+          if (!current()) return;
+          const key = reference.href;
+          let category = "unknown";
+          let detail = "";
+          try {
+            if (!resolutions.has(key)) resolutions.set(key, await inspectWorkspaceReference(key, base));
+            const target = resolutions.get(key);
+            if (target.kind === "anchor") {
+              category = !target.fragment || snapshot.targets.has(target.fragment) ? "good" : "missing";
+            } else if (target.kind === "file") {
+              category = "good";
+              if (target.fragment && /\.(md|markdown)$/i.test(target.path)) {
+                if (!targetNames.has(target.path)) {
+                  const contents = await readingEntryText(target.entry);
+                  if (contents.length > PREVIEW_RENDER_SOFT_LIMIT_CHARS) throw new Error("Preview limit");
+                  targetNames.set(target.path, new Set(sharingHeadingNames(marked.lexer(contents))));
+                }
+                category = targetNames.get(target.path).has(target.fragment) ? "good" : "missing";
+              } else if (target.fragment) category = "unknown";
+            } else if (target.kind === "missing") category = "missing";
+            else if (["external", "outside"].includes(target.kind)) detail = " · " + t("preview", "share." + target.kind);
+          } catch (_) { category = "unknown"; }
+          if (!current()) return;
+          counts[category]++;
+          const item = document.createElement("li");
+          const jump = document.createElement("button");
+          jump.type = "button";
+          jump.className = "btn";
+          jump.textContent = t("preview", "share." + category) + detail + " · L" + reference.line + " · " + key;
+          jump.addEventListener("click", () => {
+            if (!current()) return;
+            sharingDialog.close();
+            if (!cardVisibility.source) setCardVisibility("source", true);
+            setLineSelection(reference.line, reference.line);
+            revealFindMatch({ start:reference.offset });
+          });
+          item.appendChild(jump);
+          sharingResults.appendChild(item);
+          sharingMessage.textContent = summarize();
+        }
+      }
+
+      function sharingClean(root) {
+        root.querySelectorAll('input[type="checkbox"]').forEach(box => {
+          const mark = document.createElement("span");
+          mark.dataset.sharingCheck = box.checked ? "x" : " ";
+          mark.textContent = box.checked ? "☑" : "☐";
+          box.replaceWith(mark);
+        });
+        root.querySelectorAll("button,input,select,textarea,form,iframe,script,style,.code-copy-btn,.table-copy-btn").forEach(node => node.remove());
+        [root, ...root.querySelectorAll("*")].forEach(node => {
+          for (const attr of Array.from(node.attributes)) {
+            if (!["href","src","alt","title","start","colspan","rowspan","data-local-image-path","data-sharing-check"].includes(attr.name)) node.removeAttribute(attr.name);
+          }
+        });
+      }
+
+      async function openSharingPrint() {
+        const snapshot = sharingOpenDialog("print");
+        if (!snapshot) return;
+        const task = ++sharingTask;
+        const current = () => sharingFresh(snapshot) && sharingDialog.open && task === sharingTask;
+        try {
+          // The image handler owns object URLs. Wait for its current render before
+          // cloning; shared URLs stay valid while this source document is active.
+          if (typeof pendingLocalPreviewImages !== "undefined") await pendingLocalPreviewImages;
+          if (!current()) return;
+          const title = document.createElement("div");
+          title.className = "paper-title";
+          title.textContent = getPathFileName(getDocumentTabLabel(fileState));
+          const body = preview.cloneNode(true);
+          sharingClean(body);
+          sharingPaper.replaceChildren(title, ...Array.from(body.childNodes));
+          const images = Array.from(sharingPaper.querySelectorAll("img"));
+          await Promise.allSettled(images.map(image => image.decode()));
+          if (!current()) return;
+          const missing = images.filter(image => !image.naturalWidth).length;
+          sharingMessage.textContent = t("preview", "share.paperHelp") +
+            (missing ? " " + t("preview", "share.images") + ": " + missing : "");
+          sharingPrintButton.disabled = false;
+        } catch (error) {
+          if (current()) sharingMessage.textContent = String(error.message || error);
+        }
+      }
+
+      function sharingPreparePrint() {
+        if (!sharingFresh(sharingRender) || !sharingDialog.open || sharingPaper.hidden || sharingPrintButton.disabled) return false;
+        // A modal's top layer may be limited to one viewport in print. Put the
+        // already decoded paper in normal document flow for page fragmentation.
+        document.body.appendChild(sharingPaper);
+        document.body.classList.add("sharing-print");
+        return true;
+      }
+      function sharingFinishPrint() {
+        document.body.classList.remove("sharing-print");
+        if (sharingPaper.parentNode === document.body) sharingDialog.insertBefore(sharingPaper, sharingPrintButton);
+      }
+      function sharingPrintCurrent() {
+        if (!sharingPreparePrint()) return;
+        try { window.print(); }
+        catch (error) {
+          sharingFinishPrint();
+          sharingMessage.textContent = String(error.message || error);
+        }
+      }
+      window.addEventListener("beforeprint", sharingPreparePrint);
+      window.addEventListener("afterprint", sharingFinishPrint);
+      sharingDialog.addEventListener("close", () => {
+        if (sharingDialog.open) return;
+        sharingTask++;
+        sharingFinishPrint();
+        sharingPaper.replaceChildren();
+        sharingResults.replaceChildren();
+      });
+      document.getElementById("sharingClose").addEventListener("click", () => sharingDialog.close());
+      sharingPrintButton.addEventListener("click", sharingPrintCurrent);
+      sharingPaper.addEventListener("click", event => {
+        if (event.target.closest("a")) event.preventDefault();
+      });
+
+      // Clone the selected nodes and their semantic ancestors. Range.cloneContents
+      // on text inside a strong/link alone loses both the wrapper and its URL.
+      function sharingSelectedBlock(range, block) {
+        if (!range.intersectsNode(block)) return null;
+        const outer = document.createRange();
+        outer.selectNodeContents(block);
+        const part = range.cloneRange();
+        if (part.compareBoundaryPoints(Range.START_TO_START, outer) < 0) part.setStart(outer.startContainer, outer.startOffset);
+        if (part.compareBoundaryPoints(Range.END_TO_END, outer) > 0) part.setEnd(outer.endContainer, outer.endOffset);
+        if (part.collapsed) return null;
+        let fragment = part.cloneContents();
+        const common = part.commonAncestorContainer;
+        let node = common.nodeType === Node.ELEMENT_NODE ? common : common.parentElement;
+        while (node && block.contains(node)) {
+          const shell = node.cloneNode(false);
+          shell.appendChild(fragment);
+          fragment = shell;
+          if (node === block) break;
+          node = node.parentElement;
+        }
+        const holder = document.createElement("div");
+        holder.appendChild(fragment);
+        const originalLists = [block, ...block.querySelectorAll("ol")].filter(el => el.tagName === "OL" && part.intersectsNode(el));
+        Array.from(holder.querySelectorAll("ol")).forEach((list, index) => {
+          const original = originalLists[index];
+          if (!original) return;
+          const first = Array.from(original.children).findIndex(li => li.tagName === "LI" && part.intersectsNode(li));
+          if (first > 0) list.start = original.start + first;
+        });
+        sharingClean(holder);
+        return holder;
+      }
+
+      function sharingMarkdown(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.data.replace(/([\\`*_\[\]~])/g, "\\$1");
+        if (node.nodeType !== Node.ELEMENT_NODE) return "";
+        const inner = () => Array.from(node.childNodes, sharingMarkdown).join("");
+        const destination = value => /[()<>\s]/.test(value || "")
+          ? "<" + String(value).replace(/[<>\s]/g, c => encodeURIComponent(c)) + ">" : String(value || "");
+        switch (node.tagName) {
+          case "STRONG": case "B": return "**" + inner() + "**";
+          case "EM": case "I": return "*" + inner() + "*";
+          case "DEL": case "S": return "~~" + inner() + "~~";
+          case "A": return node.hasAttribute("href") ? "[" + inner() + "](" + destination(node.getAttribute("href")) + ")" : inner();
+          case "IMG": return "![" + (node.getAttribute("alt") || "").replace(/]/g, "\\]") + "](" +
+            destination(node.dataset.localImagePath || node.getAttribute("src")) + ")";
+          case "CODE": case "PRE": {
+            const body = node.textContent;
+            const longest = Math.max(0, ...(body.match(/`+/g) || []).map(run => run.length));
+            const fence = "`".repeat(Math.max(node.tagName === "PRE" ? 3 : 1, longest + 1));
+            if (node.tagName === "PRE") return fence + "\n" + body.replace(/\n$/, "") + "\n" + fence + "\n\n";
+            const pad = /^[` ]|[` ]$/.test(body) ? " " : "";
+            return fence + pad + body + pad + fence;
+          }
+          case "BR": return "  \n";
+          case "HR": return "---\n\n";
+          case "BLOCKQUOTE": return inner().trimEnd().split("\n").map(line => "> " + line).join("\n") + "\n\n";
+          case "SPAN": return node.hasAttribute("data-sharing-check") ? "[" + node.dataset.sharingCheck + "]" : inner();
+          case "P": return inner()
+            .replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$)|[-=]{3,}(?=\s*$))/gm, "$1\\$2")
+            .replace(/^( {0,3}\d{1,9})([.)])(?=\s)/gm, "$1\\$2") + "\n\n";
+          case "H1": case "H2": case "H3": case "H4": case "H5": case "H6":
+            return "#".repeat(Number(node.tagName[1])) + " " + inner() + "\n\n";
+          case "OL": case "UL": {
+            let n = Number(node.getAttribute("start") || 1);
+            return Array.from(node.children).filter(li => li.tagName === "LI").map(li =>
+              (node.tagName === "OL" ? (n++) + ". " : "- ") +
+              sharingMarkdown(li).trim().split("\n").join("\n  ")).join("\n") + "\n\n";
+          }
+          case "TABLE": {
+            const rows = Array.from(node.rows, row => Array.from(row.cells, cell =>
+              sharingMarkdown(cell).trim().replace(/\|/g, "\\|").replace(/\n+/g, "<br>")));
+            if (!rows.length) return "";
+            const width = Math.max(...rows.map(row => row.length));
+            if (!node.rows[0].querySelector("th")) rows.unshift(Array(width).fill(""));
+            rows.splice(1, 0, Array(width).fill("---"));
+            return rows.map(row => "| " + Array.from({length:width}, (_, i) => row[i] || "").join(" | ") + " |").join("\n") + "\n\n";
+          }
+          default: return inner();
+        }
+      }
+
+      function sharingPlain(node) {
+        if (node.nodeType === Node.TEXT_NODE) return node.data;
+        if (node.nodeType !== Node.ELEMENT_NODE) return "";
+        if (node.tagName === "TABLE") return tableToTsv(node) + "\n\n";
+        if (node.tagName === "BR") return "\n";
+        if (node.tagName === "IMG") return node.getAttribute("alt") || "";
+        const body = Array.from(node.childNodes, sharingPlain).join("");
+        return /^(P|H[1-6]|PRE|LI|BLOCKQUOTE)$/.test(node.tagName) ? body + "\n" : body;
+      }
+
+      function sharingCapture(range) {
+        const snapshot = sharingRender;
+        if (!sharingFresh(snapshot) || !range || range.collapsed || !preview.contains(range.commonAncestorContainer)) return null;
+        const selected = document.createElement("div");
+        const markdown = [];
+        for (const block of preview.children) {
+          const holder = sharingSelectedBlock(range, block);
+          if (!holder || (!holder.textContent && !holder.querySelector("img,hr"))) continue;
+          const full = block.cloneNode(true);
+          sharingClean(full);
+          const raw = snapshot.rawBlocks.get(block);
+          const completelySelected = raw && holder.firstElementChild?.isEqualNode(full);
+          markdown.push(completelySelected ? raw : sharingMarkdown(holder).replace(/\n+$/, ""));
+          selected.append(...Array.from(holder.childNodes));
+        }
+        if (!markdown.length) return null;
+        const plain = sharingPlain(selected).replace(/\n+$/, "");
+        selected.querySelectorAll("[data-local-image-path]").forEach(img => img.removeAttribute("data-local-image-path"));
+        selected.querySelectorAll("[data-sharing-check]").forEach(mark => mark.removeAttribute("data-sharing-check"));
+        return {snapshot, markdown:markdown.join("\n\n"), html:sanitizeMarkdownHtml(selected.innerHTML), plain};
+      }
+
+      function closeSharingMenu(restoreFocus = false) {
+        sharingMenu.hidden = true;
+        sharingSelection = null;
+        if (restoreFocus) preview.focus({preventScroll:true});
+      }
+
+      function openSharingMenu(event, keyboard) {
+        const selection = window.getSelection();
+        if (!selection?.rangeCount || selection.isCollapsed) return;
+        const range = selection.getRangeAt(0);
+        if (!preview.contains(range.commonAncestorContainer)) return;
+        if (!keyboard && !Array.from(range.getClientRects()).some(rect =>
+          event.clientX >= rect.left && event.clientX <= rect.right &&
+          event.clientY >= rect.top && event.clientY <= rect.bottom)) return;
+        const payload = sharingCapture(range);
+        if (!payload) return;
+        event.preventDefault();
+        sharingSelection = payload;
+        sharingMenu.hidden = false;
+        const rect = range.getBoundingClientRect();
+        const x = keyboard ? rect.left : event.clientX;
+        const y = keyboard ? rect.bottom : event.clientY;
+        sharingMenu.style.left = Math.max(0, Math.min(x, window.innerWidth - sharingMenu.offsetWidth)) + "px";
+        sharingMenu.style.top = Math.max(0, Math.min(y, window.innerHeight - sharingMenu.offsetHeight)) + "px";
+        sharingMenu.firstElementChild.focus({preventScroll:true});
+      }
+
+      async function copySharingSelection(rich) {
+        const payload = sharingSelection;
+        closeSharingMenu(true);
+        if (!payload || !sharingFresh(payload.snapshot)) return;
+        try {
+          let status = "copied";
+          if (rich && navigator.clipboard?.write && window.ClipboardItem) {
+            await navigator.clipboard.write([new ClipboardItem({
+              "text/html":new Blob([payload.html], {type:"text/html"}),
+              "text/plain":new Blob([payload.plain], {type:"text/plain"})
+            })]);
+          } else {
+            await navigator.clipboard.writeText(rich ? payload.plain : payload.markdown);
+            if (rich) status = "plainOnly";
+          }
+          setStatus(t("preview", "share." + status), false);
+        } catch (_) { setStatus(t("preview", "share.failed"), true); }
+      }
+      preview.addEventListener("contextmenu", event => openSharingMenu(event, event.detail === 0 && event.clientX === 0 && event.clientY === 0));
+      preview.addEventListener("keydown", event => {
+        if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) openSharingMenu(event, true);
+      });
+      sharingMenu.addEventListener("keydown", event => {
+        if (event.key === "Escape") { event.preventDefault(); closeSharingMenu(true); }
+        if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          event.preventDefault();
+          const next = document.activeElement === sharingMenu.firstElementChild ? sharingMenu.lastElementChild : sharingMenu.firstElementChild;
+          next.focus();
+        }
+        if (event.key === "Tab") closeSharingMenu();
+      });
+      document.addEventListener("pointerdown", event => {
+        if (!sharingMenu.hidden && !sharingMenu.contains(event.target)) closeSharingMenu();
+      });
+      document.getElementById("sharingCopyMarkdown").addEventListener("click", () => copySharingSelection(false));
+      document.getElementById("sharingCopyRich").addEventListener("click", () => copySharingSelection(true));
 
       function normalizeSelectionText(value) {
         return String(value || "").replace(/\s+/g, " ").trim();
@@ -8834,6 +9514,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function setPreviewHint(message) {
+        releaseLocalImages();
         const p = document.createElement("p");
         p.className = "hint";
         p.textContent = message;
@@ -9277,9 +9958,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           fileState.bom = false;
           fileState.lineEnding = "lf";
           setEncodingSelectValue(fileState.encoding);
-          encodingSelect.disabled = false;
-          bomCheckbox.disabled = false;
-          lineEndingSelect.disabled = false;
+          updateEncodingControls();
           bomCheckbox.checked = fileState.bom;
           lineEndingSelect.value = fileState.lineEnding;
           updateFileStatusBarVisibility();
@@ -9519,6 +10198,144 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
       }
 
+      function editingText(key) {
+        return t("editing", key);
+      }
+
+      function editingDialog(title) {
+        const dialog = document.createElement("dialog");
+        dialog.className = "editing-dialog";
+        dialog.setAttribute("aria-label", title);
+        const heading = document.createElement("h2");
+        heading.textContent = title;
+        const body = document.createElement("div");
+        const message = document.createElement("p");
+        message.setAttribute("role", "status");
+        const actions = document.createElement("div");
+        actions.className = "editing-actions";
+        dialog.append(heading, body, message, actions);
+        document.body.append(dialog);
+        dialog.addEventListener("close", () => dialog.remove(), { once: true });
+        dialog.addEventListener("keydown", event => event.stopPropagation());
+        dialog.showModal();
+        return { dialog, body, actions, message };
+      }
+
+      function editingButton(parent, label, action, message) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn";
+        button.textContent = label;
+        parent.append(button);
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try { await action(); }
+          catch (error) { message.textContent = String(error.message || error); }
+          finally { button.disabled = false; }
+        });
+        return button;
+      }
+
+      function editingSnapshot() {
+        const state = getDocumentState();
+        if (!state || state.readOnly || state.viewMode !== "markdown") throw new Error(t("status", "readOnlyBlocked"));
+        return { documentId: state.id, text: source.value, start: source.selectionStart, end: source.selectionEnd };
+      }
+
+      function requireEditingSnapshot(snapshot) {
+        if (activeDocumentId !== snapshot.documentId || !getDocumentState() || fileState.readOnly || source.value !== snapshot.text) {
+          throw new Error(editingText("stale"));
+        }
+      }
+
+      function parseTableLine(raw) {
+        const text = raw.trim();
+        const cells = [];
+        let word = "";
+        let slashes = 0;
+        let separatorAtEnd = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          separatorAtEnd = ch === "|" && slashes % 2 === 0;
+          if (separatorAtEnd) {
+            if (i !== 0) cells.push(word.trim());
+            word = "";
+          } else word += ch;
+          slashes = ch === "\\" ? slashes + 1 : 0;
+        }
+        if (!separatorAtEnd) cells.push(word.trim());
+        return cells;
+      }
+
+      function findEditableTable(text, cursor) {
+        let start = 0;
+        for (const token of marked.lexer(text)) {
+          if (!token.raw) continue;
+          // marked can omit blank lines between block tokens.
+          const position = text.indexOf(token.raw, start);
+          if (position < 0) return null;
+          start = position + token.raw.length;
+          if (token.type !== "table" || cursor < position || cursor > start) continue;
+          const raw = token.raw.replace(/\n+$/, "");
+          const lines = raw.split("\n");
+          if (cursor > position + raw.length || lines.some(line => /^\s{4}|^\t/.test(line))) return null;
+          const parsed = lines.map(parseTableLine);
+          const widths = parsed[1];
+          if (!widths || !widths.every(cell => /^:?-+:?$/.test(cell)) ||
+              parsed.some(cells => cells.length !== widths.length)) return null;
+          return { start: position, end: position + raw.length, align: widths, rows: [parsed[0], ...parsed.slice(2)] };
+        }
+        return null;
+      }
+
+      function formatTableCell(value) {
+        return value.replace(/(\\*)\|/g, (_, slashes) => slashes + (slashes.length % 2 ? "|" : "\\|"));
+      }
+
+      function openCellEditor() {
+        const snapshot = editingSnapshot();
+        const table = findEditableTable(snapshot.text, snapshot.start);
+        if (!table) { setStatus(editingText("noTable"), true); return; }
+        const { dialog, body, actions, message } = editingDialog(editingText("table"));
+        const original = JSON.stringify(table.rows);
+        const grid = document.createElement("table");
+        body.append(grid);
+        function draw(rowToFocus = 0, colToFocus = 0) {
+          grid.replaceChildren();
+          table.rows.forEach((row, r) => {
+            const tr = grid.insertRow();
+            row.forEach((value, c) => {
+              const cell = tr.insertCell();
+              const input = document.createElement("input");
+              input.type = "text";
+              input.value = value;
+              input.setAttribute("aria-label", String(r + 1) + ", " + String(c + 1));
+              input.addEventListener("input", () => { row[c] = input.value; });
+              cell.append(input);
+            });
+          });
+          grid.rows[rowToFocus].cells[colToFocus].firstChild.focus();
+        }
+        draw();
+        editingButton(actions, editingText("row"), () => {
+          table.rows.push(table.align.map(() => "")); draw(table.rows.length - 1);
+        }, message);
+        editingButton(actions, editingText("column"), () => {
+          table.align.push("---"); table.rows.forEach(row => row.push("")); draw(0, table.align.length - 1);
+        }, message);
+        editingButton(actions, t("ui", "ok"), () => {
+          requireEditingSnapshot(snapshot);
+          if (JSON.stringify(table.rows) !== original) {
+            const lines = [table.rows[0], table.align, ...table.rows.slice(1)];
+            const replacement = lines.map(cells => "| " + cells.map(formatTableCell).join(" | ") + " |").join("\n");
+            const next = snapshot.text.slice(0, table.start) + replacement + snapshot.text.slice(table.end);
+            applySourceTextChange(next, table.start, table.start + replacement.length);
+          }
+          dialog.close(); source.focus();
+        }, message);
+        editingButton(actions, t("ui", "cancel"), () => dialog.close(), message);
+      }
+
       function tableToTsv(table) {
         return Array.from(table.rows).map((row) => (
           Array.from(row.cells).map((cell) => (
@@ -9620,8 +10437,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           : "auto";
       }
 
-      function setEncodingControlsBusy(busy) {
-        const disabled = !!busy || !fileState.hasContent;
+      function updateEncodingControls() {
+        const state = getDocumentState();
+        const disabled = !state?.hasContent || !!state.encodingChangeInProgress;
         encodingSelect.disabled = disabled;
         bomCheckbox.disabled = disabled;
         lineEndingSelect.disabled = disabled;
@@ -9659,7 +10477,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
         fileState.hasContent = true;
-        setEncodingControlsBusy(false);
+        updateEncodingControls();
         updateFileStatusBarVisibility();
         fileState.unsaved = false;
         setBaselineText(text);
@@ -9744,7 +10562,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
         fileState.hasContent = false;
-        setEncodingControlsBusy(false);
+        updateEncodingControls();
         updateFileStatusBarVisibility();
         source.value = "";
         fileState.text = "";
@@ -9776,9 +10594,177 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         renderMarkdown(text);
       }
 
+      const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+      let localImageGeneration = 0;
+      const localImageUrls = new Set();
+      let pendingLocalPreviewImages = Promise.resolve();
+
+      function releaseLocalImages() {
+        localImageGeneration++;
+        for (const url of localImageUrls) URL.revokeObjectURL(url);
+        localImageUrls.clear();
+        pendingLocalPreviewImages = Promise.resolve();
+      }
+
+      function hasPngSignature(bytes) {
+        return pngSignature.every((n, i) => bytes[i] === n);
+      }
+
+      async function readLocalPng(state, rawPath) {
+        if (!state?.handle) return null;
+        const path = decodeURIComponent(rawPath.split(/[?#]/)[0]);
+        if (!/\.png$/i.test(path) || /[\\:\0]/.test(path) || path.startsWith("/")) return null;
+        let blob;
+        if (state.handle.tauriPath) {
+          const base = getPathDirectoryName(state.handle.tauriPath);
+          const parts = base.replace(/\\/g, "/").split("/");
+          for (const part of path.split("/")) {
+            if (!part || part === ".") continue;
+            if (part === "..") { if (parts.length <= 1) return null; parts.pop(); }
+            else parts.push(part);
+          }
+          const target = parts.join("/");
+          const allowed = state.directoryRootPath || base;
+          if (!isPathInsideDirectory(target, allowed)) return null;
+          const buffer = bytesToArrayBuffer(await invokeTauri("desktop_read_file_bytes", { path: target }));
+          blob = new Blob([buffer], { type: "image/png" });
+        } else {
+          const root = state.directoryRootHandle || dirState.handle;
+          if (!root || !root.resolve) return null;
+          const relative = await root.resolve(state.handle);
+          if (!relative) return null;
+          const parts = relative.slice(0, -1);
+          for (const part of path.split("/")) {
+            if (!part || part === ".") continue;
+            if (part === "..") { if (!parts.length) return null; parts.pop(); }
+            else parts.push(part);
+          }
+          const handle = await getNestedFileHandle(root, parts.join("/"));
+          const file = await handle.getFile();
+          if (file.size > MAX_FILE_BYTES) return null;
+          blob = file.slice(0, file.size, "image/png");
+        }
+        return hasPngSignature(new Uint8Array(await blob.slice(0, 8).arrayBuffer())) ? blob : null;
+      }
+
+      // Stage the sanitized nodes in an inert template. A relative PNG must never
+      // be fetched against the HTML application's own origin.
+      function displayLocalPreviewHtml(safeHtml) {
+        const fragment = document.createElement("template");
+        fragment.innerHTML = safeHtml;
+        const refs = new Map();
+        for (const image of fragment.content.querySelectorAll("img[src]")) {
+          const raw = image.getAttribute("src");
+          if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(raw) || !/\.png(?:[?#]|$)/i.test(raw)) continue;
+          image.removeAttribute("src");
+          image.dataset.localImagePath = raw;
+          if (!refs.has(raw)) refs.set(raw, []);
+          refs.get(raw).push(image);
+        }
+        preview.replaceChildren(fragment.content);
+        const generation = localImageGeneration;
+        const state = getDocumentState();
+        pendingLocalPreviewImages = (async () => {
+          for (const [raw, elements] of refs) {
+            if (generation !== localImageGeneration) return;
+            let blob;
+            try { blob = await readLocalPng(state, raw); } catch { continue; }
+            if (!blob || generation !== localImageGeneration || state?.id !== activeDocumentId) continue;
+            const url = URL.createObjectURL(blob);
+            localImageUrls.add(url);
+            for (const image of elements) image.src = url;
+            await Promise.allSettled(elements.map(image => image.decode()));
+          }
+        })();
+      }
+
+      async function writeInsertedImage(state, file, name) {
+        if (file.size > MAX_FILE_BYTES || !hasPngSignature(new Uint8Array(await file.slice(0, 8).arrayBuffer()))) {
+          throw new Error(editingText("image") + " (64 MiB)");
+        }
+        if (isTauri && state.handle?.tauriPath) {
+          const parentPath = getPathDirectoryName(state.handle.tauriPath);
+          try { await invokeTauri("desktop_create_directory", { parentPath, name: "images" }); }
+          catch (err) { if (!String(err).includes("ALREADY_EXISTS")) throw err; }
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          await invokeTauriRaw("desktop_create_png", bytes, {
+            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(parentPath + "/images/" + name)
+          });
+          return;
+        }
+        const root = state.directoryRootHandle || dirState.handle;
+        const path = root && root.resolve && state.handle ? await root.resolve(state.handle) : null;
+        if (!path || !path.length) throw new Error(editingText("folder"));
+        if (await root.requestPermission({ mode: "readwrite" }) !== "granted") throw new Error(t("status", "permissionDenied"));
+        let parent = root;
+        for (const part of path.slice(0, -1)) parent = await parent.getDirectoryHandle(part);
+        const folder = await parent.getDirectoryHandle("images", { create: true });
+        try { await folder.getFileHandle(name); throw new Error(t("status", "fileNameExists")); }
+        catch (err) { if (err.name !== "NotFoundError") throw err; }
+        const destination = await folder.getFileHandle(name, { create: true });
+        // The UUID is freshly generated for this operation; check again under
+        // the writable handle so an existing non-empty file is never truncated.
+        try { await writeFileHandleBytes(destination, file, new ArrayBuffer(0)); }
+        catch (err) {
+          const entry = await folder.getFileHandle(name).catch(() => null);
+          if (entry && await entry.isSameEntry(destination) && (await entry.getFile()).size === 0) {
+            await folder.removeEntry(name).catch(() => {});
+          }
+          throw err;
+        }
+      }
+
+      function openImageInsertion(pastedFile) {
+        const snapshot = editingSnapshot();
+        const state = getDocumentState();
+        if (!state.handle || (!isTauri && !(state.directoryRootHandle || dirState.handle)?.resolve)) throw new Error(editingText("folder"));
+        const { dialog, body, actions, message } = editingDialog(editingText("image"));
+        const picker = document.createElement("input");
+        picker.type = "file"; picker.accept = "image/png,.png";
+        if (!pastedFile) body.append(picker);
+        const description = document.createElement("input");
+        description.type = "text";
+        const label = document.createElement("label");
+        label.append(editingText("alt") + " ", description);
+        const name = "image-" + crypto.randomUUID() + ".png";
+        const relative = "images/" + name;
+        const caption = document.createElement("p");
+        caption.textContent = relative;
+        body.append(caption, label);
+        let writing = false;
+        let saved = false;
+        dialog.addEventListener("cancel", event => { if (writing) event.preventDefault(); });
+        const cancel = editingButton(actions, t("ui", "cancel"), () => dialog.close(), message);
+        editingButton(actions, t("ui", "ok"), async () => {
+          requireEditingSnapshot(snapshot);
+          const file = pastedFile || picker.files[0];
+          if (!file) { picker.focus(); return; }
+          writing = true; cancel.disabled = true;
+          try {
+            if (!saved) { await writeInsertedImage(state, file, name); saved = true; }
+            requireEditingSnapshot(snapshot);
+            const alt = description.value.replace(/[\\[\]]/g, ch => "\\" + ch);
+            const snippet = "![" + alt + "](" + relative + ")";
+            const next = snapshot.text.slice(0, snapshot.start) + snippet + snapshot.text.slice(snapshot.end);
+            const pos = snapshot.start + snippet.length;
+            applySourceTextChange(next, pos, pos);
+            dialog.close(); source.focus();
+          } catch (err) {
+            const pathHint = saved ? editingText("imageSaved").replace("{path}", relative) : relative;
+            throw new Error(String(err.message || err) + " · " + pathHint);
+          }
+          finally { writing = false; cancel.disabled = false; }
+        }, message);
+        (pastedFile ? description : picker).focus();
+      }
+
       function renderMarkdown(markdownText) {
+        releaseLocalImages();
+        sharingInvalidatePreview();
         try {
-          const normalized = markdownText || "";
+          // Textarea offsets and Marked token offsets both use LF, including a
+          // newly opened Windows file with CRLF in its decoded text.
+          const normalized = (markdownText || "").replace(/\r\n?/g, "\n");
           if (
             normalized.length > PREVIEW_RENDER_SOFT_LIMIT_CHARS
             || normalized.split(/\r\n|\r|\n/).some((line) => line.length > PREVIEW_RENDER_SOFT_LIMIT_LINE_CHARS)
@@ -9794,7 +10780,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const safeHtml = sanitizeMarkdownHtml(rawHtml);
           preview.classList.remove("hint", "error");
           if (safeHtml) {
-            preview.innerHTML = safeHtml;
+            displayLocalPreviewHtml(safeHtml);
           } else {
             setPreviewHint(t("preview", "empty"));
           }
@@ -9806,6 +10792,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           });
           enhanceCodeBlocks(preview);
           enhanceTables(preview);
+          sharingRecordPreview(tokens, normalized);
           updateExternalLinkAvailability();
           updateScrollSyncAnchors();
           syncScroll(source, preview);
@@ -10755,6 +11742,54 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
       }
 
+      // Resolve Markdown references relative to the owning document, including folders
+      // that have not been expanded in the tree. Never request access during a scan.
+      async function inspectWorkspaceReference(rawReference, baseDisplayPath) {
+        const ref = String(rawReference || "").trim();
+        const result = { kind: "unverified", path: "", fragment: "" };
+        if (/^(https?:|mailto:|tel:|\/\/)/i.test(ref)) return { ...result, kind: "external" };
+        if (/^[a-z][a-z0-9+.-]*:/i.test(ref) || /^[\\/]/.test(ref)) return { ...result, kind: "outside" };
+        const hash = ref.indexOf("#");
+        let relative;
+        try {
+          result.fragment = hash < 0 ? "" : decodeURIComponent(ref.slice(hash + 1));
+          relative = decodeURIComponent((hash < 0 ? ref : ref.slice(0, hash)).split("?")[0]);
+        } catch {
+          return result;
+        }
+        if (!relative) return ref.startsWith("#") ? { ...result, kind: "anchor" } : result;
+        if (/^[\\/]|[:\u0000-\u001f]/.test(relative)) return { ...result, kind: "outside" };
+        const owner = getDocumentState();
+        if (!baseDisplayPath || !documentBelongsToCurrentDirectory(owner)) return result;
+        const root = dirState.handle;
+        const parts = baseDisplayPath.split(/[\\/]/).slice(0, -1);
+        for (const part of relative.split(/[\\/]/)) {
+          if (!part || part === ".") continue;
+          if (part === "..") {
+            if (!parts.length) return { ...result, kind: "outside" };
+            parts.pop();
+          } else {
+            parts.push(part);
+          }
+        }
+        if (!parts.length) return result;
+        result.path = parts.join("/");
+        const entry = { kind: "file", path: result.path, name: parts[parts.length - 1] };
+        try {
+          if (isTauri) {
+            const exists = await invokeTauri("desktop_workspace_file_exists", { root, relativePath: result.path });
+            if (!exists) return { ...result, kind: "missing" };
+            entry.tauriPath = String(root).replace(/[\\/]+$/, "") + "\\" + parts.join("\\");
+          } else {
+            entry.fileHandle = await getNestedFileHandle(root, result.path);
+          }
+          return { ...result, kind: "file", entry };
+        } catch (error) {
+          if (error && error.name === "NotFoundError") result.kind = "missing";
+          return result;
+        }
+      }
+
       function getRelativeLinkPathPart(anchor) {
         if (!anchor || getExternalHref(anchor)) return "";
         const href = (anchor.getAttribute("href") || "").trim();
@@ -11135,63 +12170,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function ensureWritableHandle(options = {}) {
-        const forcePick = !!options.forcePick;
         const documentId = options.documentId || activeDocumentId;
         const state = getDocumentState(documentId);
         if (!state || state.closed) return null;
-        if (state.handle && !forcePick) return "existing";
-        if (!supportsFsAccess) {
-          setStatus(t("status", "noFsSave"), true);
-          return null;
-        }
-
+        if (state.handle && !options.forcePick) return { handle: state.handle, existing: true };
+        if (!supportsFsAccess) { setStatus(t("status", "noFsSave"), true); return null; }
         setStatus(t("status", "askPickTarget"), false);
-        if (isTauri) {
-          const path = await invokeTauri("desktop_save_file_dialog", { suggestedName: getSuggestedSaveName(state) });
-          if (!path) {
-            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
-            return null;
-          }
-          if (!getDocumentState(documentId)) return null;
-          state.handle = getTauriFileHandle(path);
-          state.name = state.handle.name;
-          state.directoryRootHandle = getPathDirectoryName(path);
-          state.directoryRootPath = getPathDirectoryName(path);
-          state.directoryRootName = getPathDirectoryName(path);
-          state.directoryEntryPath = "";
-          state.directoryEntryTauriPath = path;
-          if (activeDocumentId === documentId) {
-            setAppDocumentTitle(state.name);
-            setDirtyState(state.unsaved);
-          }
-          return "new";
-        }
-
-        let handle;
         try {
           const suggestedName = getSuggestedSaveName(state);
-          handle = await window.showSaveFilePicker({ suggestedName });
-        } catch (e) {
-          if (e && e.name === "AbortError") {
-            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
-            return null;
-          }
-          throw e;
+          const path = isTauri ? await invokeTauri("desktop_save_file_dialog", { suggestedName }) : "";
+          const handle = isTauri ? (path ? getTauriFileHandle(path) : null) : await window.showSaveFilePicker({ suggestedName });
+          if (!getDocumentState(documentId) || !handle) return null;
+          const original = state.handle;
+          const existing = !!original && (original === handle || (isTauri
+            ? normalizePathForCompare(original.tauriPath) === normalizePathForCompare(handle.tauriPath)
+            : await original.isSameEntry(handle)));
+          return { handle, existing };
+        } catch (err) {
+          if (err.name !== "AbortError") throw err;
+          if (documentId === activeDocumentId) setStatus(t("status", "saveCanceled"), false);
+          return null;
         }
-        if (!handle) return null;
-        if (!getDocumentState(documentId)) return null;
-        state.handle = handle;
-        state.name = handle.name;
-        state.directoryRootHandle = null;
-        state.directoryRootPath = "";
-        state.directoryRootName = "";
-        state.directoryEntryPath = "";
-        state.directoryEntryTauriPath = "";
-        if (activeDocumentId === documentId) {
-          setAppDocumentTitle(handle.name);
-          setDirtyState(state.unsaved);
-        }
-        return "new";
       }
 
       function applyLineEnding(text, lineEnding) {
@@ -11236,10 +12235,197 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const encMap = { shift_jis: "SJIS", "euc-jp": "EUCJP", "iso-2022-jp": "JIS" };
         const to = encMap[encoding];
         if (!to) return false;
-        const normalized = normalizeLineEnding(content, lineEnding);
+        const normalized = applyLineEnding(content, lineEnding);
         const encoded = Encoding.convert(new TextEncoder().encode(normalized), { to, from: "UTF8" });
         const roundtrip = Encoding.codeToString(Encoding.convert(encoded, { to: "UNICODE", from: to }));
         return roundtrip !== normalized;
+      }
+
+      const HISTORY_MAX_BYTES = 100 * 1024 * 1024;
+      let historyDatabase;
+      function historyDb() {
+        if (!historyDatabase) historyDatabase = new Promise((resolve, reject) => {
+          const req = indexedDB.open("offline-md-editor-versions", 1);
+          let blocked = false;
+          req.onblocked = () => {
+            blocked = true;
+            historyDatabase = null;
+            reject(new Error(editingText("history") + " (IndexedDB: blocked)"));
+          };
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            db.createObjectStore("documents", { keyPath: "id" });
+            db.createObjectStore("versions", { keyPath: "id" });
+          };
+          req.onsuccess = () => {
+            if (blocked) { req.result.close(); return; }
+            req.result.onversionchange = () => { req.result.close(); historyDatabase = null; };
+            resolve(req.result);
+          };
+          req.onerror = () => { if (!blocked) historyDatabase = null; reject(req.error); };
+        });
+        return historyDatabase;
+      }
+
+      function idbResult(req) {
+        return new Promise((resolve, reject) => {
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function historyTransaction(tx) {
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = () => resolve();
+          tx.onabort = () => reject(tx.error || new Error("History transaction aborted"));
+          tx.onerror = () => reject(tx.error || new Error("History transaction failed"));
+        });
+      }
+
+      async function historyDocument(handle) {
+        if (!handle) return null;
+        const db = await historyDb();
+        const docs = await idbResult(db.transaction("documents").objectStore("documents").getAll());
+        for (const doc of docs) {
+          if (handle.tauriPath) {
+            if (doc.path === normalizePathForCompare(handle.tauriPath)) return doc;
+          } else if (doc.handle && doc.handle.name === handle.name && await handle.isSameEntry(doc.handle)) return doc;
+        }
+        return null;
+      }
+
+      async function setHistoryEnabled(handle, enabled) {
+        const db = await historyDb();
+        const record = await historyDocument(handle) || {
+          id: crypto.randomUUID(),
+          ...(handle.tauriPath ? { path: normalizePathForCompare(handle.tauriPath) } : { handle })
+        };
+        const tx = db.transaction("documents", "readwrite");
+        const done = historyTransaction(tx);
+        tx.objectStore("documents").put({ ...record, enabled });
+        await done;
+      }
+
+      function pruneOldVersions(versions, now) {
+        let size = 0;
+        const counts = new Map();
+        return versions.slice().sort((a, b) => b.when - a.when || b.id.localeCompare(a.id)).filter(row => {
+          const count = counts.get(row.doc) || 0;
+          if (row.when < now - 7 * 86400000 || count >= 10 || size + row.bytes.size > HISTORY_MAX_BYTES) return true;
+          size += row.bytes.size;
+          counts.set(row.doc, count + 1);
+          return false;
+        });
+      }
+
+      async function updateHistoryVersions({ append, removeDoc } = {}) {
+        const db = await historyDb();
+        const tx = db.transaction("versions", "readwrite");
+        const done = historyTransaction(tx);
+        const store = tx.objectStore("versions");
+        // Store Blobs so indexedDB can page large bodies independently of metadata.
+        const read = store.getAll();
+        let result = [];
+        read.onsuccess = () => {
+          let rows = read.result;
+          if (removeDoc) rows = rows.filter(v => { if (v.doc !== removeDoc) return true; store.delete(v.id); return false; });
+          if (append) {
+            const newest = rows.filter(v => v.doc === append.doc).sort((a, b) => b.when - a.when)[0];
+            if (!newest || newest.digest !== append.digest) { store.put(append); rows.push(append); }
+          }
+          const expired = new Set(pruneOldVersions(rows, Date.now()).map(v => v.id));
+          expired.forEach(id => store.delete(id));
+          result = rows.filter(row => !expired.has(row.id));
+        };
+        await done;
+        return result;
+      }
+
+      function equalFileBytes(a, b) {
+        if (!a || !b || a.byteLength !== b.byteLength) return false;
+        const left = new Uint8Array(a), right = new Uint8Array(b);
+        return left.every((value, index) => value === right[index]);
+      }
+
+      async function rememberVersion(handle, original, originalBuffer, originalEncoding) {
+        if (!original) return;
+        const document = await historyDocument(handle);
+        if (!document?.enabled) return;
+        const loaded = decodeMarkdownBuffer(original);
+        // A user-selected legacy encoding takes precedence for an unchanged disk file.
+        const encoding = equalFileBytes(original, originalBuffer) && originalEncoding ? originalEncoding : loaded.encoding;
+        const digest = await hashFileBytes(original);
+        await updateHistoryVersions({ append: { id: crypto.randomUUID(), doc: document.id, when: Date.now(), encoding,
+          bom: loaded.hasBom, ending: detectLineEnding(decodeBuffer(original, encoding)), digest, bytes: new Blob([original]) } });
+      }
+
+      async function openVersionHistory() {
+        const state = getDocumentState();
+        const handle = state?.handle;
+        if (!handle) throw new Error(editingText("folder"));
+        const { dialog, body, actions, message } = editingDialog(editingText("history") + " · " + state.name);
+        const explain = document.createElement("p");
+        explain.textContent = editingText("storage") + " · " + editingText("limits");
+        const usage = document.createElement("p");
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        const label = document.createElement("label");
+        label.append(toggle, " " + editingText("keep"));
+        const list = document.createElement("ol");
+        body.append(explain, usage, label, list);
+        const reload = async () => {
+          const record = await historyDocument(handle);
+          const versions = await updateHistoryVersions();
+          const rows = versions.filter(v => v.doc === record?.id).sort((a, b) => b.when - a.when);
+          const byteCount = records => records.reduce((sum, row) => sum + row.bytes.size, 0).toLocaleString(currentLang) + " B";
+          usage.textContent = editingText("usage").replace("{doc}", byteCount(rows)).replace("{total}", byteCount(versions));
+          list.replaceChildren(); toggle.checked = !!record?.enabled;
+          if (!rows.length) message.textContent = editingText("noHistory");
+          else message.textContent = "";
+          for (const row of rows) {
+            const li = document.createElement("li");
+            const date = new Date(row.when + 7 * 86400000).toLocaleString(currentLang);
+            li.append(new Date(row.when).toLocaleString(currentLang) + " · " + row.encoding + " / " + row.ending.toUpperCase() +
+              (row.bom ? " BOM" : "") + " · " + editingText("expires").replace("{date}", date) + " ");
+            list.append(li);
+            editingButton(li, editingText("restore"), async () => {
+              const buffer = await row.bytes.arrayBuffer();
+              if (!dialog.open) return;
+              const loaded = { buffer, text: decodeBuffer(buffer, row.encoding, { ignoreBOM: false }), encoding: row.encoding, hasBom: row.bom };
+              if (isBinaryBuffer(buffer)) throw new Error(t("status", "chooseMdOnly") + state.name);
+              const restored = addDocumentState({ name: state.name });
+              applyLoadedContent(state.name, loaded, null, { documentId: restored.id, viewModeKey: state.name });
+              restored.unsaved = true;
+              activateDocumentState(restored.id); setDirtyState(true);
+              dialog.close();
+            }, message);
+          }
+        };
+        toggle.disabled = true;
+        toggle.addEventListener("change", async () => {
+          toggle.disabled = true;
+          try { await setHistoryEnabled(handle, toggle.checked); }
+          catch (err) { message.textContent = String(err); toggle.checked = !toggle.checked; }
+          finally { toggle.disabled = false; }
+        });
+        editingButton(actions, editingText("clear"), async () => {
+          message.replaceChildren();
+          const confirm = editingButton(message, editingText("clear") + "?", async () => {
+            const selected = await historyDocument(handle);
+            if (selected) await updateHistoryVersions({ removeDoc: selected.id });
+            await reload();
+            confirm.remove();
+          }, message);
+          confirm.focus();
+        }, message);
+
+
+        editingButton(actions, t("ui", "ok"), () => dialog.close(), message);
+        try { await reload(); toggle.disabled = false; } catch (err) { message.textContent = String(err); }
+      }
+
+      function runEditingAction(action) {
+        Promise.resolve().then(action).catch(err => setStatus(String(err.message || err), true));
       }
 
       async function saveToCurrentFile() {
@@ -11250,9 +12436,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return saveFile({ forcePick: true });
       }
 
-      async function writeFileHandleBytes(targetHandle, data) {
-        const writable = await targetHandle.createWritable();
+      async function writeFileHandleBytes(targetHandle, data, expected) {
+        const writable = await targetHandle.createWritable({ mode: "exclusive" });
         try {
+          if (expected !== undefined && !equalFileBytes(await readSaveTarget(targetHandle), expected)) throw new Error(editingText("conflict"));
           await writable.write(data);
           await writable.close();
         } catch (err) {
@@ -11265,6 +12452,22 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           throw err;
         }
+      }
+
+      async function readSaveTarget(handle) {
+        if (handle.tauriPath) {
+          const exists = await invokeTauri("desktop_save_target_exists", { path: handle.tauriPath });
+          if (!exists) return null;
+          return bytesToArrayBuffer(await invokeTauri("desktop_read_file_bytes", { path: handle.tauriPath }));
+        }
+        const file = await handle.getFile();
+        if (file.size > MAX_FILE_BYTES) throw new Error("64 MiB");
+        return file.arrayBuffer();
+      }
+
+      async function hashFileBytes(buffer) {
+        const bytes = await crypto.subtle.digest("SHA-256", buffer);
+        return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, "0")).join("");
       }
 
       async function saveFile(options = {}) {
@@ -11288,71 +12491,85 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           snapshot.bom = state.bom;
           snapshot.lineEnding = state.lineEnding;
         }
-        const handleState = await ensureWritableHandle({ forcePick, documentId: saveDocumentId });
-        if (!handleState) {
-          return;
-        }
-        if (handleState === "existing" && !forcePick) {
-          // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
-          // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
-          // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと
-          // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
-          // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
-          const confirmed = await openConfirmDialog("", t("status", "saveHint"));
-          if (!confirmed) {
-            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+        // Reject a simultaneous save for this document before displaying another picker.
+        if (state.saveInProgress) throw new Error(editingText("stale"));
+        state.saveInProgress = true;
+        try {
+          const handleState = await ensureWritableHandle({ forcePick, documentId: saveDocumentId });
+          if (!handleState) {
             return;
           }
-        }
-        if (detectEncodingLoss(snapshot.text, snapshot.encoding, snapshot.lineEnding)) {
-          const encodingLabel = snapshot.encoding.toUpperCase();
-          const warningMessage = (t("status", "encodingLossWarning") || "").replace("{encoding}", encodingLabel);
-          const confirmed = await openConfirmDialog("", warningMessage);
-          if (!confirmed) {
-            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+          if (handleState.existing) {
+            // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
+            // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
+            // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと
+            // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
+            // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
+            const confirmed = await openConfirmDialog("", t("status", "saveHint"));
+            if (!confirmed) {
+              if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+              return;
+            }
+          }
+          if (detectEncodingLoss(snapshot.text, snapshot.encoding, snapshot.lineEnding)) {
+            const encodingLabel = snapshot.encoding.toUpperCase();
+            const warningMessage = (t("status", "encodingLossWarning") || "").replace("{encoding}", encodingLabel);
+            const confirmed = await openConfirmDialog("", warningMessage);
+            if (!confirmed) {
+              if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+              return;
+            }
+          }
+          const target = getDocumentState(saveDocumentId);
+          if (!target || target.closed) return;
+          const destination = handleState.handle;
+          if (!isTauri && await destination.requestPermission({ mode: "readwrite" }) !== "granted") {
+            if (saveDocumentId === activeDocumentId) setStatus(t("status", "permissionDenied"), true);
             return;
           }
-        }
-        const target = getDocumentState(saveDocumentId);
-        if (!target || target.closed || !target.handle) return;
-        const bytes = encodeFileContent(snapshot.text, snapshot.encoding, snapshot.bom, snapshot.lineEnding);
-        if (isTauri && target.handle.tauriPath) {
-          await invokeTauriRaw("desktop_write_file_bytes", bytes, {
-            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(target.handle.tauriPath)
-          });
-          target.encoding = snapshot.encoding;
+          const original = await readSaveTarget(destination);
+          if (handleState.existing && target.buffer && !equalFileBytes(original, target.buffer)) throw new Error(editingText("conflict"));
+          if (!handleState.existing && original?.byteLength > 0 &&
+              !await openConfirmDialog(destination.name, t("status", "saveHint"))) return;
+          if (original && (handleState.existing || original.byteLength > 0)) {
+            try {
+              await rememberVersion(destination, original, target.buffer, target.encoding);
+            } catch (err) {
+              if (!await openConfirmDialog("", editingText("historyFail") + "\n" + String(err.message || err))) return;
+            }
+          }
+          if (!getDocumentState(saveDocumentId) || target.readOnly) return;
+          const bytes = encodeFileContent(snapshot.text, snapshot.encoding, snapshot.bom, snapshot.lineEnding);
+          if (isTauri && destination.tauriPath) {
+            await invokeTauriRaw("desktop_write_file_bytes", bytes, {
+              [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(destination.tauriPath),
+              "x-expected-version": original === null ? "new" : await hashFileBytes(original)
+            });
+          } else await writeFileHandleBytes(destination, bytes, original);
+          if (!getDocumentState(saveDocumentId)) return;
+          if (!handleState.existing) {
+            const dir = destination.tauriPath ? getPathDirectoryName(destination.tauriPath) : "";
+            Object.assign(target, { handle: destination, name: destination.name,
+              directoryRootHandle: dir || null, directoryRootPath: dir, directoryRootName: dir,
+              directoryEntryPath: "", directoryEntryTauriPath: destination.tauriPath || "" });
+          }
+          const current = saveDocumentId === activeDocumentId ? source.value : target.text;
+          const encoding = saveDocumentId === activeDocumentId ? encodingSelect.value : target.encoding;
+          const bom = saveDocumentId === activeDocumentId ? bomCheckbox.checked : target.bom;
+          const ending = saveDocumentId === activeDocumentId ? lineEndingSelect.value : target.lineEnding;
           target.buffer = bytes.buffer;
-          target.bom = snapshot.bom;
-          target.lineEnding = snapshot.lineEnding;
-          target.text = snapshot.text;
+          target.text = current;
           target.baselineText = snapshot.text;
-          target.unsaved = false;
+          target.unsaved = current !== snapshot.text || (encoding === "auto" ? "utf-8" : encoding) !== snapshot.encoding ||
+            bom !== snapshot.bom || ending !== snapshot.lineEnding;
+          if (!target.unsaved) Object.assign(target, { encoding: snapshot.encoding, bom: snapshot.bom, lineEnding: snapshot.lineEnding });
           if (activeDocumentId === saveDocumentId) {
-            setEncodingSelectValue(target.encoding);
+            setAppDocumentTitle(target.name);
+            if (!target.unsaved) setEncodingSelectValue(target.encoding);
             setDirtyState(target.unsaved);
             setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
-          } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
-          return;
-        }
-        const permission = await target.handle.requestPermission({ mode: "readwrite" });
-        if (permission !== "granted") {
-          if (activeDocumentId === saveDocumentId) setStatus(t("status", "permissionDenied"), true);
-          return;
-        }
-        await writeFileHandleBytes(target.handle, bytes);
-        if (!getDocumentState(saveDocumentId)) return;
-        target.encoding = snapshot.encoding;
-        target.buffer = bytes.buffer;
-        target.bom = snapshot.bom;
-        target.lineEnding = snapshot.lineEnding;
-        target.text = snapshot.text;
-        target.baselineText = snapshot.text;
-        target.unsaved = false;
-        if (activeDocumentId === saveDocumentId) {
-          setEncodingSelectValue(target.encoding);
-          setDirtyState(target.unsaved);
-          setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
-        } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
+          } else renderDocumentTabs();
+        } finally { state.saveInProgress = false; }
       }
 
       async function loadFileReadOnly(file, fileHandle = null, options = {}) {
@@ -11563,6 +12780,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function showDirectoryFiles(files, directoryName, directoryHandle = null, options = {}) {
+        if (dirState.handle !== directoryHandle || !directoryHandle) {
+          cancelReadingSearch();
+          readingResults.replaceChildren();
+          readingStats("");
+        }
         dirState.files = getSortedDirectoryFiles(files);
         dirState.expandedDirs = new Set();
         dirState.selectedPaths.clear();
@@ -11880,7 +13102,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           dirState.entryTauriPath = entry.tauriPath || "";
           dirState.selectedPaths.clear();
           updateActiveSelection(entry.path, dirState.selectedPaths);
-          return;
+          return state;
         }
         // BUG-LOAD-BINARY-WEB-001: binary 拒否時は entryPath / selection を更新しない（Tauri 分岐と揃える）。
         const file = entry.fileHandle ? await entry.fileHandle.getFile() : entry.file;
@@ -11899,10 +13121,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           load: () => readMarkdownFile(file),
         });
         if (!state) return;
+        if (!entry.fileHandle) state.readingDirectoryFile = file;
         dirState.entryPath = entry.path;
         dirState.entryTauriPath = "";
         dirState.selectedPaths.clear();
         updateActiveSelection(entry.path, dirState.selectedPaths);
+        return state;
       }
 
       function isWindowsReservedName(name) {
@@ -13723,23 +14947,40 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return true;
       }
 
+      function stepSourceHistory(state, redo) {
+        const from = redo ? state.redoStack : state.undoStack;
+        const to = redo ? state.undoStack : state.redoStack;
+        const snapshot = from.pop();
+        if (!snapshot) return;
+        to.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
+        restoreDocumentHistorySnapshot(snapshot);
+      }
+
+      function handleSourceHistoryKey(event) {
+        if (event.defaultPrevented || event.altKey || !(event.ctrlKey || event.metaKey) || event.isComposing || sourceIsComposing) return;
+        const key = event.key.toLowerCase();
+        if (key !== "z" && !(key === "y" && !event.shiftKey)) return;
+        const state = getDocumentState();
+        if (!state || state.readOnly) return;
+        // A programmatic edit can be the first edit in this tab. Chromium then
+        // has no native history and pressing Undo does not dispatch beforeinput.
+        event.preventDefault();
+        stepSourceHistory(state, key === "y" || event.shiftKey);
+      }
+
       function handleSourceBeforeInput(event) {
         const state = getDocumentState();
         if (!state || state.readOnly) return;
         if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
           event.preventDefault();
-          const from = event.inputType === "historyUndo" ? state.undoStack : state.redoStack;
-          const to = event.inputType === "historyUndo" ? state.redoStack : state.undoStack;
-          const snapshot = from.pop();
-          if (!snapshot) return;
-          to.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
-          restoreDocumentHistorySnapshot(snapshot);
+          stepSourceHistory(state, event.inputType === "historyRedo");
           return;
         }
         if (sourceIsComposing || event.isComposing === true || event.inputType === "insertCompositionText") return;
         pushDocumentUndoSnapshot(state, source.value, source.selectionStart || 0, source.selectionEnd || 0);
       }
 
+      source.addEventListener("keydown", handleSourceHistoryKey);
       source.addEventListener("beforeinput", handleSourceBeforeInput);
       source.addEventListener("compositionstart", handleSourceCompositionStart);
       source.addEventListener("compositionend", handleSourceCompositionEnd);
@@ -13843,6 +15084,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (e.type === "auxclick" && e.button !== 1) return;
         const a = e.target.closest("a");
         if (!a) return;
+        if (preview.contains(a) && sharingFollowHeading(e, a)) return;
         if (handleDirectoryRelativeLinkClick(e, a)) return;
         if (handleTauriRelativeLinkClick(e, a)) return;
         if (handleExternalLinkClick(e, a)) return;
@@ -14507,6 +15749,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         toggleAppMenu();
       });
 
+      document.getElementById("versionHistoryBtn").addEventListener("click", () => {
+        closeAppMenu(); runEditingAction(openVersionHistory);
+      });
+      source.addEventListener("paste", event => {
+        const png = Array.from(event.clipboardData?.items || []).find(item => item.kind === "file" && item.type === "image/png");
+        if (!png || fileState.readOnly || fileState.viewMode !== "markdown") return;
+        const file = png.getAsFile();
+        if (!file) return;
+        event.preventDefault(); runEditingAction(() => openImageInsertion(file));
+      });
       resetSettingsBtn.addEventListener("click", async () => {
         closeAppMenu();
         const confirmed = await openConfirmDialog(
@@ -14821,13 +16073,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         // 適用する（切り替わっていれば何もしない＝安全側。他文書の書き換えは絶対にしない）。
         const targetDocumentId = activeDocumentId;
         const isStillTarget = () => activeDocumentId === targetDocumentId && !!getDocumentState(targetDocumentId);
+        const target = getDocumentState(targetDocumentId);
+        if (!target || target.encodingChangeInProgress) return;
         const encoding = encodingSelect.value;
         if (!fileState.buffer) {
           fileState.encoding = encoding;
           updateEditorMetrics();
           return;
         }
-        setEncodingControlsBusy(true);
+        target.encodingChangeInProgress = true;
+        updateEncodingControls();
         try {
           if (fileState.unsaved) {
             const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
@@ -14858,10 +16113,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           setLoadedMarkdown(decoded.text, decoded.encoding, { statusMessage, viewMode: fileState.viewMode });
         } catch (err) {
+          if (!isStillTarget()) return;
           setEncodingSelectValue(fileState.encoding);
           setStatus(t("status", "loadFailed") + (err && err.message ? err.message : String(err)), true);
         } finally {
-          setEncodingControlsBusy(false);
+          target.encodingChangeInProgress = false;
+          if (isStillTarget()) updateEncodingControls();
         }
       });
 
@@ -14964,6 +16221,449 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         rememberRecentFile({ name, path, tauriPath });
       }
 
+      const readingSearchDialog = document.getElementById("readingSearch");
+      const readingMarkDialog = document.getElementById("readingBookmarks");
+      const readingQuery = document.getElementById("readingQuery");
+      const readingResults = document.getElementById("readingResults");
+      const readingProgress = document.getElementById("readingProgress");
+      let readingSearchGeneration = 0;
+      let readingDebounce = 0;
+      let readingLastScope = null;
+      let readingSearchPending = false;
+      let readingCounts = { matches: 0, unread: 0, skipped: 0 };
+      let readingSearchPhase = "";
+
+      function readingStats(phase) {
+        readingSearchPhase = phase;
+        readingProgress.textContent = phase ? t("ui", phase) + " · " + t("ui", "readingStats")
+          .replace("{n}", readingCounts.matches).replace("{u}", readingCounts.unread).replace("{s}", readingCounts.skipped) : "";
+        document.getElementById("readingStop").disabled = !readingSearchPending;
+      }
+
+      function cancelReadingSearch() {
+        clearTimeout(readingDebounce);
+        readingSearchGeneration++;
+        const stopped = readingSearchPending;
+        readingSearchPending = false;
+        if (stopped) readingStats("readingStopped");
+      }
+
+      function readingDocumentForEntry(entry) {
+        if (entry.documentId) return getDocumentState(entry.documentId);
+        if (entry.file && !entry.fileHandle) {
+          return [...documentStates.values()].find(state => !state.closed && !state.handle && state.readingDirectoryFile === entry.file);
+        }
+        return findDocumentForIdentity(entry);
+      }
+
+      async function readingEntryText(entry) {
+        const state = await readingDocumentForEntry(entry);
+        if (state && !state.closed) return state.id === activeDocumentId ? source.value : state.text;
+        const loaded = entry.tauriPath ? await readTauriMarkdownFile(entry.tauriPath)
+          : await readMarkdownFile(entry.fileHandle ? await entry.fileHandle.getFile() : entry.file);
+        if (isBinaryBuffer(loaded.buffer)) throw new Error(t("status", "chooseMdOnly"));
+        return loaded.text;
+      }
+
+      // Keep line boundaries and the selection offset consistent with a textarea (CR and CRLF become LF).
+      async function* readingLineMatches(text, query, current) {
+        let line = 1;
+        let pos = 0;
+        let offset = 0;
+        let budget = performance.now();
+        const newline = /[\r\n]/g;
+        while (pos < text.length && current()) {
+          newline.lastIndex = pos;
+          const endMarker = newline.exec(text);
+          const end = endMarker ? endMarker.index : text.length;
+          const lineText = text.slice(pos, end);
+          const column = lineText.indexOf(query);
+          if (column !== -1) {
+            const start = Math.max(0, column - 30);
+            yield { line, column, offset: offset + column, query, snippet: lineText.slice(start, column + Math.min(query.length, 100) + 55) };
+          }
+          offset += end - pos + 1;
+          line++;
+          pos = end + (text[end] === "\r" && text[end + 1] === "\n" ? 2 : 1);
+          if (performance.now() - budget >= 12) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            budget = performance.now();
+          }
+        }
+      }
+
+      async function* readingFolderEntries(root, current, markUnread) {
+        const folders = [{ handle: root, path: "" }];
+        let yieldedAt = performance.now();
+        while (folders.length && current()) {
+          const folder = folders.pop();
+          try {
+            if (typeof root === "string") {
+              const listing = await collectTauriShallowFiles(folder.handle, root);
+              if (!current()) return;
+              if (listing.truncated || listing.warnings.length) markUnread();
+              for (const entry of listing.files) {
+                if (!current()) return;
+                if (entry.kind === "dir") folders.push({ handle: entry.tauriPath, path: entry.path });
+                else yield entry;
+              }
+            } else {
+              for await (const handle of folder.handle.values()) {
+                if (!current()) return;
+                const path = folder.path ? folder.path + "/" + handle.name : handle.name;
+                if (handle.kind === "directory") folders.push({ handle, path });
+                else yield { kind: "file", name: handle.name, path, fileHandle: handle };
+              }
+            }
+          } catch (error) {
+            if (current()) markUnread();
+          }
+          if (performance.now() - yieldedAt >= 12) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            yieldedAt = performance.now();
+          }
+        }
+      }
+
+      function readingOpenTabs() {
+        return [...documentStates.values()].filter(state => state.hasContent && !state.closed && state.viewMode === "markdown")
+          .map(state => ({ documentId: state.id, name: state.name, path: state.directoryEntryPath || state.name || getDocumentTabLabel(state) }));
+      }
+
+      function jumpReadingOffset(start, length, line) {
+        source.setSelectionRange(start, start + length);
+        updateEditorMetrics();
+        const lineTop = getLineTop(line - 1);
+        source.scrollTop = Math.max(0, lineTop - source.clientHeight / 3);
+        if (cardVisibility.source) source.focus({ preventScroll: true });
+        else preview.focus({ preventScroll: true });
+      }
+
+      function addReadingHit(entry, hit, root) {
+        const btn = document.createElement("button");
+        btn.className = "reading-result";
+        btn.type = "button";
+        const label = document.createElement("strong");
+        label.textContent = entry.path + " · " + hit.line;
+        const snippet = document.createElement("small");
+        snippet.textContent = hit.snippet;
+        btn.append(label, snippet);
+        btn.addEventListener("click", async () => {
+          const selectionGeneration = readingSearchGeneration;
+          try {
+            if (dirState.handle !== root) throw new Error(t("ui", "readingChanged"));
+            const state = await readingDocumentForEntry(entry);
+            let target = state;
+            if (state && !state.closed) selectDocumentTab(state.id, { focus: false });
+            else if (!entry.documentId) target = await loadDirectoryEntry(entry);
+            if (readingSearchGeneration !== selectionGeneration || !readingSearchDialog.open) return;
+            if (!target || target.id !== activeDocumentId || source.value.slice(hit.offset, hit.offset + hit.query.length) !== hit.query
+              || source.value.lastIndexOf("\n", hit.offset - 1) + 1 !== hit.offset - hit.column) throw new Error(t("ui", "readingChanged"));
+            readingResults.querySelector("[aria-current]")?.removeAttribute("aria-current");
+            btn.setAttribute("aria-current", "true");
+            readingSearchDialog.close();
+            if (!cardVisibility.source) setCardVisibility("source", true, { persist: false });
+            jumpReadingOffset(hit.offset, hit.query.length, hit.line);
+          } catch (error) { readingProgress.textContent = error.message; }
+        });
+        readingResults.append(btn);
+      }
+
+      async function startReadingSearch() {
+        cancelReadingSearch();
+        readingResults.replaceChildren();
+        const generation = readingSearchGeneration;
+        const root = dirState.handle;
+        const current = () => generation === readingSearchGeneration && root === dirState.handle;
+        const query = readingQuery.value.trim();
+        readingLastScope = root;
+        readingCounts = { matches: 0, unread: 0, skipped: 0 };
+        readingSearchPending = Boolean(query);
+        readingStats(query ? "readingRun" : "");
+        if (!query) return;
+        let lastUpdate = performance.now();
+        const entries = root ? readingFolderEntries(root, current, () => readingCounts.unread++)
+          : dirState.files.length ? flattenTreeFiles(dirState.files) : readingOpenTabs();
+        try {
+          for await (const entry of entries) {
+            if (!current()) return;
+            if (!entry.documentId && !/\.(?:md|markdown)$/i.test(entry.name)) readingCounts.skipped++;
+            else {
+              try {
+                const text = await readingEntryText(entry);
+                if (!current()) return;
+                for await (const hit of readingLineMatches(text, query, current)) {
+                  if (!current()) return;
+                  addReadingHit(entry, hit, root);
+                  readingCounts.matches++;
+                  if (readingCounts.matches >= 250) {
+                    readingSearchPending = false;
+                    readingStats("readingLimit");
+                    return;
+                  }
+                }
+              } catch (error) { if (current()) readingCounts.unread++; }
+            }
+            if (performance.now() - lastUpdate >= 12) {
+              if (!current()) return;
+              readingStats("readingRun");
+              await new Promise(resolve => setTimeout(resolve, 0));
+              lastUpdate = performance.now();
+            }
+          }
+          if (current()) {
+            readingSearchPending = false;
+            readingStats("readingDone");
+          }
+        } catch (error) {
+          if (current()) { readingSearchPending = false; readingStats("readingStopped"); readingProgress.textContent += " · " + error.message; }
+        }
+      }
+
+      function openReadingSearch() {
+        if (readingLastScope !== dirState.handle) {
+          cancelReadingSearch();
+          readingResults.replaceChildren();
+          readingStats("");
+        }
+        refreshReadingLabels();
+        readingSearchDialog.showModal();
+        readingQuery.focus();
+        if (readingQuery.value.trim() && !readingResults.childElementCount) startReadingSearch();
+      }
+      function readingHeadingRecords(text) {
+        const chain = [];
+        const counts = new Map();
+        const headings = parseOutlineHeadings(text).map(item => {
+          while (chain.length && chain[chain.length - 1].level >= item.level) chain.pop();
+          chain.push(item);
+          const trail = chain.map(ancestor => ancestor.text);
+          const key = JSON.stringify(trail);
+          const ordinal = (counts.get(key) || 0) + 1;
+          counts.set(key, ordinal);
+          return { ...item, trail, key, ordinal };
+        });
+        for (const item of headings) item.duplicates = counts.get(item.key);
+        return headings;
+      }
+
+      const readingBookmarkPrefix = "heading-bookmark:";
+      function readingBookmarkStore(action, mark) {
+        return withDirectoryDb(db => new Promise((resolve, reject) => {
+          const tx = db.transaction(DIRECTORY_STORE_NAME, action === "list" ? "readonly" : "readwrite");
+          const objectStore = tx.objectStore(DIRECTORY_STORE_NAME);
+          let request;
+          if (action === "list") request = objectStore.getAll(IDBKeyRange.bound(readingBookmarkPrefix, readingBookmarkPrefix + "\uffff"));
+          else if (action === "delete") request = objectStore.delete(mark.id);
+          else request = objectStore.put(mark, mark.id);
+          tx.oncomplete = () => resolve(action === "list" ? request.result : true);
+          tx.onabort = tx.onerror = () => reject(tx.error || new Error(t("ui", "recentOpenFailed")));
+        })).then(result => {
+          if (result === null) throw new Error(t("ui", "recentOpenFailed"));
+          if (action !== "list") refreshReadingStars();
+          return result;
+        });
+      }
+
+      async function readingSameFile(mark, state) {
+        if (!state || !state.handle) return false;
+        if (mark.tauriPath) return !!state.handle.tauriPath && normalizePathForCompare(mark.tauriPath) === normalizePathForCompare(state.handle.tauriPath);
+        if (!mark.fileHandle || !state.handle.isSameEntry) return false;
+        return state.handle.isSameEntry(mark.fileHandle);
+      }
+
+      let readingStarCache = new WeakMap();
+      function updateReadingStars() {
+        const state = getDocumentState();
+        if (!state?.handle || !outlineList) return;
+        const handle = state.handle;
+        if (!readingStarCache.has(handle)) {
+          const saved = readingBookmarkStore("list").then(async marks => {
+            const keys = new Set();
+            for (const mark of marks) {
+              if (await readingSameFile(mark, state)) keys.add(JSON.stringify([mark.headingKey, mark.ordinal]));
+            }
+            return keys;
+          });
+          readingStarCache.set(handle, saved);
+        }
+        const saved = readingStarCache.get(handle);
+        saved.then(keys => {
+          if (state.id !== activeDocumentId || readingStarCache.get(handle) !== saved) return;
+          for (const star of outlineList.querySelectorAll(".reading-star")) {
+            const selected = keys.has(star.dataset.bookmarkKey);
+            star.textContent = selected ? "★" : "☆";
+            star.setAttribute("aria-pressed", String(selected));
+          }
+        }).catch(() => {
+          if (readingStarCache.get(handle) === saved) readingStarCache.delete(handle);
+        });
+      }
+
+      function refreshReadingStars() {
+        readingStarCache = new WeakMap();
+        if (outlineVisible) updateReadingStars();
+      }
+      let readingMarkWrite = Promise.resolve();
+      function toggleReadingBookmark(heading) {
+        const state = getDocumentState();
+        if (!state?.handle || (!state.handle.tauriPath && !state.handle.isSameEntry)) {
+          setStatus(t("ui", "readingFileNeeded"), true);
+          return;
+        }
+        readingMarkWrite = readingMarkWrite.then(async () => {
+          const marks = await readingBookmarkStore("list");
+          for (const mark of marks) {
+            if (mark.headingKey === heading.key && mark.ordinal === heading.ordinal && await readingSameFile(mark, state)) {
+              await readingBookmarkStore("delete", mark);
+              setStatus(t("ui", "readingRemoved"), false);
+              return;
+            }
+          }
+          await readingBookmarkStore("put", {
+            id: readingBookmarkPrefix + crypto.randomUUID(), headingKey: heading.key, ordinal: heading.ordinal,
+            duplicates: heading.duplicates, fileName: state.name, entryPath: state.directoryEntryPath,
+            rootName: state.directoryRootName, rootHandle: state.directoryRootHandle, rootPath: state.directoryRootPath,
+            tauriPath: state.handle.tauriPath || "", fileHandle: state.handle.tauriPath ? null : state.handle,
+            trail: heading.trail,
+          });
+          setStatus(t("ui", "readingSaved"), false);
+        }).catch(error => setStatus(error.message, true));
+      }
+
+      function bookmarkMessage(text) {
+        document.getElementById("readingBookmarkStatus").textContent = text;
+      }
+
+      function readingButton(text, action) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "reading-result";
+        button.textContent = text;
+        button.addEventListener("click", () => Promise.resolve().then(action).catch(error => bookmarkMessage(error.message)));
+        return button;
+      }
+
+      async function openReadingBookmark(mark) {
+        let state = await findDocumentForIdentity(mark);
+        if (state) selectDocumentTab(state.id, { focus: false });
+        else {
+          const options = {
+            fileName: mark.fileName, fileHandle: mark.fileHandle || getTauriFileHandle(mark.tauriPath),
+            tauriPath: mark.tauriPath,
+            metadata: { directoryRootHandle: mark.rootHandle, directoryRootPath: mark.rootPath, directoryRootName: mark.rootName,
+              directoryEntryPath: mark.entryPath, directoryEntryTauriPath: mark.tauriPath },
+            load: () => mark.tauriPath ? readTauriMarkdownFile(mark.tauriPath) : mark.fileHandle.getFile().then(readMarkdownFile),
+          };
+          if (!mark.tauriPath && mark.fileHandle?.requestPermission) {
+            if ((await mark.fileHandle.requestPermission({ mode: "read" })) !== "granted") throw new Error(t("ui", "readingFileNeeded"));
+          }
+          state = await openDocumentTab(options);
+        }
+        if (!state || state.id !== activeDocumentId || !readingMarkDialog.open) return;
+        const items = readingHeadingRecords(source.value);
+        const exact = items.filter(item => item.key === mark.headingKey);
+        const go = item => {
+          readingMarkDialog.close();
+          const previewHeading = cardVisibility.preview && readingPreviewHeading(item);
+          if (!cardVisibility.source && !previewHeading) setCardVisibility("source", true, { persist: false });
+          jumpReadingOffset(item.start, 0, item.line);
+          if (previewHeading) assignSyncedScrollTop(preview, getPreviewElementTop(previewHeading));
+        };
+        if (exact.length === 1 && mark.duplicates === 1) { go(exact[0]); return; }
+        bookmarkMessage(t("ui", "readingMarkMissing"));
+        const list = document.getElementById("readingBookmarkList");
+        list.replaceChildren();
+        const originalText = source.value;
+        for (const heading of exact.length ? exact : items) {
+          list.append(readingButton(heading.trail.join(" › ") + " · " + heading.line, async () => {
+            if (activeDocumentId !== state.id || originalText !== source.value) throw new Error(t("ui", "readingChanged"));
+            await readingBookmarkStore("put", { ...mark, headingKey: heading.key, trail: heading.trail, ordinal: heading.ordinal, duplicates: heading.duplicates });
+            go(heading);
+          }));
+        }
+      }
+
+      function readingPreviewHeading(heading) {
+        const nodes = [...preview.querySelectorAll("h" + heading.level)];
+        const items = parseOutlineHeadings(source.value).filter(item => item.level === heading.level);
+        const index = items.findIndex(item => item.start === heading.start);
+        return nodes.length === items.length ? nodes[index] : null;
+      }
+
+      async function displayReadingBookmarks() {
+        refreshReadingLabels();
+        if (!readingMarkDialog.open) readingMarkDialog.showModal();
+        bookmarkMessage("");
+        const list = document.getElementById("readingBookmarkList");
+        list.replaceChildren();
+        try {
+          await readingMarkWrite;
+          const marks = await readingBookmarkStore("list");
+          if (!readingMarkDialog.open) return;
+          if (!marks.length) bookmarkMessage(t("ui", "readingEmpty"));
+          for (const mark of marks) {
+            const row = document.createElement("div");
+            row.className = "reading-mark-row";
+            const label = [mark.rootName, mark.entryPath || mark.fileName, ...mark.trail].filter(Boolean).join(" › ");
+            const remove = readingButton("×", async () => {
+              await readingBookmarkStore("delete", mark);
+              await displayReadingBookmarks();
+            });
+            remove.className = "btn";
+            remove.setAttribute("aria-label", t("ui", "readingRemove") + " · " + label);
+            const open = readingButton(label, async () => {
+              try { await openReadingBookmark(mark); }
+              catch (error) {
+                bookmarkMessage(t("ui", "readingFileNeeded") + " · " + error.message);
+                if (!row.querySelector(".reading-reauthorize")) {
+                  const choose = readingButton(t("ui", "readingFileNeeded"), async () => {
+                    if (mark.tauriPath) {
+                      const path = await invokeTauri("desktop_open_file_dialog");
+                      if (!path) return;
+                      if (normalizePathForCompare(path) !== normalizePathForCompare(mark.tauriPath)) throw new Error(t("ui", "readingFileNeeded"));
+                    } else {
+                      const [handle] = await window.showOpenFilePicker();
+                      if (!await handle.isSameEntry(mark.fileHandle)) throw new Error(t("ui", "readingFileNeeded"));
+                      mark.fileHandle = handle;
+                    }
+                    await openReadingBookmark(mark);
+                  });
+                  choose.classList.add("reading-reauthorize");
+                  row.append(choose);
+                }
+              }
+            });
+            row.append(open, remove);
+            list.append(row);
+          }
+        } catch (error) { bookmarkMessage(error.message); }
+      }
+
+      function refreshReadingLabels() {
+        const labels = {
+          readingSearchTitle: "readingSearch", readingBookmarkTitle: "readingBookmarks",
+          readingRun: "readingRun", readingStop: "readingStop", readingFolder: "cmdFolder",
+          readingWidthTitle: "readingWidth", readingWidthStandard: "readingDefault", readingWidthRelaxed: "readingRelaxed",
+        };
+        for (const [id, key] of Object.entries(labels)) document.getElementById(id).textContent = t("ui", key);
+        document.querySelectorAll("[data-reading-close]").forEach(button => { button.textContent = t("ui", "readingClose"); });
+        document.getElementById("readingScope").textContent = dirState.handle || dirState.files.length ? t("ui", "readingSearch") + " · " + dirState.path : t("ui", "readingTabs");
+        const trigger = document.getElementById("readingSearchTrigger");
+        setUiTooltip(trigger, t("ui", "readingSearch"));
+        setUiTooltip(document.getElementById("readingBookmarkTrigger"), t("ui", "readingBookmarks"));
+        readingStats(readingSearchPhase);
+      }
+
+      function setReadingPreset(value, persist) {
+        const preset = value === "relaxed" ? "relaxed" : "standard";
+        document.getElementById("readingWidth").value = preset;
+        preview.dataset.readingPreset = preset;
+        if (persist) {
+          safeLocalStorageSet(STORAGE_KEY_PREFIX + "reading_preset", preset);
+          scheduleEditorMetricsUpdate();
+        }
+      }
       function parseOutlineHeadings(text) {
         const lines = String(text || "").split(/\r\n|\r|\n/);
         const items = [];
@@ -15017,7 +16717,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           outlineList.appendChild(empty);
           return;
         }
-        const items = parseOutlineHeadings(source.value);
+        const items = readingHeadingRecords(source.value);
         if (!items.length) {
           const empty = document.createElement("div");
           empty.className = "outline-empty";
@@ -15049,8 +16749,21 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             updateEditorMetrics();
             renderOutline();
           });
-          outlineList.appendChild(btn);
+          const row = document.createElement("div");
+          row.className = "reading-mark-row";
+          const star = document.createElement("button");
+          star.type = "button";
+          star.className = "reading-star";
+          star.textContent = "☆";
+          star.dataset.bookmarkKey = JSON.stringify([item.key, item.ordinal]);
+          star.setAttribute("aria-pressed", "false");
+          star.setAttribute("aria-label", t("ui", "readingBookmark") + " · " + item.trail.join(" › "));
+          star.title = t("ui", "readingBookmark");
+          star.addEventListener("click", () => toggleReadingBookmark(item));
+          row.append(btn, star);
+          outlineList.appendChild(row);
         });
+        updateReadingStars();
       }
 
       function scheduleOutlineRefresh() {
@@ -15306,10 +17019,17 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           { id: "saveAs", label: t("ui", "cmdSaveAs"), shortcut: "Ctrl+Shift+S", run: () => { if (!saveAsBtn.disabled) saveAsBtn.click(); } },
           { id: "find", label: t("ui", "cmdFind"), shortcut: "Ctrl+F", run: () => openFindBar(false) },
           { id: "replace", label: t("ui", "cmdReplace"), shortcut: "Ctrl+H", run: () => openFindBar(true) },
+          { id: "folderSearch", label: t("ui", "readingSearch"), shortcut: "", run: openReadingSearch },
+          { id: "bookmarks", label: t("ui", "readingBookmarks"), shortcut: "", run: displayReadingBookmarks },
           { id: "outline", label: t("ui", "cmdOutline"), shortcut: "", run: () => toggleOutline() },
           { id: "zen", label: t("ui", "cmdZen"), shortcut: "", run: () => toggleZenMode() },
+          { id: "table", label: editingText("table"), shortcut: "", run: () => runEditingAction(openCellEditor) },
+          { id: "history", label: editingText("history"), shortcut: "", run: () => runEditingAction(openVersionHistory) },
+          { id: "insertPng", label: editingText("image"), shortcut: "", run: () => runEditingAction(() => openImageInsertion()) },
           { id: "diff", label: t("ui", "cmdDiff"), shortcut: "", run: () => openDiffView() },
           { id: "recent", label: t("ui", "cmdRecent"), shortcut: "", run: () => openRecentFiles() },
+          { id: "checkLinks", label: t("preview", "share.links"), shortcut: "", run: openSharingLinks },
+          { id: "printDocument", label: t("preview", "share.print"), shortcut: "", run: openSharingPrint },
           { id: "themeDark", label: t("ui", "cmdThemeDark"), shortcut: "", run: () => applyTheme("dark") },
           { id: "themeBlue", label: t("ui", "cmdThemeBlue"), shortcut: "", run: () => applyTheme("blue") },
           { id: "themeLight", label: t("ui", "cmdThemeLight"), shortcut: "", run: () => applyTheme("light") },
@@ -15394,6 +17114,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setUiTooltip(recentFilesBtn, t("ui", "recentFiles"));
         zenExitLabel.textContent = t("ui", "zenExit");
         setUiTooltip(zenExitBtn, t("ui", "zenExit"));
+        refreshReadingLabels();
         outlineHeaderLabel.textContent = t("ui", "outlineTitle");
         setUiTooltip(outlineCloseBtn, t("ui", "closeSource"));
         setUiTooltip(diffCloseBtn, t("ui", "findClose"));
@@ -15410,6 +17131,27 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         updateTextMetrics();
       }
 
+      document.getElementById("readingSearchTrigger").addEventListener("click", openReadingSearch);
+      document.getElementById("readingBookmarkTrigger").addEventListener("click", displayReadingBookmarks);
+      document.getElementById("readingWidth").addEventListener("change", event => setReadingPreset(event.target.value, true));
+      setReadingPreset(safeLocalStorageGet(STORAGE_KEY_PREFIX + "reading_preset"), false);
+      document.querySelectorAll("[data-reading-close]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
+      for (const dialog of [readingMarkDialog, readingSearchDialog]) {
+        dialog.addEventListener("keydown", event => event.stopPropagation());
+      }
+      readingQuery.addEventListener("input", () => {
+        cancelReadingSearch();
+        readingResults.replaceChildren();
+        readingStats("");
+        readingDebounce = setTimeout(startReadingSearch, 180);
+      });
+      readingQuery.addEventListener("keydown", event => {
+        if (event.key === "Enter" && !event.isComposing) { event.preventDefault(); startReadingSearch(); }
+      });
+      readingSearchDialog.addEventListener("close", cancelReadingSearch);
+      document.getElementById("readingRun").addEventListener("click", startReadingSearch);
+      document.getElementById("readingStop").addEventListener("click", cancelReadingSearch);
+      document.getElementById("readingFolder").addEventListener("click", () => { readingSearchDialog.close(); folderBtn.click(); });
       commandPaletteBtn.addEventListener("click", () => openCommandPalette());
       outlineToggleBtn.addEventListener("click", () => toggleOutline());
       outlineCloseBtn.addEventListener("click", () => setOutlineVisible(false));
@@ -15458,6 +17200,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       window.addEventListener("keydown", (e) => {
         // --- Escape: close dialogs / bars / menus ---
         if (e.key === "Escape") {
+          if (!paneZoomMenu.hidden) { closePaneZoomMenu(true); return; }
           if (!documentCloseOverlay.hidden) { closeDocumentCloseDialog("cancel"); return; }
           if (!confirmOverlay.hidden) { closeConfirmDialog(false); return; }
           if (!promptOverlay.hidden) { closeTextPrompt(null); return; }
@@ -15633,6 +17376,120 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         applyLanguage(langSelect.value);
       });
 
+      // Pane zoom changes text metrics only; document contents and app chrome stay intact.
+      const paneZoomStates = [
+        { panel: editorPanel, body: source.closest(".editor-body"), indicator: document.getElementById("sourceZoomIndicator"), percent: 100, delta: 0, lastTime: 0 },
+        { panel: previewPanel, body: preview, indicator: document.getElementById("previewZoomIndicator"), percent: 100, delta: 0, lastTime: 0 }
+      ];
+      let activeZoomPane = paneZoomStates[0];
+      const paneZoomMenu = document.getElementById("paneZoomMenu");
+      const paneZoomOut = document.getElementById("paneZoomOut");
+      const paneZoomReset = document.getElementById("paneZoomReset");
+      const paneZoomIn = document.getElementById("paneZoomIn");
+      let menuZoomPane = null;
+
+      function closePaneZoomMenu(restoreFocus = false) {
+        const state = menuZoomPane;
+        paneZoomMenu.hidden = true;
+        menuZoomPane = null;
+        if (state) {
+          state.indicator.setAttribute("aria-expanded", "false");
+          if (restoreFocus) state.indicator.focus();
+        }
+      }
+
+      function renderPaneZoomControls() {
+        paneZoomStates.forEach((state) => {
+          state.indicator.textContent = `${state.percent}%`;
+          setUiTooltip(state.indicator, `${t("ui", "paneZoomLabel")}: ${state.percent}% — ${t("ui", "paneZoomHint")}`);
+        });
+        paneZoomMenu.setAttribute("aria-label", t("ui", "paneZoomLabel"));
+        paneZoomOut.setAttribute("aria-label", `${t("ui", "paneZoomLabel")} −10%`);
+        paneZoomIn.setAttribute("aria-label", `${t("ui", "paneZoomLabel")} +10%`);
+        paneZoomReset.textContent = t("ui", "paneZoomReset");
+        document.getElementById("paneZoomHint").textContent = t("ui", "paneZoomHint");
+        if (menuZoomPane) {
+          paneZoomOut.disabled = menuZoomPane.percent <= 50;
+          paneZoomIn.disabled = menuZoomPane.percent >= 200;
+        }
+      }
+
+      function openPaneZoomMenu(state) {
+        if (menuZoomPane === state) { closePaneZoomMenu(); return; }
+        closePaneZoomMenu();
+        activeZoomPane = state;
+        document.getElementById("readingWidthTools").hidden = state !== paneZoomStates[1];
+        menuZoomPane = state;
+        state.indicator.setAttribute("aria-expanded", "true");
+        renderPaneZoomControls();
+        paneZoomMenu.hidden = false;
+        const rect = state.indicator.getBoundingClientRect();
+        paneZoomMenu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - paneZoomMenu.offsetWidth - 8))}px`;
+        paneZoomMenu.style.top = `${Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - paneZoomMenu.offsetHeight - 8))}px`;
+        paneZoomReset.focus();
+      }
+
+      [paneZoomOut, paneZoomReset, paneZoomIn].forEach((button, index) => {
+        button.addEventListener("click", () => {
+          if (!menuZoomPane) return;
+          menuZoomPane.delta = 0;
+          applyPaneZoom(menuZoomPane, index === 1 ? 100 : menuZoomPane.percent + (index === 0 ? -10 : 10));
+        });
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (menuZoomPane && !paneZoomMenu.contains(event.target) &&
+            !paneZoomStates.some((state) => state.indicator.contains(event.target))) closePaneZoomMenu();
+      });
+      document.addEventListener("focusin", (event) => {
+        if (menuZoomPane && !paneZoomMenu.contains(event.target) && !menuZoomPane.indicator.contains(event.target)) closePaneZoomMenu();
+      });
+      window.addEventListener("resize", () => closePaneZoomMenu());
+      document.addEventListener("scroll", () => closePaneZoomMenu(), true);
+
+      function applyPaneZoom(state, percent) {
+        state.percent = Math.max(50, Math.min(200, Math.round(percent / 10) * 10));
+        state.body.style.setProperty("--pane-font-scale", String(state.percent / 100));
+        renderPaneZoomControls();
+        activeZoomPane = state;
+        scheduleEditorMetricsUpdate();
+      }
+
+      function handlePaneZoomWheel(event, state) {
+        if (!event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+          state.delta = 0;
+          return;
+        }
+        // Cancel native page zoom even when the pane has reached its limit.
+        event.preventDefault();
+        activeZoomPane = state;
+        const delta = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 100 : 1);
+        if (!Number.isFinite(delta) || delta === 0) return;
+        if (event.timeStamp - state.lastTime > 250 || Math.sign(delta) !== Math.sign(state.delta)) state.delta = 0;
+        state.lastTime = event.timeStamp;
+        state.delta += delta;
+        if (Math.abs(state.delta) < 100) return;
+        applyPaneZoom(state, state.percent + (state.delta < 0 ? 10 : -10));
+        state.delta = 0;
+      }
+
+      paneZoomStates.forEach((state) => {
+        state.indicator.addEventListener("click", () => openPaneZoomMenu(state));
+        state.body.addEventListener("wheel", (event) => handlePaneZoomWheel(event, state), { passive: false });
+        state.panel.addEventListener("pointerenter", () => { activeZoomPane = state; });
+        state.panel.addEventListener("focusin", () => { activeZoomPane = state; });
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.key !== "0" || event.defaultPrevented) return;
+        // Leave menu/dialog inputs and hidden panes to their native shortcuts.
+        if (event.target !== document.body && event.target !== document.documentElement &&
+            !paneZoomStates.some((state) => state.body.contains(event.target) || state.indicator.contains(event.target))) return;
+        if (!activeZoomPane.body.getClientRects().length) return;
+        event.preventDefault();
+        activeZoomPane.delta = 0;
+        applyPaneZoom(activeZoomPane, 100);
+      });
+
       function detectInitialFontScale() {
         const saved = safeLocalStorageGet(STORAGE_FONT_SCALE_KEY);
         if (FONT_SCALE_OPTIONS.some((opt) => opt.key === saved)) return saved;
@@ -15658,6 +17515,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
         fontSizeSelect.value = current;
         fontSizeLabel.textContent = t("ui", "fontSizeLabel");
+        renderPaneZoomControls();
       }
 
       fontSizeSelect.addEventListener("change", () => {
@@ -15937,6 +17795,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       applyFontScale(detectInitialFontScale());
       applyDensity(detectInitialDensity());
       setupUiTooltipHandlers();
+      updateHistoryVersions().catch(() => {}); // Expire old recovery copies even when history is not opened.
       applyLanguage(detectInitialLanguage());
       if (window.ResizeObserver && sourceHeaderLeft) {
         const modeLabelResizeObserver = new ResizeObserver(() => {

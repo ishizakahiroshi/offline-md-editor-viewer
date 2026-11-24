@@ -64,6 +64,13 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
+## Working with a Markdown folder
+
+- Search the text of files in the open folder. Results show their relative paths. Use heading bookmarks to return to a section. Reading settings adjust preview width and line spacing independently of zoom.
+- Enable save history for an individual document to keep earlier file contents locally. Open a revision in a new tab for comparison. History keeps up to 10 revisions for 7 days, within a shared 100 MiB limit.
+- Edit Markdown tables as cells, or insert a PNG into the document's folder. Review the preview and save the document to keep the changes.
+- Check local links, images and headings before sharing. Print the document or choose PDF in the print dialog. In the preview, select text and open the context menu to copy Markdown or formatted content. Plain-text paste destinations receive readable text.
+
 ## Security / Privacy
 
 - **No file uploads.** Markdown files are read and rendered locally in your browser or desktop WebView.
@@ -88,6 +95,8 @@ Edits on the left source pane update the right preview pane in real time. `Save 
 In edit mode, use `Ctrl/Cmd+F` to open the floating find bar and `Ctrl/Cmd+H` or `Ctrl/Cmd+R` to expand replace controls. `Enter` moves to the next match, `Shift+Enter` moves to the previous match, and `Esc` closes the bar. The find bar supports case-sensitive, whole-word, and regular-expression search. Note: in regular-expression replace, lookbehind/lookahead assertions that rely on surrounding text (e.g. `(?<=foo)bar`) may not replace correctly, because the replacement is applied to each matched substring rather than the full document.
 
 Press `Ctrl/Cmd+K` (or `Ctrl/Cmd+Shift+P`) to open the command palette and run most editor actions from the keyboard. Zen mode hides the surrounding panels so you can focus on writing; press `Esc` to exit.
+Click the percentage button (100%) in the source or preview header to open − / Reset to 100% / + controls. Ctrl + scroll over either pane also changes its text size in 10 percentage point steps (50–200%). Scroll up to enlarge and down to shrink. Ctrl+0 resets the last pointed-to or focused pane to 100%. The current percentage stays visible in the header. Pane zoom lasts until the app is reloaded; the App font size setting controls the whole interface and is the 100% baseline.
+
 Open documents are listed as tabs above the editor. Click a tab to switch. Each document keeps its own text, undo history, cursor position, encoding, BOM, line ending and read-only state, so switching tabs never mixes one document's settings into another. `+` opens a new untitled tab. `New` creates a file in the opened folder when a folder is open, and otherwise opens an untitled tab; either way it no longer replaces what you are currently editing. A tab with unsaved changes is marked, and closing it asks whether to save, discard, or go back. Closing the window asks the same for each unsaved document in turn, and cancelling any one of them stops the exit.
 
 Right-clicking a tab, or an empty area of the tab row, opens a context menu for creating a new tab, closing tabs (this one, others, or those to the right), and copying the file name or path. The desktop app also adds an item there to open the file's folder in Explorer.

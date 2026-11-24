@@ -32,5 +32,50 @@ Thumbs.db
 /docs/obsidian/
 # === /obsidian-link: managed ===
 
-# Local video production files
+# Local video source and renders
 /brag-output/
+
+# === project-init 推奨の追記（2026-09-28・templates/gitignore から不足分のみ） ===
+desktop.ini
+.idea/
+*.swp
+*.swo
+*.jsonl
+*.tmp
+*.bak
+*.orig
+*.rej
+.commandcode/
+.cursor/
+.codex-tmp/
+.wrangler/
+.vercel/
+.netlify/
+.firebase/
+.turbo/
+.parcel-cache/
+.terraform/
+.serverless/
+**/supabase/.temp/
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+*.local.md
+*.local.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.ppk
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+secrets.*
+*.secret.*
+*credential*
+.netrc
+.npmrc
+.pypirc

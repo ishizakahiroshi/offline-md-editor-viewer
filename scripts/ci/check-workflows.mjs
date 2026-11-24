@@ -15,7 +15,7 @@ for (const fileName of workflowFiles) {
   const filePath = path.join(workflowsDir, fileName);
   const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
   lines.forEach((line, index) => {
-    const match = /^\s+uses:\s*([^\s#]+)(?:\s+#\s*(.*))?$/.exec(line);
+    const match = /^\s+(?:-\s+)?uses:\s*([^\s#]+)(?:\s+#\s*(.*))?$/.exec(line);
     if (match) actionUses.push({ fileName, line: index + 1, ref: match[1], comment: match[2] || "" });
   });
 }

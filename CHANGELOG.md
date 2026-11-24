@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0 - 2026-11-25
+
+### Added
+
+- Search the text of files in the open folder. Results show the relative path and take you to the match.
+- Bookmark headings and return to them after reopening a document.
+- Adjust preview reading width and line spacing independently of pane zoom.
+- Enable history per document to keep up to ten pre-save versions for seven days, within a shared 100 MiB limit. Open a previous version in a separate tab.
+- Edit Markdown tables cell by cell.
+- Insert PNG images into the document folder and preview them locally.
+- Check local links, images and heading references before sharing a document.
+- Print the document from a dedicated preview or save it as a PDF through the print dialog.
+- Copy a preview selection as Markdown or formatted text. Plain-text destinations receive the displayed text.
+
+### Fixed
+
+- Preserve BOM and line-ending choices when switching tabs. Speed up rendering documents with many identical headings while keeping their anchor names.
+- On Windows, keep the source folder intact when a cross-drive move encounters a link or junction. Check permission on the parent folder before listing its files.
+- Stop distribution builds if npm or Tauri fails and use the selected tag's launcher when retrying npm publication.
+
 ## 0.4.2 - 2026-09-23
 
 ### Security

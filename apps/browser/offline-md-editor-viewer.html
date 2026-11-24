@@ -5924,6 +5924,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           directoryEntryPath: "",
           directoryEntryTauriPath: "",
           encoding: "utf-8",              // 旧: currentFileEncoding
+          encodingChangeInProgress: false,
           bom: false,                     // 旧: currentFileBom
           lineEnding: "lf",               // 旧: currentFileLineEnding
           buffer: null,                   // 旧: currentFileBuffer
@@ -6026,6 +6027,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         setEncodingSelectValue(next.encoding);
         bomCheckbox.checked = next.bom;
         lineEndingSelect.value = next.lineEnding;
+        updateEncodingControls();
         setReadOnlyMode(next.readOnly);
         updateCardLayout();
         updateEditorMetrics();
@@ -9956,9 +9958,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           fileState.bom = false;
           fileState.lineEnding = "lf";
           setEncodingSelectValue(fileState.encoding);
-          encodingSelect.disabled = false;
-          bomCheckbox.disabled = false;
-          lineEndingSelect.disabled = false;
+          updateEncodingControls();
           bomCheckbox.checked = fileState.bom;
           lineEndingSelect.value = fileState.lineEnding;
           updateFileStatusBarVisibility();
@@ -10437,8 +10437,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           : "auto";
       }
 
-      function setEncodingControlsBusy(busy) {
-        const disabled = !!busy || !fileState.hasContent;
+      function updateEncodingControls() {
+        const state = getDocumentState();
+        const disabled = !state?.hasContent || !!state.encodingChangeInProgress;
         encodingSelect.disabled = disabled;
         bomCheckbox.disabled = disabled;
         lineEndingSelect.disabled = disabled;
@@ -10476,7 +10477,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
         fileState.hasContent = true;
-        setEncodingControlsBusy(false);
+        updateEncodingControls();
         updateFileStatusBarVisibility();
         fileState.unsaved = false;
         setBaselineText(text);
@@ -10561,7 +10562,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         bomCheckbox.checked = fileState.bom;
         lineEndingSelect.value = fileState.lineEnding;
         fileState.hasContent = false;
-        setEncodingControlsBusy(false);
+        updateEncodingControls();
         updateFileStatusBarVisibility();
         source.value = "";
         fileState.text = "";
@@ -16072,13 +16073,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         // 適用する（切り替わっていれば何もしない＝安全側。他文書の書き換えは絶対にしない）。
         const targetDocumentId = activeDocumentId;
         const isStillTarget = () => activeDocumentId === targetDocumentId && !!getDocumentState(targetDocumentId);
+        const target = getDocumentState(targetDocumentId);
+        if (!target || target.encodingChangeInProgress) return;
         const encoding = encodingSelect.value;
         if (!fileState.buffer) {
           fileState.encoding = encoding;
           updateEditorMetrics();
           return;
         }
-        setEncodingControlsBusy(true);
+        target.encodingChangeInProgress = true;
+        updateEncodingControls();
         try {
           if (fileState.unsaved) {
             const ok = await openConfirmDialog("", t("status", "encodingChangeConfirm"));
@@ -16109,10 +16113,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           setLoadedMarkdown(decoded.text, decoded.encoding, { statusMessage, viewMode: fileState.viewMode });
         } catch (err) {
+          if (!isStillTarget()) return;
           setEncodingSelectValue(fileState.encoding);
           setStatus(t("status", "loadFailed") + (err && err.message ? err.message : String(err)), true);
         } finally {
-          setEncodingControlsBusy(false);
+          target.encodingChangeInProgress = false;
+          if (isStillTarget()) updateEncodingControls();
         }
       });
 

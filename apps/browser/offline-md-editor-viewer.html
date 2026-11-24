@@ -6163,6 +6163,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "id":    { label: "Bahasa Indonesia",    htmlLang: "id",     bcp47Match: /^id(\b|-|_)/i },
       };
       const STR = {
+        "editing.imageSaved": ["The image was saved at {path}.","画像を {path} に保存しました。","圖片已儲存在 {path}。","图片已保存至 {path}。","La imagen se guardó en {path}.","Das Bild wurde in {path} gespeichert.","이미지를 {path}에 저장했습니다.","A imagem foi salva em {path}.","Изображение сохранено в {path}.","Ảnh đã lưu tại {path}.","Image enregistrée dans {path}.","Immagine salvata in {path}.","Gambar disimpan di {path}."],
         "editing.storage": ["Local profile storage (IndexedDB)","このアプリのローカルプロファイル内（IndexedDB）","本機設定檔儲存空間（IndexedDB）","本机配置文件存储（IndexedDB）","Almacenamiento del perfil local (IndexedDB)","Lokaler Profilspeicher (IndexedDB)","로컬 프로필 저장소(IndexedDB)","Armazenamento do perfil local (IndexedDB)","Локальное хранилище профиля (IndexedDB)","Bộ nhớ hồ sơ cục bộ (IndexedDB)","Stockage du profil local (IndexedDB)","Archivio del profilo locale (IndexedDB)","Penyimpanan profil lokal (IndexedDB)"],
         "editing.usage": ["This document: {doc} · All documents: {total}","この文書 {doc} · 全文書の合計 {total}","本文件 {doc} · 全部文件 {total}","此文档 {doc} · 全部文档 {total}","Este documento: {doc} · Todos: {total}","Dieses Dokument: {doc} · Alle: {total}","이 문서 {doc} · 전체 {total}","Este documento: {doc} · Todos: {total}","Документ: {doc} · Всего: {total}","Tệp này: {doc} · Tổng: {total}","Ce document : {doc} · Total : {total}","Documento: {doc} · Totale: {total}","Dokumen ini: {doc} · Total: {total}"],
         "editing.expires": ["Expires by {date}","削除予定 {date}","預定刪除 {date}","预计删除 {date}","Caduca el {date}","Ablauf: {date}","삭제 예정 {date}","Expira em {date}","Удалить до {date}","Hết hạn {date}","Expiration le {date}","Scadenza {date}","Kedaluwarsa {date}"],
@@ -10705,6 +10706,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         caption.textContent = relative;
         body.append(caption, label);
         let writing = false;
+        let saved = false;
         dialog.addEventListener("cancel", event => { if (writing) event.preventDefault(); });
         const cancel = editingButton(actions, t("ui", "cancel"), () => dialog.close(), message);
         editingButton(actions, t("ui", "ok"), async () => {
@@ -10713,7 +10715,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (!file) { picker.focus(); return; }
           writing = true; cancel.disabled = true;
           try {
-            await writeInsertedImage(state, file, name);
+            if (!saved) { await writeInsertedImage(state, file, name); saved = true; }
             requireEditingSnapshot(snapshot);
             const alt = description.value.replace(/[\\[\]]/g, ch => "\\" + ch);
             const snippet = "![" + alt + "](" + relative + ")";
@@ -10721,7 +10723,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             const pos = snapshot.start + snippet.length;
             applySourceTextChange(next, pos, pos);
             dialog.close(); source.focus();
-          } catch (err) { throw new Error(String(err.message || err) + " · " + relative); }
+          } catch (err) {
+            const pathHint = saved ? editingText("imageSaved").replace("{path}", relative) : relative;
+            throw new Error(String(err.message || err) + " · " + pathHint);
+          }
           finally { writing = false; cancel.disabled = false; }
         }, message);
         (pastedFile ? description : picker).focus();
@@ -12148,7 +12153,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const path = isTauri ? await invokeTauri("desktop_save_file_dialog", { suggestedName }) : "";
           const handle = isTauri ? (path ? getTauriFileHandle(path) : null) : await window.showSaveFilePicker({ suggestedName });
           if (!getDocumentState(documentId) || !handle) return null;
-          return { handle, existing: false };
+          const original = state.handle;
+          const existing = !!original && (original === handle || (isTauri
+            ? normalizePathForCompare(original.tauriPath) === normalizePathForCompare(handle.tauriPath)
+            : await original.isSameEntry(handle)));
+          return { handle, existing };
         } catch (err) {
           if (err.name !== "AbortError") throw err;
           if (documentId === activeDocumentId) setStatus(t("status", "saveCanceled"), false);
@@ -12353,6 +12362,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             list.append(li);
             editingButton(li, editingText("restore"), async () => {
               const buffer = await row.bytes.arrayBuffer();
+              if (!dialog.open) return;
               const loaded = { buffer, text: decodeBuffer(buffer, row.encoding, { ignoreBOM: false }), encoding: row.encoding, hasBom: row.bom };
               if (isBinaryBuffer(buffer)) throw new Error(t("status", "chooseMdOnly") + state.name);
               const restored = addDocumentState({ name: state.name });
@@ -12461,7 +12471,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           if (!handleState) {
             return;
           }
-          if (handleState.existing && !forcePick) {
+          if (handleState.existing) {
             // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
             // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
             // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと

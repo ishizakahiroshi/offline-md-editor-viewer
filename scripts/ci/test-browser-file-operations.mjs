@@ -420,6 +420,16 @@ saveContext.readSaveTarget = async () => new TextEncoder().encode("changed by an
 await assert.rejects(saveContext.saveFile(), /conflict/);
 assert.equal(b.baselineText, "B before");
 
+// A Save As picker can return another handle for the file already open.
+const pickerClone = { requestPermission: async () => "granted" };
+b.handle.isSameEntry = async candidate => candidate === pickerClone;
+saveContext.window = { showSaveFilePicker: async () => pickerClone };
+saveContext.supportsFsAccess = true;
+saveContext.getSuggestedSaveName = () => "fixture.md";
+vm.runInNewContext(extractFunction("ensureWritableHandle"), saveContext);
+await assert.rejects(saveContext.saveFile({ forcePick: true }), /conflict/);
+assert.equal(b.baselineText, "B before");
+
 // Table parsing uses the bundled lexer. Fenced and unsupported tables stay untouched.
 const editor = vm.createContext({ Blob, HISTORY_MAX_BYTES: 100 * 1024 * 1024 });
 vm.runInContext(fs.readFileSync(new URL("../../apps/browser/lib/marked.min.js", import.meta.url), "utf8"), editor);

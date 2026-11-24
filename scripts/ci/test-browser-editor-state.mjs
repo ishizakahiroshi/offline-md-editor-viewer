@@ -389,7 +389,13 @@ vm.runInNewContext(`
   this.activateDocumentState = activateDocumentState;
   this.activeId = () => activeDocumentId;
 `, switchContext);
+switchContext.bomCheckbox.checked = true;
+switchContext.lineEndingSelect.value = "crlf";
 assert.equal(switchContext.activateDocumentState("document-b"), true, "B can be activated without replacing A");
+assert.equal(switchContext.documents.get("document-a").bom, true, "background saves keep A's chosen BOM");
+assert.equal(switchContext.documents.get("document-a").lineEnding, "crlf", "background saves keep A's chosen line ending");
+assert.equal(switchContext.bomCheckbox.checked, false, "B keeps its own BOM setting");
+assert.equal(switchContext.lineEndingSelect.value, "lf", "B keeps its own line ending");
 assert.ok(!switchShellClasses.has("is-composing"), "switching documents clears the composing marker");
 assert.equal(switchContext.documents.get("document-a").text, "A edited", "switching captures A's edited text");
 assert.equal(switchContext.source.value, "B edited", "switching restores B's edited text");
@@ -397,6 +403,8 @@ switchContext.source.value = "B newer";
 assert.equal(switchContext.activateDocumentState("document-a"), true, "A can be reactivated");
 assert.equal(switchContext.documents.get("document-b").text, "B newer", "switching back captures B's edited text");
 assert.equal(switchContext.source.value, "A edited", "switching back restores A's text");
+assert.equal(switchContext.bomCheckbox.checked, true, "switching back restores A's chosen BOM");
+assert.equal(switchContext.lineEndingSelect.value, "crlf", "switching back restores A's chosen line ending");
 
 classes.clear();
 context.cardVisibility = { fileList: true, source: true, preview: true };

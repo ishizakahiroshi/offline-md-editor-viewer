@@ -30,6 +30,9 @@ const source = lines.join("\n");
 const tokens = context.marked.lexer(source);
 assert.deepEqual(Array.from(context.sharingHeadingNames(tokens)), ["同じ見出し", "同じ見出し-1", "同じ見出し-1-1"]);
 const results = Array.from(context.sharingReferences(tokens, source));
+const collidingHeadings = ["Status", "Status-1", "Status", "Status-2", "Status", "Status-1"];
+assert.deepEqual(Array.from(context.sharingHeadingNames(collidingHeadings.map(text => ({type:"heading", text})))),
+  ["status", "status-1", "status-2", "status-2-1", "status-3", "status-1-1"]);
 assert.deepEqual(results.map(item => [item.href, item.line]), [
   ["a.md",5], ["b.md#section",5], ["c.md",8], ["image.png",12],
   ["d.md",12], ["e.md",21], ["f.md",22], ["https://example.invalid",24]

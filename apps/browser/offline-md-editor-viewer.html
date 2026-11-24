@@ -5991,6 +5991,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const state = getDocumentState();
         if (!state) return null;
         state.text = source.value;
+        state.bom = bomCheckbox.checked;
+        state.lineEnding = lineEndingSelect.value;
         state.selectionStart = source.selectionStart || 0;
         state.selectionEnd = source.selectionEnd || 0;
         state.sourceScrollTop = source.scrollTop || 0;
@@ -8459,7 +8461,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function sharingHeadingNames(tokens) {
-        const used = new Set();
+        const nextSuffix = new Map();
         const names = [];
         function headingText(token) {
           if (token.type === "html") return "";
@@ -8472,9 +8474,12 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
               ({ "&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"', "&#39;":"'" })[entity]);
             const base = text.normalize("NFC").toLowerCase().trim().replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, "").replace(/\s+/g, "-") || "section";
             let name = base;
-            let index = 0;
-            while (used.has(name)) name = base + "-" + (++index);
-            used.add(name);
+            if (nextSuffix.has(base)) {
+              let index = nextSuffix.get(base);
+              do { name = base + "-" + index++; } while (nextSuffix.has(name));
+              nextSuffix.set(base, index);
+            }
+            nextSuffix.set(name, 1);
             names.push(name);
           }
           sharingChildren(token).forEach(visit);

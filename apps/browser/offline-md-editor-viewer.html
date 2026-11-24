@@ -12085,6 +12085,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           load: () => readMarkdownFile(file),
         });
         if (!state) return;
+        if (!entry.fileHandle) state.readingDirectoryFile = file;
         dirState.entryPath = entry.path;
         dirState.entryTauriPath = "";
         dirState.selectedPaths.clear();
@@ -15178,8 +15179,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (stopped) readingStats("readingStopped");
       }
 
+      function readingDocumentForEntry(entry) {
+        if (entry.documentId) return getDocumentState(entry.documentId);
+        if (entry.file && !entry.fileHandle) {
+          return [...documentStates.values()].find(state => !state.closed && !state.handle && state.readingDirectoryFile === entry.file);
+        }
+        return findDocumentForIdentity(entry);
+      }
+
       async function readingEntryText(entry) {
-        const state = entry.documentId ? getDocumentState(entry.documentId) : await findDocumentForIdentity(entry);
+        const state = await readingDocumentForEntry(entry);
         if (state && !state.closed) return state.id === activeDocumentId ? source.value : state.text;
         const loaded = entry.tauriPath ? await readTauriMarkdownFile(entry.tauriPath)
           : await readMarkdownFile(entry.fileHandle ? await entry.fileHandle.getFile() : entry.file);
@@ -15254,11 +15263,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
 
       function jumpReadingOffset(start, length, line) {
         source.setSelectionRange(start, start + length);
+        updateEditorMetrics();
         const lineTop = getLineTop(line - 1);
         source.scrollTop = Math.max(0, lineTop - source.clientHeight / 3);
         if (cardVisibility.source) source.focus({ preventScroll: true });
         else preview.focus({ preventScroll: true });
-        updateEditorMetrics();
       }
 
       function addReadingHit(entry, hit, root) {
@@ -15274,7 +15283,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const selectionGeneration = readingSearchGeneration;
           try {
             if (dirState.handle !== root) throw new Error(t("ui", "readingChanged"));
-            const state = entry.documentId ? getDocumentState(entry.documentId) : await findDocumentForIdentity(entry);
+            const state = await readingDocumentForEntry(entry);
             let target = state;
             if (state && !state.closed) selectDocumentTab(state.id, { focus: false });
             else if (!entry.documentId) target = await loadDirectoryEntry(entry);
@@ -15284,6 +15293,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
             readingResults.querySelector("[aria-current]")?.removeAttribute("aria-current");
             btn.setAttribute("aria-current", "true");
             readingSearchDialog.close();
+            if (!cardVisibility.source) setCardVisibility("source", true, { persist: false });
             jumpReadingOffset(hit.offset, hit.query.length, hit.line);
           } catch (error) { readingProgress.textContent = error.message; }
         });
@@ -15381,6 +15391,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           tx.onabort = tx.onerror = () => reject(tx.error || new Error(t("ui", "recentOpenFailed")));
         })).then(result => {
           if (result === null) throw new Error(t("ui", "recentOpenFailed"));
+          if (action !== "list") refreshReadingStars();
           return result;
         });
       }
@@ -15392,6 +15403,38 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return state.handle.isSameEntry(mark.fileHandle);
       }
 
+      let readingStarCache = new WeakMap();
+      function updateReadingStars() {
+        const state = getDocumentState();
+        if (!state?.handle || !outlineList) return;
+        const handle = state.handle;
+        if (!readingStarCache.has(handle)) {
+          const saved = readingBookmarkStore("list").then(async marks => {
+            const keys = new Set();
+            for (const mark of marks) {
+              if (await readingSameFile(mark, state)) keys.add(JSON.stringify([mark.headingKey, mark.ordinal]));
+            }
+            return keys;
+          });
+          readingStarCache.set(handle, saved);
+        }
+        const saved = readingStarCache.get(handle);
+        saved.then(keys => {
+          if (state.id !== activeDocumentId || readingStarCache.get(handle) !== saved) return;
+          for (const star of outlineList.querySelectorAll(".reading-star")) {
+            const selected = keys.has(star.dataset.bookmarkKey);
+            star.textContent = selected ? "★" : "☆";
+            star.setAttribute("aria-pressed", String(selected));
+          }
+        }).catch(() => {
+          if (readingStarCache.get(handle) === saved) readingStarCache.delete(handle);
+        });
+      }
+
+      function refreshReadingStars() {
+        readingStarCache = new WeakMap();
+        if (outlineVisible) updateReadingStars();
+      }
       let readingMarkWrite = Promise.resolve();
       function toggleReadingBookmark(heading) {
         const state = getDocumentState();
@@ -15453,8 +15496,8 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const exact = items.filter(item => item.key === mark.headingKey);
         const go = item => {
           readingMarkDialog.close();
+          if (!cardVisibility.source && !jumpReadingPreviewHeading(item)) setCardVisibility("source", true, { persist: false });
           jumpReadingOffset(item.start, 0, item.line);
-          if (!cardVisibility.source) jumpReadingPreviewHeading(item);
         };
         if (exact.length === 1 && mark.duplicates === 1) { go(exact[0]); return; }
         bookmarkMessage(t("ui", "readingMarkMissing"));
@@ -15474,7 +15517,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const nodes = [...preview.querySelectorAll("h" + heading.level)];
         const items = parseOutlineHeadings(source.value).filter(item => item.level === heading.level);
         const index = items.findIndex(item => item.start === heading.start);
-        if (nodes.length === items.length && nodes[index]) nodes[index].scrollIntoView({ block: "start" });
+        if (nodes.length !== items.length || !nodes[index]) return false;
+        nodes[index].scrollIntoView({ block: "start" });
+        return true;
       }
 
       async function displayReadingBookmarks() {
@@ -15641,12 +15686,15 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           star.type = "button";
           star.className = "reading-star";
           star.textContent = "☆";
+          star.dataset.bookmarkKey = JSON.stringify([item.key, item.ordinal]);
+          star.setAttribute("aria-pressed", "false");
           star.setAttribute("aria-label", t("ui", "readingBookmark") + " · " + item.trail.join(" › "));
           star.title = t("ui", "readingBookmark");
           star.addEventListener("click", () => toggleReadingBookmark(item));
           row.append(btn, star);
           outlineList.appendChild(row);
         });
+        updateReadingStars();
       }
 
       function scheduleOutlineRefresh() {

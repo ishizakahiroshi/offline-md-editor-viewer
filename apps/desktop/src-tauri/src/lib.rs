@@ -619,7 +619,62 @@ fn desktop_workspace_file_exists(
     }
 }
 
+fn publish_new_bytes(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut output = fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(path)
+        .map_err(|err| err.to_string())?;
+    let result = output.write_all(bytes).and_then(|_| output.sync_all());
+    drop(output);
+    if result.is_err() {
+        let _ = fs::remove_file(path);
+    }
+    result.map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn desktop_save_target_exists(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    path: String,
+) -> Result<bool, String> {
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    reject_symlink_or_reparse(&path)?;
+    canonical.try_exists().map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn desktop_create_png(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<(), String> {
+    let path = path_from_raw_request(&request)?;
+    let canonical = allowlist.ensure_within_allowed_roots(Path::new(&path))?;
+    reject_symlink_or_reparse(&path)?;
+    if !canonical
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+    {
+        return Err("Expected a PNG filename.".into());
+    }
+    let bytes: std::borrow::Cow<'_, [u8]> = match request.body() {
+        tauri::ipc::InvokeBody::Raw(raw) => std::borrow::Cow::Borrowed(raw.as_slice()),
+        tauri::ipc::InvokeBody::Json(value) => std::borrow::Cow::Owned(json_body_to_bytes(value)?),
+    };
+    if bytes.len() as u64 > MAX_FILE_BYTES || !bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        return Err("Expected a PNG within the file size limit.".into());
+    }
+    publish_new_bytes(&canonical, bytes.as_ref())
+}
+
 fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
+    atomic_write_checked(path, data, None)
+}
+
+fn atomic_write_checked(path: &Path, data: &[u8], expected: Option<&str>) -> Result<(), String> {
+    if expected == Some("new") {
+        return publish_new_bytes(path, data);
+    }
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -642,6 +697,16 @@ fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
         file.flush().map_err(|err| err.to_string())?;
         file.sync_all().map_err(|err| err.to_string())?;
         drop(file);
+        if let Some(version) = expected {
+            use sha2::{Digest, Sha256};
+            let original = fs::File::open(path).map_err(|err| err.to_string())?;
+            let mut digest = Sha256::new();
+            let mut limited = std::io::Read::take(original, MAX_FILE_BYTES + 1);
+            let len = std::io::copy(&mut limited, &mut digest).map_err(|err| err.to_string())?;
+            if len > MAX_FILE_BYTES || format!("{:x}", digest.finalize()) != version {
+                return Err("File changed on disk. Use Save As to keep both versions.".to_string());
+            }
+        }
         fs::rename(&tmp_path, path).map_err(|err| {
             // Windows で対象ファイルが他プロセスにロックされていると ACCESS_DENIED で失敗する。
             // 原本は保持されるため、ユーザーが状況を把握しやすい文脈付きメッセージへ整形する。
@@ -708,7 +773,12 @@ fn desktop_write_file_bytes(
             MAX_FILE_BYTES / (1024 * 1024)
         ));
     }
-    atomic_write(&canonical, bytes.as_ref())
+    let expected = request
+        .headers()
+        .get("x-expected-version")
+        .map(|value| value.to_str().map_err(|err| err.to_string()))
+        .transpose()?;
+    atomic_write_checked(&canonical, bytes.as_ref(), expected)
 }
 
 #[tauri::command]
@@ -1754,6 +1824,8 @@ pub fn run() {
             desktop_read_file_bytes,
             desktop_write_file_text,
             desktop_write_file_bytes,
+            desktop_save_target_exists,
+            desktop_create_png,
             desktop_rename_file,
             desktop_move_entry,
             desktop_copy_entry,
@@ -1903,6 +1975,23 @@ mod tests {
             .expect("small file should be readable");
         assert_eq!(bytes, vec![1u8, 2]);
         assert!(read_bounded(FailingReader, None, 2).is_err());
+    }
+
+    #[test]
+    fn guarded_write_preserves_changed_disk_content() {
+        use sha2::{Digest, Sha256};
+        let root = test_directory("version-write");
+        let path = root.join("document.md");
+        fs::write(&path, b"current").unwrap();
+        let stale = format!("{:x}", Sha256::digest(b"old"));
+        assert!(atomic_write_checked(&path, b"new", Some(&stale)).is_err());
+        assert!(atomic_write_checked(&path, b"new", Some("new")).is_err());
+        assert!(publish_new_bytes(&path, b"new png").is_err());
+        assert_eq!(fs::read(&path).unwrap(), b"current");
+        let current = format!("{:x}", Sha256::digest(b"current"));
+        atomic_write_checked(&path, b"new", Some(&current)).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"new");
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

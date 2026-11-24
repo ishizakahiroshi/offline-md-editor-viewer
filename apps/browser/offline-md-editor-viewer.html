@@ -4264,6 +4264,15 @@
       .outline-panel { width: 150px; }
     }
 
+    .editing-dialog { background: var(--panel, Canvas); color: var(--text, CanvasText); border: 1px solid var(--border, GrayText); border-radius: 10px; max-width: min(92vw, 52rem); max-height: 85vh; overflow: auto; padding: 1.2rem; }
+    .editing-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+    .editing-dialog h2 { margin: 0 0 1rem; font-size: 1.2rem; }
+    .editing-dialog table { border-collapse: collapse; }
+    .editing-dialog td { padding: 2px; }
+    .editing-dialog input:not([type=checkbox]) { padding: .45rem; width: min(13em, 40vw); font: inherit; }
+    .editing-dialog button { white-space: normal; }
+    .editing-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .editing-dialog ol { padding-inline-start: 1.8rem; }
   </style>
 </head>
 <body>
@@ -4521,6 +4530,7 @@
           </span>
           <span id="aboutButtonText" class="app-menu-action-text"></span>
         </button>
+        <button id="versionHistoryBtn" class="app-menu-action" type="button" aria-haspopup="dialog"></button>
         <button id="resetSettingsBtn" class="app-menu-action" type="button" aria-label="Reset settings">
           <span class="app-menu-action-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -6116,6 +6126,25 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         "id":    { label: "Bahasa Indonesia",    htmlLang: "id",     bcp47Match: /^id(\b|-|_)/i },
       };
       const STR = {
+        "editing.storage": ["Local profile storage (IndexedDB)","このアプリのローカルプロファイル内（IndexedDB）","本機設定檔儲存空間（IndexedDB）","本机配置文件存储（IndexedDB）","Almacenamiento del perfil local (IndexedDB)","Lokaler Profilspeicher (IndexedDB)","로컬 프로필 저장소(IndexedDB)","Armazenamento do perfil local (IndexedDB)","Локальное хранилище профиля (IndexedDB)","Bộ nhớ hồ sơ cục bộ (IndexedDB)","Stockage du profil local (IndexedDB)","Archivio del profilo locale (IndexedDB)","Penyimpanan profil lokal (IndexedDB)"],
+        "editing.usage": ["This document: {doc} · All documents: {total}","この文書 {doc} · 全文書の合計 {total}","本文件 {doc} · 全部文件 {total}","此文档 {doc} · 全部文档 {total}","Este documento: {doc} · Todos: {total}","Dieses Dokument: {doc} · Alle: {total}","이 문서 {doc} · 전체 {total}","Este documento: {doc} · Todos: {total}","Документ: {doc} · Всего: {total}","Tệp này: {doc} · Tổng: {total}","Ce document : {doc} · Total : {total}","Documento: {doc} · Totale: {total}","Dokumen ini: {doc} · Total: {total}"],
+        "editing.expires": ["Expires by {date}","削除予定 {date}","預定刪除 {date}","预计删除 {date}","Caduca el {date}","Ablauf: {date}","삭제 예정 {date}","Expira em {date}","Удалить до {date}","Hết hạn {date}","Expiration le {date}","Scadenza {date}","Kedaluwarsa {date}"],
+        "editing.history": ["Save history","保存履歴","儲存記錄","保存历史","Historial de guardado","Speicherverlauf","저장 기록","Histórico de salvamento","История сохранений","Lịch sử lưu","Historique des sauvegardes","Cronologia salvataggi","Riwayat simpan"],
+        "editing.keep": ["Keep earlier versions of this document","この文書の保存前の版を残す","保留此文件的舊版本","保留此文档的旧版本","Conservar versiones anteriores","Frühere Versionen behalten","이 문서의 이전 버전 보관","Manter versões anteriores","Хранить предыдущие версии","Giữ phiên bản trước","Conserver les versions précédentes","Conserva le versioni precedenti","Simpan versi sebelumnya"],
+        "editing.limits": ["On this device · 10 versions per file · 7 days · 100 MiB total","この端末内に保存 · 1文書10版 · 7日間 · 全体100 MiB","本機 · 每檔10版 · 7天 · 共100 MiB","本机 · 每文件10版 · 7天 · 共100 MiB","Este dispositivo · 10 versiones · 7 días · 100 MiB en total","Lokal · 10 Versionen · 7 Tage · insgesamt 100 MiB","이 기기에 저장 · 파일당 10개 · 7일 · 총 100 MiB","Neste dispositivo · 10 versões · 7 dias · total 100 MiB","На устройстве · 10 версий · 7 дней · всего 100 МиБ","Trên thiết bị · 10 bản/tệp · 7 ngày · tổng 100 MiB","Sur cet appareil · 10 versions · 7 jours · 100 Mio au total","Sul dispositivo · 10 versioni · 7 giorni · 100 MiB totali","Di perangkat ini · 10 versi · 7 hari · total 100 MiB"],
+        "editing.clear": ["Delete this file’s history","この文書の履歴を消去","刪除此檔案的記錄","删除此文件的历史","Borrar el historial de este archivo","Verlauf dieser Datei löschen","이 파일의 기록 지우기","Apagar histórico deste arquivo","Удалить историю файла","Xóa lịch sử tệp này","Effacer l’historique de ce fichier","Cancella cronologia del file","Hapus riwayat berkas ini"],
+        "editing.restore": ["Open a copy in a new tab","コピーを新しいタブで開く","在新分頁開啟副本","在新标签页打开副本","Abrir copia en otra pestaña","Kopie in neuem Tab öffnen","새 탭에서 사본 열기","Abrir cópia em nova aba","Открыть копию в новой вкладке","Mở bản sao ở thẻ mới","Ouvrir une copie dans un onglet","Apri copia in una nuova scheda","Buka salinan di tab baru"],
+        "editing.noHistory": ["No saved versions","保存履歴はありません","沒有已儲存版本","无已保存版本","Sin versiones","Keine Versionen","저장된 버전 없음","Sem versões","Версий нет","Chưa có phiên bản","Aucune version","Nessuna versione","Belum ada versi"],
+        "editing.historyFail": ["History unavailable. Save once without a recovery copy?","履歴を保存できません。今回だけ控えを作らず保存しますか？","無法儲存記錄。略過這次備份？","无法保存历史。本次跳过备份？","Historial no disponible. ¿Guardar sin copia?","Verlauf nicht verfügbar. Ohne Kopie speichern?","기록을 보관할 수 없습니다. 이번만 사본 없이 저장할까요?","Histórico indisponível. Salvar sem cópia?","История недоступна. Сохранить без копии?","Không thể lưu lịch sử. Lưu không tạo bản sao?","Historique indisponible. Enregistrer sans copie ?","Cronologia non disponibile. Salvare senza copia?","Riwayat tidak tersedia. Simpan tanpa salinan?"],
+        "editing.conflict": ["File changed on disk. Use Save As to keep both versions.","元ファイルが更新されています。両方残すには別名で保存してください。","檔案已變更。請另存新檔以保留兩個版本。","文件已更改。请另存以保留两个版本。","El archivo cambió. Use Guardar como.","Datei geändert. Bitte Speichern unter verwenden.","파일이 변경되었습니다. 다른 이름으로 저장하세요.","O arquivo mudou. Use Salvar como.","Файл изменён. Используйте «Сохранить как».","Tệp đã đổi. Hãy lưu với tên khác.","Le fichier a changé. Utilisez Enregistrer sous.","File modificato. Usa Salva con nome.","Berkas berubah. Gunakan Simpan sebagai."],
+        "editing.table": ["Edit table at cursor","カーソル位置の表を編集","編輯游標處的表格","编辑光标处的表格","Editar tabla en el cursor","Tabelle am Cursor bearbeiten","커서 위치 표 편집","Editar tabela no cursor","Изменить таблицу у курсора","Sửa bảng tại con trỏ","Modifier le tableau au curseur","Modifica tabella al cursore","Edit tabel di posisi kursor"],
+        "editing.noTable": ["Place the cursor in a simple Markdown table.","標準のMarkdown表にカーソルを置いてください。","請將游標放在標準 Markdown 表格中。","请将光标放在标准 Markdown 表格中。","Sitúe el cursor en una tabla Markdown sencilla.","Cursor in eine einfache Markdown-Tabelle setzen.","일반 Markdown 표에 커서를 두세요.","Posicione o cursor em uma tabela Markdown simples.","Поместите курсор в обычную таблицу Markdown.","Đặt con trỏ vào bảng Markdown đơn giản.","Placez le curseur dans un tableau Markdown simple.","Posiziona il cursore in una tabella Markdown semplice.","Letakkan kursor pada tabel Markdown sederhana."],
+        "editing.row": ["Add row","行を追加","新增列","添加行","Añadir fila","Zeile hinzufügen","행 추가","Adicionar linha","Добавить строку","Thêm hàng","Ajouter une ligne","Aggiungi riga","Tambah baris"],
+        "editing.column": ["Add column","列を追加","新增欄","添加列","Añadir columna","Spalte hinzufügen","열 추가","Adicionar coluna","Добавить столбец","Thêm cột","Ajouter une colonne","Aggiungi colonna","Tambah kolom"],
+        "editing.image": ["Insert PNG image","PNG画像を挿入","插入 PNG 圖片","插入 PNG 图片","Insertar imagen PNG","PNG-Bild einfügen","PNG 이미지 삽입","Inserir imagem PNG","Вставить изображение PNG","Chèn ảnh PNG","Insérer une image PNG","Inserisci immagine PNG","Sisipkan gambar PNG"],
+        "editing.alt": ["Image description","画像の説明","圖片說明","图片说明","Descripción","Bildbeschreibung","이미지 설명","Descrição da imagem","Описание изображения","Mô tả ảnh","Description de l’image","Descrizione immagine","Deskripsi gambar"],
+        "editing.folder": ["Open the saved document from its folder first.","先にフォルダを開き、その中の保存済み文書を選んでください。","請先從資料夾開啟已儲存的文件。","请先从文件夹打开已保存的文档。","Abra el documento desde su carpeta.","Öffnen Sie das Dokument aus seinem Ordner.","먼저 폴더에서 저장된 문서를 여세요.","Abra o documento pela pasta.","Откройте сохранённый документ из папки.","Hãy mở tài liệu đã lưu từ thư mục.","Ouvrez le document enregistré depuis son dossier.","Apri il documento salvato dalla sua cartella.","Buka dokumen tersimpan dari foldernya."],
+        "editing.stale": ["The document changed. Open the action again.","文書が変わりました。もう一度操作してください。","文件已變更，請重新操作。","文档已更改，请重新操作。","El documento cambió. Repita la acción.","Dokument geändert. Aktion erneut öffnen.","문서가 변경되었습니다. 다시 실행하세요.","O documento mudou. Repita a operação.","Документ изменился. Повторите действие.","Tài liệu đã đổi. Vui lòng thử lại.","Le document a changé. Réessayez.","Documento modificato. Riprova.","Dokumen berubah. Silakan ulangi."],
         // ===== ui group =====
         "ui.appTitle": [APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME, APP_NAME],
         "ui.newBtn": ["New", "新規作成", "新增", "新建", "Nuevo", "Neu", "새로 만들기", "Novo", "Новый", "Mới", "Nouveau", "Nuovo", "Baru"],
@@ -8052,6 +8081,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (langSelect) {
           renderLangOptions();
           langSelect.value = currentLang;
+          document.getElementById("versionHistoryBtn").textContent = editingText("history");
         }
         safeLocalStorageSet(STORAGE_LANG_KEY, currentLang);
       }
@@ -8967,6 +8997,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function setPreviewHint(message) {
+        releaseLocalImages();
         const p = document.createElement("p");
         p.className = "hint";
         p.textContent = message;
@@ -9652,6 +9683,144 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         });
       }
 
+      function editingText(key) {
+        return t("editing", key);
+      }
+
+      function editingDialog(title) {
+        const dialog = document.createElement("dialog");
+        dialog.className = "editing-dialog";
+        dialog.setAttribute("aria-label", title);
+        const heading = document.createElement("h2");
+        heading.textContent = title;
+        const body = document.createElement("div");
+        const message = document.createElement("p");
+        message.setAttribute("role", "status");
+        const actions = document.createElement("div");
+        actions.className = "editing-actions";
+        dialog.append(heading, body, message, actions);
+        document.body.append(dialog);
+        dialog.addEventListener("close", () => dialog.remove(), { once: true });
+        dialog.addEventListener("keydown", event => event.stopPropagation());
+        dialog.showModal();
+        return { dialog, body, actions, message };
+      }
+
+      function editingButton(parent, label, action, message) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn";
+        button.textContent = label;
+        parent.append(button);
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try { await action(); }
+          catch (error) { message.textContent = String(error.message || error); }
+          finally { button.disabled = false; }
+        });
+        return button;
+      }
+
+      function editingSnapshot() {
+        const state = getDocumentState();
+        if (!state || state.readOnly || state.viewMode !== "markdown") throw new Error(t("status", "readOnlyBlocked"));
+        return { documentId: state.id, text: source.value, start: source.selectionStart, end: source.selectionEnd };
+      }
+
+      function requireEditingSnapshot(snapshot) {
+        if (activeDocumentId !== snapshot.documentId || !getDocumentState() || fileState.readOnly || source.value !== snapshot.text) {
+          throw new Error(editingText("stale"));
+        }
+      }
+
+      function parseTableLine(raw) {
+        const text = raw.trim();
+        const cells = [];
+        let word = "";
+        let slashes = 0;
+        let separatorAtEnd = false;
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          separatorAtEnd = ch === "|" && slashes % 2 === 0;
+          if (separatorAtEnd) {
+            if (i !== 0) cells.push(word.trim());
+            word = "";
+          } else word += ch;
+          slashes = ch === "\\" ? slashes + 1 : 0;
+        }
+        if (!separatorAtEnd) cells.push(word.trim());
+        return cells;
+      }
+
+      function findEditableTable(text, cursor) {
+        let start = 0;
+        for (const token of marked.lexer(text)) {
+          if (!token.raw) continue;
+          // marked can omit blank lines between block tokens.
+          const position = text.indexOf(token.raw, start);
+          if (position < 0) return null;
+          start = position + token.raw.length;
+          if (token.type !== "table" || cursor < position || cursor > start) continue;
+          const raw = token.raw.replace(/\n+$/, "");
+          const lines = raw.split("\n");
+          if (cursor > position + raw.length || lines.some(line => /^\s{4}|^\t/.test(line))) return null;
+          const parsed = lines.map(parseTableLine);
+          const widths = parsed[1];
+          if (!widths || !widths.every(cell => /^:?-+:?$/.test(cell)) ||
+              parsed.some(cells => cells.length !== widths.length)) return null;
+          return { start: position, end: position + raw.length, align: widths, rows: [parsed[0], ...parsed.slice(2)] };
+        }
+        return null;
+      }
+
+      function formatTableCell(value) {
+        return value.replace(/(\\*)\|/g, (_, slashes) => slashes + (slashes.length % 2 ? "|" : "\\|"));
+      }
+
+      function openCellEditor() {
+        const snapshot = editingSnapshot();
+        const table = findEditableTable(snapshot.text, snapshot.start);
+        if (!table) { setStatus(editingText("noTable"), true); return; }
+        const { dialog, body, actions, message } = editingDialog(editingText("table"));
+        const original = JSON.stringify(table.rows);
+        const grid = document.createElement("table");
+        body.append(grid);
+        function draw(rowToFocus = 0, colToFocus = 0) {
+          grid.replaceChildren();
+          table.rows.forEach((row, r) => {
+            const tr = grid.insertRow();
+            row.forEach((value, c) => {
+              const cell = tr.insertCell();
+              const input = document.createElement("input");
+              input.type = "text";
+              input.value = value;
+              input.setAttribute("aria-label", String(r + 1) + ", " + String(c + 1));
+              input.addEventListener("input", () => { row[c] = input.value; });
+              cell.append(input);
+            });
+          });
+          grid.rows[rowToFocus].cells[colToFocus].firstChild.focus();
+        }
+        draw();
+        editingButton(actions, editingText("row"), () => {
+          table.rows.push(table.align.map(() => "")); draw(table.rows.length - 1);
+        }, message);
+        editingButton(actions, editingText("column"), () => {
+          table.align.push("---"); table.rows.forEach(row => row.push("")); draw(0, table.align.length - 1);
+        }, message);
+        editingButton(actions, t("ui", "ok"), () => {
+          requireEditingSnapshot(snapshot);
+          if (JSON.stringify(table.rows) !== original) {
+            const lines = [table.rows[0], table.align, ...table.rows.slice(1)];
+            const replacement = lines.map(cells => "| " + cells.map(formatTableCell).join(" | ") + " |").join("\n");
+            const next = snapshot.text.slice(0, table.start) + replacement + snapshot.text.slice(table.end);
+            applySourceTextChange(next, table.start, table.start + replacement.length);
+          }
+          dialog.close(); source.focus();
+        }, message);
+        editingButton(actions, t("ui", "cancel"), () => dialog.close(), message);
+      }
+
       function tableToTsv(table) {
         return Array.from(table.rows).map((row) => (
           Array.from(row.cells).map((cell) => (
@@ -9909,7 +10078,168 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         renderMarkdown(text);
       }
 
+      const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+      let localImageGeneration = 0;
+      const localImageUrls = new Set();
+      let pendingLocalPreviewImages = Promise.resolve();
+
+      function releaseLocalImages() {
+        localImageGeneration++;
+        for (const url of localImageUrls) URL.revokeObjectURL(url);
+        localImageUrls.clear();
+        pendingLocalPreviewImages = Promise.resolve();
+      }
+
+      function hasPngSignature(bytes) {
+        return pngSignature.every((n, i) => bytes[i] === n);
+      }
+
+      async function readLocalPng(state, rawPath) {
+        if (!state?.handle) return null;
+        const path = decodeURIComponent(rawPath.split(/[?#]/)[0]);
+        if (!/\.png$/i.test(path) || /[\\:\0]/.test(path) || path.startsWith("/")) return null;
+        let blob;
+        if (state.handle.tauriPath) {
+          const base = getPathDirectoryName(state.handle.tauriPath);
+          const parts = base.replace(/\\/g, "/").split("/");
+          for (const part of path.split("/")) {
+            if (!part || part === ".") continue;
+            if (part === "..") { if (parts.length <= 1) return null; parts.pop(); }
+            else parts.push(part);
+          }
+          const target = parts.join("/");
+          const allowed = state.directoryRootPath || base;
+          if (!isPathInsideDirectory(target, allowed)) return null;
+          const buffer = bytesToArrayBuffer(await invokeTauri("desktop_read_file_bytes", { path: target }));
+          blob = new Blob([buffer], { type: "image/png" });
+        } else {
+          const root = state.directoryRootHandle || dirState.handle;
+          if (!root || !root.resolve) return null;
+          const relative = await root.resolve(state.handle);
+          if (!relative) return null;
+          const parts = relative.slice(0, -1);
+          for (const part of path.split("/")) {
+            if (!part || part === ".") continue;
+            if (part === "..") { if (!parts.length) return null; parts.pop(); }
+            else parts.push(part);
+          }
+          const handle = await getNestedFileHandle(root, parts.join("/"));
+          const file = await handle.getFile();
+          if (file.size > MAX_FILE_BYTES) return null;
+          blob = file.slice(0, file.size, "image/png");
+        }
+        return hasPngSignature(new Uint8Array(await blob.slice(0, 8).arrayBuffer())) ? blob : null;
+      }
+
+      // Stage the sanitized nodes in an inert template. A relative PNG must never
+      // be fetched against the HTML application's own origin.
+      function displayLocalPreviewHtml(safeHtml) {
+        const fragment = document.createElement("template");
+        fragment.innerHTML = safeHtml;
+        const refs = new Map();
+        for (const image of fragment.content.querySelectorAll("img[src]")) {
+          const raw = image.getAttribute("src");
+          if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(raw) || !/\.png(?:[?#]|$)/i.test(raw)) continue;
+          image.removeAttribute("src");
+          image.dataset.localImagePath = raw;
+          if (!refs.has(raw)) refs.set(raw, []);
+          refs.get(raw).push(image);
+        }
+        preview.replaceChildren(fragment.content);
+        const generation = localImageGeneration;
+        const state = getDocumentState();
+        pendingLocalPreviewImages = (async () => {
+          for (const [raw, elements] of refs) {
+            if (generation !== localImageGeneration) return;
+            let blob;
+            try { blob = await readLocalPng(state, raw); } catch { continue; }
+            if (!blob || generation !== localImageGeneration || state?.id !== activeDocumentId) continue;
+            const url = URL.createObjectURL(blob);
+            localImageUrls.add(url);
+            for (const image of elements) image.src = url;
+            await Promise.allSettled(elements.map(image => image.decode()));
+          }
+        })();
+      }
+
+      async function writeInsertedImage(state, file, name) {
+        if (file.size > MAX_FILE_BYTES || !hasPngSignature(new Uint8Array(await file.slice(0, 8).arrayBuffer()))) {
+          throw new Error(editingText("image") + " (64 MiB)");
+        }
+        if (isTauri && state.handle?.tauriPath) {
+          const parentPath = getPathDirectoryName(state.handle.tauriPath);
+          try { await invokeTauri("desktop_create_directory", { parentPath, name: "images" }); }
+          catch (err) { if (!String(err).includes("ALREADY_EXISTS")) throw err; }
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          await invokeTauriRaw("desktop_create_png", bytes, {
+            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(parentPath + "/images/" + name)
+          });
+          return;
+        }
+        const root = state.directoryRootHandle || dirState.handle;
+        const path = root && root.resolve && state.handle ? await root.resolve(state.handle) : null;
+        if (!path || !path.length) throw new Error(editingText("folder"));
+        if (await root.requestPermission({ mode: "readwrite" }) !== "granted") throw new Error(t("status", "permissionDenied"));
+        let parent = root;
+        for (const part of path.slice(0, -1)) parent = await parent.getDirectoryHandle(part);
+        const folder = await parent.getDirectoryHandle("images", { create: true });
+        try { await folder.getFileHandle(name); throw new Error(t("status", "fileNameExists")); }
+        catch (err) { if (err.name !== "NotFoundError") throw err; }
+        const destination = await folder.getFileHandle(name, { create: true });
+        // The UUID is freshly generated for this operation; check again under
+        // the writable handle so an existing non-empty file is never truncated.
+        try { await writeFileHandleBytes(destination, file, new ArrayBuffer(0)); }
+        catch (err) {
+          const entry = await folder.getFileHandle(name).catch(() => null);
+          if (entry && await entry.isSameEntry(destination) && (await entry.getFile()).size === 0) {
+            await folder.removeEntry(name).catch(() => {});
+          }
+          throw err;
+        }
+      }
+
+      function openImageInsertion(pastedFile) {
+        const snapshot = editingSnapshot();
+        const state = getDocumentState();
+        if (!state.handle || (!isTauri && !(state.directoryRootHandle || dirState.handle)?.resolve)) throw new Error(editingText("folder"));
+        const { dialog, body, actions, message } = editingDialog(editingText("image"));
+        const picker = document.createElement("input");
+        picker.type = "file"; picker.accept = "image/png,.png";
+        if (!pastedFile) body.append(picker);
+        const description = document.createElement("input");
+        description.type = "text";
+        const label = document.createElement("label");
+        label.append(editingText("alt") + " ", description);
+        const name = "image-" + crypto.randomUUID() + ".png";
+        const relative = "images/" + name;
+        const caption = document.createElement("p");
+        caption.textContent = relative;
+        body.append(caption, label);
+        let writing = false;
+        dialog.addEventListener("cancel", event => { if (writing) event.preventDefault(); });
+        const cancel = editingButton(actions, t("ui", "cancel"), () => dialog.close(), message);
+        editingButton(actions, t("ui", "ok"), async () => {
+          requireEditingSnapshot(snapshot);
+          const file = pastedFile || picker.files[0];
+          if (!file) { picker.focus(); return; }
+          writing = true; cancel.disabled = true;
+          try {
+            await writeInsertedImage(state, file, name);
+            requireEditingSnapshot(snapshot);
+            const alt = description.value.replace(/[\\[\]]/g, ch => "\\" + ch);
+            const snippet = "![" + alt + "](" + relative + ")";
+            const next = snapshot.text.slice(0, snapshot.start) + snippet + snapshot.text.slice(snapshot.end);
+            const pos = snapshot.start + snippet.length;
+            applySourceTextChange(next, pos, pos);
+            dialog.close(); source.focus();
+          } catch (err) { throw new Error(String(err.message || err) + " · " + relative); }
+          finally { writing = false; cancel.disabled = false; }
+        }, message);
+        (pastedFile ? description : picker).focus();
+      }
+
       function renderMarkdown(markdownText) {
+        releaseLocalImages();
         try {
           const normalized = markdownText || "";
           if (
@@ -9927,7 +10257,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           const safeHtml = sanitizeMarkdownHtml(rawHtml);
           preview.classList.remove("hint", "error");
           if (safeHtml) {
-            preview.innerHTML = safeHtml;
+            displayLocalPreviewHtml(safeHtml);
           } else {
             setPreviewHint(t("preview", "empty"));
           }
@@ -11316,63 +11646,23 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       async function ensureWritableHandle(options = {}) {
-        const forcePick = !!options.forcePick;
         const documentId = options.documentId || activeDocumentId;
         const state = getDocumentState(documentId);
         if (!state || state.closed) return null;
-        if (state.handle && !forcePick) return "existing";
-        if (!supportsFsAccess) {
-          setStatus(t("status", "noFsSave"), true);
-          return null;
-        }
-
+        if (state.handle && !options.forcePick) return { handle: state.handle, existing: true };
+        if (!supportsFsAccess) { setStatus(t("status", "noFsSave"), true); return null; }
         setStatus(t("status", "askPickTarget"), false);
-        if (isTauri) {
-          const path = await invokeTauri("desktop_save_file_dialog", { suggestedName: getSuggestedSaveName(state) });
-          if (!path) {
-            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
-            return null;
-          }
-          if (!getDocumentState(documentId)) return null;
-          state.handle = getTauriFileHandle(path);
-          state.name = state.handle.name;
-          state.directoryRootHandle = getPathDirectoryName(path);
-          state.directoryRootPath = getPathDirectoryName(path);
-          state.directoryRootName = getPathDirectoryName(path);
-          state.directoryEntryPath = "";
-          state.directoryEntryTauriPath = path;
-          if (activeDocumentId === documentId) {
-            setAppDocumentTitle(state.name);
-            setDirtyState(state.unsaved);
-          }
-          return "new";
-        }
-
-        let handle;
         try {
           const suggestedName = getSuggestedSaveName(state);
-          handle = await window.showSaveFilePicker({ suggestedName });
-        } catch (e) {
-          if (e && e.name === "AbortError") {
-            if (activeDocumentId === documentId) setStatus(t("status", "saveCanceled"), false);
-            return null;
-          }
-          throw e;
+          const path = isTauri ? await invokeTauri("desktop_save_file_dialog", { suggestedName }) : "";
+          const handle = isTauri ? (path ? getTauriFileHandle(path) : null) : await window.showSaveFilePicker({ suggestedName });
+          if (!getDocumentState(documentId) || !handle) return null;
+          return { handle, existing: false };
+        } catch (err) {
+          if (err.name !== "AbortError") throw err;
+          if (documentId === activeDocumentId) setStatus(t("status", "saveCanceled"), false);
+          return null;
         }
-        if (!handle) return null;
-        if (!getDocumentState(documentId)) return null;
-        state.handle = handle;
-        state.name = handle.name;
-        state.directoryRootHandle = null;
-        state.directoryRootPath = "";
-        state.directoryRootName = "";
-        state.directoryEntryPath = "";
-        state.directoryEntryTauriPath = "";
-        if (activeDocumentId === documentId) {
-          setAppDocumentTitle(handle.name);
-          setDirtyState(state.unsaved);
-        }
-        return "new";
       }
 
       function applyLineEnding(text, lineEnding) {
@@ -11423,6 +11713,192 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return roundtrip !== normalized;
       }
 
+      const HISTORY_MAX_BYTES = 100 * 1024 * 1024;
+      let historyDatabase;
+      function historyDb() {
+        if (!historyDatabase) historyDatabase = new Promise((resolve, reject) => {
+          const req = indexedDB.open("offline-md-editor-versions", 1);
+          let blocked = false;
+          req.onblocked = () => {
+            blocked = true;
+            historyDatabase = null;
+            reject(new Error(editingText("history") + " (IndexedDB: blocked)"));
+          };
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            db.createObjectStore("documents", { keyPath: "id" });
+            db.createObjectStore("versions", { keyPath: "id" });
+          };
+          req.onsuccess = () => {
+            if (blocked) { req.result.close(); return; }
+            req.result.onversionchange = () => { req.result.close(); historyDatabase = null; };
+            resolve(req.result);
+          };
+          req.onerror = () => { if (!blocked) historyDatabase = null; reject(req.error); };
+        });
+        return historyDatabase;
+      }
+
+      function idbResult(req) {
+        return new Promise((resolve, reject) => {
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+
+      function historyTransaction(tx) {
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = () => resolve();
+          tx.onabort = () => reject(tx.error || new Error("History transaction aborted"));
+          tx.onerror = () => reject(tx.error || new Error("History transaction failed"));
+        });
+      }
+
+      async function historyDocument(handle) {
+        if (!handle) return null;
+        const db = await historyDb();
+        const docs = await idbResult(db.transaction("documents").objectStore("documents").getAll());
+        for (const doc of docs) {
+          if (handle.tauriPath) {
+            if (doc.path === normalizePathForCompare(handle.tauriPath)) return doc;
+          } else if (doc.handle && doc.handle.name === handle.name && await handle.isSameEntry(doc.handle)) return doc;
+        }
+        return null;
+      }
+
+      async function setHistoryEnabled(handle, enabled) {
+        const db = await historyDb();
+        const record = await historyDocument(handle) || {
+          id: crypto.randomUUID(),
+          ...(handle.tauriPath ? { path: normalizePathForCompare(handle.tauriPath) } : { handle })
+        };
+        const tx = db.transaction("documents", "readwrite");
+        const done = historyTransaction(tx);
+        tx.objectStore("documents").put({ ...record, enabled });
+        await done;
+      }
+
+      function pruneOldVersions(versions, now) {
+        let size = 0;
+        const counts = new Map();
+        return versions.slice().sort((a, b) => b.when - a.when || b.id.localeCompare(a.id)).filter(row => {
+          const count = counts.get(row.doc) || 0;
+          if (row.when < now - 7 * 86400000 || count >= 10 || size + row.bytes.size > HISTORY_MAX_BYTES) return true;
+          size += row.bytes.size;
+          counts.set(row.doc, count + 1);
+          return false;
+        });
+      }
+
+      async function updateHistoryVersions({ append, removeDoc } = {}) {
+        const db = await historyDb();
+        const tx = db.transaction("versions", "readwrite");
+        const done = historyTransaction(tx);
+        const store = tx.objectStore("versions");
+        // Store Blobs so indexedDB can page large bodies independently of metadata.
+        const read = store.getAll();
+        let result = [];
+        read.onsuccess = () => {
+          let rows = read.result;
+          if (removeDoc) rows = rows.filter(v => { if (v.doc !== removeDoc) return true; store.delete(v.id); return false; });
+          if (append) {
+            const newest = rows.filter(v => v.doc === append.doc).sort((a, b) => b.when - a.when)[0];
+            if (!newest || newest.digest !== append.digest) { store.put(append); rows.push(append); }
+          }
+          const expired = new Set(pruneOldVersions(rows, Date.now()).map(v => v.id));
+          expired.forEach(id => store.delete(id));
+          result = rows.filter(row => !expired.has(row.id));
+        };
+        await done;
+        return result;
+      }
+
+      function equalFileBytes(a, b) {
+        if (!a || !b || a.byteLength !== b.byteLength) return false;
+        const left = new Uint8Array(a), right = new Uint8Array(b);
+        return left.every((value, index) => value === right[index]);
+      }
+
+      async function rememberVersion(handle, original, originalBuffer, originalEncoding) {
+        if (!original) return;
+        const document = await historyDocument(handle);
+        if (!document?.enabled) return;
+        const loaded = decodeMarkdownBuffer(original);
+        // A user-selected legacy encoding takes precedence for an unchanged disk file.
+        const encoding = equalFileBytes(original, originalBuffer) && originalEncoding ? originalEncoding : loaded.encoding;
+        const digest = await hashFileBytes(original);
+        await updateHistoryVersions({ append: { id: crypto.randomUUID(), doc: document.id, when: Date.now(), encoding,
+          bom: loaded.hasBom, ending: detectLineEnding(decodeBuffer(original, encoding)), digest, bytes: new Blob([original]) } });
+      }
+
+      async function openVersionHistory() {
+        const state = getDocumentState();
+        const handle = state?.handle;
+        if (!handle) throw new Error(editingText("folder"));
+        const { dialog, body, actions, message } = editingDialog(editingText("history") + " · " + state.name);
+        const explain = document.createElement("p");
+        explain.textContent = editingText("storage") + " · " + editingText("limits");
+        const usage = document.createElement("p");
+        const toggle = document.createElement("input");
+        toggle.type = "checkbox";
+        const label = document.createElement("label");
+        label.append(toggle, " " + editingText("keep"));
+        const list = document.createElement("ol");
+        body.append(explain, usage, label, list);
+        const reload = async () => {
+          const record = await historyDocument(handle);
+          const versions = await updateHistoryVersions();
+          const rows = versions.filter(v => v.doc === record?.id).sort((a, b) => b.when - a.when);
+          const byteCount = records => records.reduce((sum, row) => sum + row.bytes.size, 0).toLocaleString(currentLang) + " B";
+          usage.textContent = editingText("usage").replace("{doc}", byteCount(rows)).replace("{total}", byteCount(versions));
+          list.replaceChildren(); toggle.checked = !!record?.enabled;
+          if (!rows.length) message.textContent = editingText("noHistory");
+          else message.textContent = "";
+          for (const row of rows) {
+            const li = document.createElement("li");
+            const date = new Date(row.when + 7 * 86400000).toLocaleString(currentLang);
+            li.append(new Date(row.when).toLocaleString(currentLang) + " · " + row.encoding + " / " + row.ending.toUpperCase() +
+              (row.bom ? " BOM" : "") + " · " + editingText("expires").replace("{date}", date) + " ");
+            list.append(li);
+            editingButton(li, editingText("restore"), async () => {
+              const buffer = await row.bytes.arrayBuffer();
+              const loaded = { buffer, text: decodeBuffer(buffer, row.encoding, { ignoreBOM: false }), encoding: row.encoding, hasBom: row.bom };
+              if (isBinaryBuffer(buffer)) throw new Error(t("status", "chooseMdOnly") + state.name);
+              const restored = addDocumentState({ name: state.name });
+              applyLoadedContent(state.name, loaded, null, { documentId: restored.id, viewModeKey: state.name });
+              restored.unsaved = true;
+              activateDocumentState(restored.id); setDirtyState(true);
+              dialog.close();
+            }, message);
+          }
+        };
+        toggle.disabled = true;
+        toggle.addEventListener("change", async () => {
+          toggle.disabled = true;
+          try { await setHistoryEnabled(handle, toggle.checked); }
+          catch (err) { message.textContent = String(err); toggle.checked = !toggle.checked; }
+          finally { toggle.disabled = false; }
+        });
+        editingButton(actions, editingText("clear"), async () => {
+          message.replaceChildren();
+          const confirm = editingButton(message, editingText("clear") + "?", async () => {
+            const selected = await historyDocument(handle);
+            if (selected) await updateHistoryVersions({ removeDoc: selected.id });
+            await reload();
+            confirm.remove();
+          }, message);
+          confirm.focus();
+        }, message);
+
+
+        editingButton(actions, t("ui", "ok"), () => dialog.close(), message);
+        try { await reload(); toggle.disabled = false; } catch (err) { message.textContent = String(err); }
+      }
+
+      function runEditingAction(action) {
+        Promise.resolve().then(action).catch(err => setStatus(String(err.message || err), true));
+      }
+
       async function saveToCurrentFile() {
         return saveFile({ forcePick: false });
       }
@@ -11431,9 +11907,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return saveFile({ forcePick: true });
       }
 
-      async function writeFileHandleBytes(targetHandle, data) {
-        const writable = await targetHandle.createWritable();
+      async function writeFileHandleBytes(targetHandle, data, expected) {
+        const writable = await targetHandle.createWritable({ mode: "exclusive" });
         try {
+          if (expected !== undefined && !equalFileBytes(await readSaveTarget(targetHandle), expected)) throw new Error(editingText("conflict"));
           await writable.write(data);
           await writable.close();
         } catch (err) {
@@ -11446,6 +11923,22 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           }
           throw err;
         }
+      }
+
+      async function readSaveTarget(handle) {
+        if (handle.tauriPath) {
+          const exists = await invokeTauri("desktop_save_target_exists", { path: handle.tauriPath });
+          if (!exists) return null;
+          return bytesToArrayBuffer(await invokeTauri("desktop_read_file_bytes", { path: handle.tauriPath }));
+        }
+        const file = await handle.getFile();
+        if (file.size > MAX_FILE_BYTES) throw new Error("64 MiB");
+        return file.arrayBuffer();
+      }
+
+      async function hashFileBytes(buffer) {
+        const bytes = await crypto.subtle.digest("SHA-256", buffer);
+        return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, "0")).join("");
       }
 
       async function saveFile(options = {}) {
@@ -11469,71 +11962,85 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           snapshot.bom = state.bom;
           snapshot.lineEnding = state.lineEnding;
         }
-        const handleState = await ensureWritableHandle({ forcePick, documentId: saveDocumentId });
-        if (!handleState) {
-          return;
-        }
-        if (handleState === "existing" && !forcePick) {
-          // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
-          // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
-          // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと
-          // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
-          // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
-          const confirmed = await openConfirmDialog("", t("status", "saveHint"));
-          if (!confirmed) {
-            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+        // Reject a simultaneous save for this document before displaying another picker.
+        if (state.saveInProgress) throw new Error(editingText("stale"));
+        state.saveInProgress = true;
+        try {
+          const handleState = await ensureWritableHandle({ forcePick, documentId: saveDocumentId });
+          if (!handleState) {
             return;
           }
-        }
-        if (detectEncodingLoss(snapshot.text, snapshot.encoding, snapshot.lineEnding)) {
-          const encodingLabel = snapshot.encoding.toUpperCase();
-          const warningMessage = (t("status", "encodingLossWarning") || "").replace("{encoding}", encodingLabel);
-          const confirmed = await openConfirmDialog("", warningMessage);
-          if (!confirmed) {
-            if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+          if (handleState.existing && !forcePick) {
+            // BUG-SAVE-SYNC-CONFIRM-001: 同期 window.confirm は Tauri webview では
+            // ネイティブモーダル（「tauri.localhost の内容」）として出て webview と IPC を止める。
+            // BUG-CLOSEGUARD-SYNC-CONFIRM-002 で close guard を openConfirmDialog へ統一したのと
+            // 同じ理由で、保存側も同じダイアログへ揃える。await をまたぐため、確定後は
+            // 下の getDocumentState(saveDocumentId) で対象文書が生きているか改めて確認する。
+            const confirmed = await openConfirmDialog("", t("status", "saveHint"));
+            if (!confirmed) {
+              if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+              return;
+            }
+          }
+          if (detectEncodingLoss(snapshot.text, snapshot.encoding, snapshot.lineEnding)) {
+            const encodingLabel = snapshot.encoding.toUpperCase();
+            const warningMessage = (t("status", "encodingLossWarning") || "").replace("{encoding}", encodingLabel);
+            const confirmed = await openConfirmDialog("", warningMessage);
+            if (!confirmed) {
+              if (activeDocumentId === saveDocumentId) setStatus(t("status", "saveCanceled"), false);
+              return;
+            }
+          }
+          const target = getDocumentState(saveDocumentId);
+          if (!target || target.closed) return;
+          const destination = handleState.handle;
+          if (!isTauri && await destination.requestPermission({ mode: "readwrite" }) !== "granted") {
+            if (saveDocumentId === activeDocumentId) setStatus(t("status", "permissionDenied"), true);
             return;
           }
-        }
-        const target = getDocumentState(saveDocumentId);
-        if (!target || target.closed || !target.handle) return;
-        const bytes = encodeFileContent(snapshot.text, snapshot.encoding, snapshot.bom, snapshot.lineEnding);
-        if (isTauri && target.handle.tauriPath) {
-          await invokeTauriRaw("desktop_write_file_bytes", bytes, {
-            [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(target.handle.tauriPath)
-          });
-          target.encoding = snapshot.encoding;
+          const original = await readSaveTarget(destination);
+          if (handleState.existing && target.buffer && !equalFileBytes(original, target.buffer)) throw new Error(editingText("conflict"));
+          if (!handleState.existing && original?.byteLength > 0 &&
+              !await openConfirmDialog(destination.name, t("status", "saveHint"))) return;
+          if (original && (handleState.existing || original.byteLength > 0)) {
+            try {
+              await rememberVersion(destination, original, target.buffer, target.encoding);
+            } catch (err) {
+              if (!await openConfirmDialog("", editingText("historyFail") + "\n" + String(err.message || err))) return;
+            }
+          }
+          if (!getDocumentState(saveDocumentId) || target.readOnly) return;
+          const bytes = encodeFileContent(snapshot.text, snapshot.encoding, snapshot.bom, snapshot.lineEnding);
+          if (isTauri && destination.tauriPath) {
+            await invokeTauriRaw("desktop_write_file_bytes", bytes, {
+              [TAURI_RAW_PATH_HEADER]: encodeTauriPathHeader(destination.tauriPath),
+              "x-expected-version": original === null ? "new" : await hashFileBytes(original)
+            });
+          } else await writeFileHandleBytes(destination, bytes, original);
+          if (!getDocumentState(saveDocumentId)) return;
+          if (!handleState.existing) {
+            const dir = destination.tauriPath ? getPathDirectoryName(destination.tauriPath) : "";
+            Object.assign(target, { handle: destination, name: destination.name,
+              directoryRootHandle: dir || null, directoryRootPath: dir, directoryRootName: dir,
+              directoryEntryPath: "", directoryEntryTauriPath: destination.tauriPath || "" });
+          }
+          const current = saveDocumentId === activeDocumentId ? source.value : target.text;
+          const encoding = saveDocumentId === activeDocumentId ? encodingSelect.value : target.encoding;
+          const bom = saveDocumentId === activeDocumentId ? bomCheckbox.checked : target.bom;
+          const ending = saveDocumentId === activeDocumentId ? lineEndingSelect.value : target.lineEnding;
           target.buffer = bytes.buffer;
-          target.bom = snapshot.bom;
-          target.lineEnding = snapshot.lineEnding;
-          target.text = snapshot.text;
+          target.text = current;
           target.baselineText = snapshot.text;
-          target.unsaved = false;
+          target.unsaved = current !== snapshot.text || (encoding === "auto" ? "utf-8" : encoding) !== snapshot.encoding ||
+            bom !== snapshot.bom || ending !== snapshot.lineEnding;
+          if (!target.unsaved) Object.assign(target, { encoding: snapshot.encoding, bom: snapshot.bom, lineEnding: snapshot.lineEnding });
           if (activeDocumentId === saveDocumentId) {
-            setEncodingSelectValue(target.encoding);
+            setAppDocumentTitle(target.name);
+            if (!target.unsaved) setEncodingSelectValue(target.encoding);
             setDirtyState(target.unsaved);
             setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
-          } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
-          return;
-        }
-        const permission = await target.handle.requestPermission({ mode: "readwrite" });
-        if (permission !== "granted") {
-          if (activeDocumentId === saveDocumentId) setStatus(t("status", "permissionDenied"), true);
-          return;
-        }
-        await writeFileHandleBytes(target.handle, bytes);
-        if (!getDocumentState(saveDocumentId)) return;
-        target.encoding = snapshot.encoding;
-        target.buffer = bytes.buffer;
-        target.bom = snapshot.bom;
-        target.lineEnding = snapshot.lineEnding;
-        target.text = snapshot.text;
-        target.baselineText = snapshot.text;
-        target.unsaved = false;
-        if (activeDocumentId === saveDocumentId) {
-          setEncodingSelectValue(target.encoding);
-          setDirtyState(target.unsaved);
-          setStatus(t("status", forcePick ? "saveAsDone" : "saveDone"), false);
-        } else if (typeof renderDocumentTabs === "function") renderDocumentTabs();
+          } else renderDocumentTabs();
+        } finally { state.saveInProgress = false; }
       }
 
       async function loadFileReadOnly(file, fileHandle = null, options = {}) {
@@ -14695,6 +15202,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         toggleAppMenu();
       });
 
+      document.getElementById("versionHistoryBtn").addEventListener("click", () => {
+        closeAppMenu(); runEditingAction(openVersionHistory);
+      });
+      source.addEventListener("paste", event => {
+        const png = Array.from(event.clipboardData?.items || []).find(item => item.kind === "file" && item.type === "image/png");
+        if (!png || fileState.readOnly || fileState.viewMode !== "markdown") return;
+        const file = png.getAsFile();
+        if (!file) return;
+        event.preventDefault(); runEditingAction(() => openImageInsertion(file));
+      });
       resetSettingsBtn.addEventListener("click", async () => {
         closeAppMenu();
         const confirmed = await openConfirmDialog(
@@ -15954,6 +16471,9 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           { id: "bookmarks", label: t("ui", "readingBookmarks"), shortcut: "", run: displayReadingBookmarks },
           { id: "outline", label: t("ui", "cmdOutline"), shortcut: "", run: () => toggleOutline() },
           { id: "zen", label: t("ui", "cmdZen"), shortcut: "", run: () => toggleZenMode() },
+          { id: "table", label: editingText("table"), shortcut: "", run: () => runEditingAction(openCellEditor) },
+          { id: "history", label: editingText("history"), shortcut: "", run: () => runEditingAction(openVersionHistory) },
+          { id: "insertPng", label: editingText("image"), shortcut: "", run: () => runEditingAction(() => openImageInsertion()) },
           { id: "diff", label: t("ui", "cmdDiff"), shortcut: "", run: () => openDiffView() },
           { id: "recent", label: t("ui", "cmdRecent"), shortcut: "", run: () => openRecentFiles() },
           { id: "themeDark", label: t("ui", "cmdThemeDark"), shortcut: "", run: () => applyTheme("dark") },
@@ -16721,6 +17241,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       applyFontScale(detectInitialFontScale());
       applyDensity(detectInitialDensity());
       setupUiTooltipHandlers();
+      updateHistoryVersions().catch(() => {}); // Expire old recovery copies even when history is not opened.
       applyLanguage(detectInitialLanguage());
       if (window.ResizeObserver && sourceHeaderLeft) {
         const modeLabelResizeObserver = new ResizeObserver(() => {

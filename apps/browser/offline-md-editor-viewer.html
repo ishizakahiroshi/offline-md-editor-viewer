@@ -14936,23 +14936,40 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         return true;
       }
 
+      function stepSourceHistory(state, redo) {
+        const from = redo ? state.redoStack : state.undoStack;
+        const to = redo ? state.undoStack : state.redoStack;
+        const snapshot = from.pop();
+        if (!snapshot) return;
+        to.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
+        restoreDocumentHistorySnapshot(snapshot);
+      }
+
+      function handleSourceHistoryKey(event) {
+        if (event.defaultPrevented || event.altKey || !(event.ctrlKey || event.metaKey) || event.isComposing || sourceIsComposing) return;
+        const key = event.key.toLowerCase();
+        if (key !== "z" && !(key === "y" && !event.shiftKey)) return;
+        const state = getDocumentState();
+        if (!state || state.readOnly) return;
+        // A programmatic edit can be the first edit in this tab. Chromium then
+        // has no native history and pressing Undo does not dispatch beforeinput.
+        event.preventDefault();
+        stepSourceHistory(state, key === "y" || event.shiftKey);
+      }
+
       function handleSourceBeforeInput(event) {
         const state = getDocumentState();
         if (!state || state.readOnly) return;
         if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
           event.preventDefault();
-          const from = event.inputType === "historyUndo" ? state.undoStack : state.redoStack;
-          const to = event.inputType === "historyUndo" ? state.redoStack : state.undoStack;
-          const snapshot = from.pop();
-          if (!snapshot) return;
-          to.push({ text: source.value, selectionStart: source.selectionStart || 0, selectionEnd: source.selectionEnd || 0 });
-          restoreDocumentHistorySnapshot(snapshot);
+          stepSourceHistory(state, event.inputType === "historyRedo");
           return;
         }
         if (sourceIsComposing || event.isComposing === true || event.inputType === "insertCompositionText") return;
         pushDocumentUndoSnapshot(state, source.value, source.selectionStart || 0, source.selectionEnd || 0);
       }
 
+      source.addEventListener("keydown", handleSourceHistoryKey);
       source.addEventListener("beforeinput", handleSourceBeforeInput);
       source.addEventListener("compositionstart", handleSourceCompositionStart);
       source.addEventListener("compositionend", handleSourceCompositionEnd);

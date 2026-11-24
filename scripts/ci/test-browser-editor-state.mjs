@@ -271,6 +271,8 @@ for (const name of [
   "handleSourceCompositionEnd",
   "handleSourceInput",
   "restoreDocumentHistorySnapshot",
+  "stepSourceHistory",
+  "handleSourceHistoryKey",
   "handleSourceBeforeInput",
   "setCardVisibility",
   "setOutlineVisible",
@@ -323,6 +325,14 @@ context.handleSourceBeforeInput({ inputType: "historyUndo", preventDefault: () =
 assert.equal(undoPrevented, true, "document history intercepts native undo after document switches");
 assert.equal(context.source.value, "before", "undo restores only the active document snapshot");
 assert.equal(context.fileState.redoStack[0].text, "first", "undo keeps an active-document redo snapshot");
+
+const historyKey = (key, shiftKey = false) => context.handleSourceHistoryKey({
+  ctrlKey: true, key, shiftKey, preventDefault() {},
+});
+historyKey("z", true);
+assert.equal(context.source.value, "first", "the source redo shortcut uses the active document stack");
+historyKey("z");
+assert.equal(context.source.value, "before", "one shortcut can undo a programmatic edit without a native history event");
 
 // Seeded as composing: switching tabs mid-conversion must clear the marker, otherwise the next
 // document keeps the overlay hidden and the textarea opaque.

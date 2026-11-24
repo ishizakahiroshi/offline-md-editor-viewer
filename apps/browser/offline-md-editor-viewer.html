@@ -16551,8 +16551,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const exact = items.filter(item => item.key === mark.headingKey);
         const go = item => {
           readingMarkDialog.close();
-          if (!cardVisibility.source && !jumpReadingPreviewHeading(item)) setCardVisibility("source", true, { persist: false });
+          const previewHeading = cardVisibility.preview && readingPreviewHeading(item);
+          if (!cardVisibility.source && !previewHeading) setCardVisibility("source", true, { persist: false });
           jumpReadingOffset(item.start, 0, item.line);
+          if (previewHeading) assignSyncedScrollTop(preview, getPreviewElementTop(previewHeading));
         };
         if (exact.length === 1 && mark.duplicates === 1) { go(exact[0]); return; }
         bookmarkMessage(t("ui", "readingMarkMissing"));
@@ -16568,13 +16570,11 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
       }
 
-      function jumpReadingPreviewHeading(heading) {
+      function readingPreviewHeading(heading) {
         const nodes = [...preview.querySelectorAll("h" + heading.level)];
         const items = parseOutlineHeadings(source.value).filter(item => item.level === heading.level);
         const index = items.findIndex(item => item.start === heading.start);
-        if (nodes.length !== items.length || !nodes[index]) return false;
-        nodes[index].scrollIntoView({ block: "start" });
-        return true;
+        return nodes.length === items.length ? nodes[index] : null;
       }
 
       async function displayReadingBookmarks() {

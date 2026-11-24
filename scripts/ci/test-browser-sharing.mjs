@@ -94,6 +94,15 @@ if (process.argv[2] === "--chromium") {
       await openSharingPrint();
       check(!sharingPrintButton.disabled && sharingPaper.textContent.includes("Heading") && !sharingPaper.querySelector("button"), "clean print paper");
       sharingDialog.close();
+      source.value = "10. first\n11. second\n\nprefix # literal\n\n- [x] done\n- [ ] pending";
+      renderMarkdown(source.value);
+      const item = preview.querySelectorAll("ol li")[1].firstChild;
+      check(sharingCapture(select(item,0,item,6)).markdown === "11. second", "ordered list numbering");
+      const literal = preview.querySelector("p").firstChild;
+      check(sharingCapture(select(literal,7,literal,16)).markdown === "\\# literal", "literal start after selection");
+      await openSharingPrint();
+      check(sharingPaper.textContent.includes("☑") && sharingPaper.textContent.includes("☐"), "printed task state");
+      sharingDialog.close();
       const held = letter.snapshot;
       source.value = "x".repeat(PREVIEW_RENDER_SOFT_LIMIT_CHARS + 1);
       renderMarkdown(source.value);

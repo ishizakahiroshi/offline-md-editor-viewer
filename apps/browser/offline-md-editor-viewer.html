@@ -8618,10 +8618,16 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
       }
 
       function sharingClean(root) {
+        root.querySelectorAll('input[type="checkbox"]').forEach(box => {
+          const mark = document.createElement("span");
+          mark.dataset.sharingCheck = box.checked ? "x" : " ";
+          mark.textContent = box.checked ? "☑" : "☐";
+          box.replaceWith(mark);
+        });
         root.querySelectorAll("button,input,select,textarea,form,iframe,script,style,.code-copy-btn,.table-copy-btn").forEach(node => node.remove());
         [root, ...root.querySelectorAll("*")].forEach(node => {
           for (const attr of Array.from(node.attributes)) {
-            if (!["href","src","alt","title","start","colspan","rowspan","data-local-image-path"].includes(attr.name)) node.removeAttribute(attr.name);
+            if (!["href","src","alt","title","start","colspan","rowspan","data-local-image-path","data-sharing-check"].includes(attr.name)) node.removeAttribute(attr.name);
           }
         });
       }
@@ -8711,6 +8717,13 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         }
         const holder = document.createElement("div");
         holder.appendChild(fragment);
+        const originalLists = [block, ...block.querySelectorAll("ol")].filter(el => el.tagName === "OL" && part.intersectsNode(el));
+        Array.from(holder.querySelectorAll("ol")).forEach((list, index) => {
+          const original = originalLists[index];
+          if (!original) return;
+          const first = Array.from(original.children).findIndex(li => li.tagName === "LI" && part.intersectsNode(li));
+          if (first > 0) list.start = original.start + first;
+        });
         sharingClean(holder);
         return holder;
       }
@@ -8739,7 +8752,10 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           case "BR": return "  \n";
           case "HR": return "---\n\n";
           case "BLOCKQUOTE": return inner().trimEnd().split("\n").map(line => "> " + line).join("\n") + "\n\n";
-          case "P": return inner() + "\n\n";
+          case "SPAN": return node.hasAttribute("data-sharing-check") ? "[" + node.dataset.sharingCheck + "]" : inner();
+          case "P": return inner()
+            .replace(/^( {0,3})(#{1,6}(?=\s|$)|>|[-+](?=\s|$)|[-=]{3,}(?=\s*$))/gm, "$1\\$2")
+            .replace(/^( {0,3}\d{1,9})([.)])(?=\s)/gm, "$1\\$2") + "\n\n";
           case "H1": case "H2": case "H3": case "H4": case "H5": case "H6":
             return "#".repeat(Number(node.tagName[1])) + " " + inner() + "\n\n";
           case "OL": case "UL": {
@@ -8789,6 +8805,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         if (!markdown.length) return null;
         const plain = sharingPlain(selected).replace(/\n+$/, "");
         selected.querySelectorAll("[data-local-image-path]").forEach(img => img.removeAttribute("data-local-image-path"));
+        selected.querySelectorAll("[data-sharing-check]").forEach(mark => mark.removeAttribute("data-sharing-check"));
         return {snapshot, markdown:markdown.join("\n\n"), html:sanitizeMarkdownHtml(selected.innerHTML), plain};
       }
 

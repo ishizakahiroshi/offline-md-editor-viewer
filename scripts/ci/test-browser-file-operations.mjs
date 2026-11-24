@@ -430,6 +430,33 @@ vm.runInNewContext(extractFunction("ensureWritableHandle"), saveContext);
 await assert.rejects(saveContext.saveFile({ forcePick: true }), /conflict/);
 assert.equal(b.baselineText, "B before");
 
+// Exercise a full successful legacy-encoding save with the bundled codec and
+// the real loss check, including the visible dirty indicator and final status.
+const sjisHandle = { requestPermission: async () => "granted" };
+const sjisDoc = { id: "legacy", text: "昨日\n今日", encoding: "shift_jis", bom: false,
+  lineEnding: "crlf", handle: sjisHandle, readOnly: false, closed: false, unsaved: true };
+const visible = {};
+const legacySave = vm.createContext({
+  ...saveContext, TextEncoder, TextDecoder, Uint8Array, activeDocumentId: "legacy",
+  getDocumentState: () => sjisDoc, source: { value: sjisDoc.text },
+  ensureWritableHandle: async () => ({ existing: true, handle: sjisHandle }),
+  readSaveTarget: async () => new ArrayBuffer(0), rememberVersion: async () => {},
+  openConfirmDialog: async () => true, encodingSelect: { value: "shift_jis" },
+  lineEndingSelect: { value: "crlf" }, setDirtyState: dirty => { visible.dirty = dirty; },
+  setStatus: status => { visible.status = status; },
+  writeFileHandleBytes: async (_handle, bytes) => { visible.bytes = bytes; },
+});
+vm.runInContext(fs.readFileSync(new URL("../../apps/browser/lib/encoding.min.js", import.meta.url), "utf8"), legacySave);
+legacySave.Encoding = legacySave.window.Encoding;
+for (const name of ["applyLineEnding", "detectEncodingLoss", "encodeFileContent", "saveFile"]) {
+  vm.runInContext(extractFunction(name), legacySave);
+}
+await legacySave.saveFile();
+assert.equal(new TextDecoder("shift_jis").decode(visible.bytes), "昨日\r\n今日");
+assert.equal(visible.status, "saveDone");
+assert.equal(visible.dirty, false);
+assert.equal(sjisDoc.unsaved, false);
+
 // Table parsing uses the bundled lexer. Fenced and unsupported tables stay untouched.
 const editor = vm.createContext({ Blob, HISTORY_MAX_BYTES: 100 * 1024 * 1024 });
 vm.runInContext(fs.readFileSync(new URL("../../apps/browser/lib/marked.min.js", import.meta.url), "utf8"), editor);

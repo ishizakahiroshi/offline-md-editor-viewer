@@ -12226,7 +12226,7 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
         const encMap = { shift_jis: "SJIS", "euc-jp": "EUCJP", "iso-2022-jp": "JIS" };
         const to = encMap[encoding];
         if (!to) return false;
-        const normalized = normalizeLineEnding(content, lineEnding);
+        const normalized = applyLineEnding(content, lineEnding);
         const encoded = Encoding.convert(new TextEncoder().encode(normalized), { to, from: "UTF8" });
         const roundtrip = Encoding.codeToString(Encoding.convert(encoded, { to: "UNICODE", from: to }));
         return roundtrip !== normalized;

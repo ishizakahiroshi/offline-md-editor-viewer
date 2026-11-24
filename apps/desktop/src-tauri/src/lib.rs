@@ -1111,14 +1111,10 @@ fn move_across_devices(
         .parent()
         .ok_or_else(|| "Target path has no parent directory.".to_string())?;
     let temporary = unique_temp_sibling(parent).map_err(|err| err.to_string())?;
-    let copy_result = if source_is_dir {
-        copy_dir_recursive(source, &temporary)
+    if source_is_dir {
+        copy_dir_recursive(source, &temporary, DirectoryCopyMode::Move)?;
     } else {
-        copy_file_no_replace(source, &temporary)
-    };
-    if let Err(err) = copy_result {
-        remove_owned_path(&temporary, source_is_dir);
-        return Err(err);
+        copy_file_no_replace(source, &temporary)?;
     }
 
     if let Err(err) = move_without_replace(&temporary, destination) {
@@ -1348,7 +1344,7 @@ fn desktop_copy_entry(
     let dest_name = resolve_unique_name(&target_dir, &name);
     let dest = target_dir.join(&dest_name);
     if source.is_dir() {
-        copy_dir_recursive(&source, &dest)?;
+        copy_dir_recursive(&source, &dest, DirectoryCopyMode::Copy)?;
     } else {
         copy_file_no_replace(&source, &dest)?;
     }
@@ -1406,11 +1402,17 @@ fn copy_file_no_replace(source: &Path, destination: &Path) -> Result<(), String>
     result
 }
 
-fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
+#[derive(Clone, Copy)]
+enum DirectoryCopyMode {
+    Copy,
+    Move,
+}
+
+fn copy_dir_recursive(src: &Path, dest: &Path, mode: DirectoryCopyMode) -> Result<(), String> {
     // The root is claimed with create_dir, so cleanup on failure can only remove a directory
     // created by this operation. No existing destination is ever replaced.
     fs::create_dir(dest).map_err(|err| err.to_string())?;
-    match copy_dir_recursive_inner(src, dest, 0) {
+    match copy_dir_recursive_inner(src, dest, 0, mode) {
         Ok(()) => Ok(()),
         Err(e) => {
             let _ = fs::remove_dir_all(dest);
@@ -1419,7 +1421,12 @@ fn copy_dir_recursive(src: &Path, dest: &Path) -> Result<(), String> {
     }
 }
 
-fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(), String> {
+fn copy_dir_recursive_inner(
+    src: &Path,
+    dest: &Path,
+    depth: usize,
+    mode: DirectoryCopyMode,
+) -> Result<(), String> {
     if depth > MAX_COPY_DEPTH {
         return Err("Directory tree is too deep to copy.".to_string());
     }
@@ -1428,24 +1435,27 @@ fn copy_dir_recursive_inner(src: &Path, dest: &Path, depth: usize) -> Result<(),
         let src_child = entry.path();
         // symlink を辿らず種別判定。symlink はコピー対象から除外（ループ・脱出防止）
         let meta = fs::symlink_metadata(&src_child).map_err(|err| err.to_string())?;
-        if meta.file_type().is_symlink() {
-            continue;
-        }
-        // SEC-RS-001: list API と同様に Windows のジャンクション/マウントポイント
-        // (REPARSE_POINT) をコピー対象から除外する。is_symlink() だけでは拾えない
-        // reparse を辿ると想定外ボリュームの内容が混入しうる。
+        let indirect = meta.file_type().is_symlink();
         #[cfg(windows)]
-        {
+        let indirect = {
             use std::os::windows::fs::MetadataExt;
             const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
-            if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-                continue;
+            indirect || meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        };
+        if indirect {
+            // A move will delete the source after copying. Never omit an entry in that case.
+            if matches!(mode, DirectoryCopyMode::Move) {
+                return Err(
+                    "Cannot move a folder containing links or reparse points across drives."
+                        .to_string(),
+                );
             }
+            continue;
         }
         let dest_child = dest.join(entry.file_name());
         if meta.is_dir() {
             fs::create_dir(&dest_child).map_err(|err| err.to_string())?;
-            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1)?;
+            copy_dir_recursive_inner(&src_child, &dest_child, depth + 1, mode)?;
         } else {
             copy_file_no_replace(&src_child, &dest_child)?;
         }
@@ -1602,11 +1612,16 @@ fn desktop_get_file_directory(
     file_path: String,
 ) -> Result<DesktopDirectoryListing, String> {
     reject_nul_in_path(&file_path)?;
-    allowlist.ensure_within_allowed_roots(Path::new(&file_path))?;
-    let path = PathBuf::from(&file_path);
+    let path = Path::new(&file_path);
+    allowlist.ensure_within_allowed_roots(path)?;
+    reject_symlink_or_reparse(&file_path)?;
+    if !path.is_file() {
+        return Err("Expected a regular file.".to_string());
+    }
     let parent = path
         .parent()
         .ok_or_else(|| "File has no parent directory".to_string())?;
+    allowlist.ensure_within_allowed_roots(parent)?;
     collect_markdown_files(parent)
 }
 
@@ -2028,6 +2043,41 @@ mod tests {
             b"destination"
         );
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn cross_volume_move_keeps_directory_containing_a_link() {
+        let root = test_directory("move-link");
+        let source = root.join("source");
+        let nested = source.join("nested");
+        let linked = nested.join("linked");
+        let target = root.join("target");
+        fs::create_dir_all(&nested).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::write(source.join("note.md"), b"original").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &linked).unwrap();
+        #[cfg(windows)]
+        // A junction exercises the Windows reparse-point path without administrator rights.
+        assert!(Command::new("pwsh")
+            .current_dir(&nested)
+            .args(["-NoProfile", "-NonInteractive", "-Command",
+                "New-Item -ItemType Junction -Path linked -Target (Resolve-Path ../../target) -ErrorAction Stop | Out-Null"])
+            .status().unwrap().success());
+
+        let destination = root.join("moved");
+        assert!(move_across_devices(&source, &destination, true).is_err());
+        assert_eq!(fs::read(source.join("note.md")).unwrap(), b"original");
+        assert!(fs::symlink_metadata(&linked).is_ok());
+        assert!(reject_symlink_or_reparse(&path_to_string(&linked)).is_err());
+        assert!(!destination.exists());
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 2);
+
+        let copied = root.join("copied");
+        copy_dir_recursive(&source, &copied, DirectoryCopyMode::Copy).unwrap();
+        assert_eq!(fs::read(copied.join("note.md")).unwrap(), b"original");
+        assert!(!copied.join("nested/linked").exists());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(windows)]

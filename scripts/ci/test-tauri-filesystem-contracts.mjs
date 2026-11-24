@@ -64,6 +64,11 @@ requireText(rust, "allowlist_denies_paths_outside_authorized_roots", "workspace 
 requireText(readSection, "ensure_within_allowed_roots", "read gated by allowlist");
 requireText(renameSection, "ensure_within_allowed_roots", "rename gated by allowlist");
 requireText(moveSection, "ensure_within_allowed_roots", "move gated by allowlist");
+const fileDirectory = functionSection(rust, "desktop_get_file_directory", "inspect_drag_drop_path");
+requireText(fileDirectory, "if !path.is_file()", "parent listing requires a file");
+const parentCheck = fileDirectory.indexOf("allowlist.ensure_within_allowed_roots(parent)?");
+assert.ok(parentCheck >= 0 && parentCheck < fileDirectory.indexOf("collect_markdown_files(parent)"),
+  "validate the directory being listed before collecting entries");
 
 // SEC-RS-003 (migration): allowlist rejections must stay machine-readable, and the startup
 // restore must not discard the remembered folder when the rejection is only "not authorized

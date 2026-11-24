@@ -5288,6 +5288,13 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
+## Working with a Markdown folder
+
+- Search the text of files in the open folder. Results show their relative paths. Use heading bookmarks to return to a section. Reading settings adjust preview width and line spacing independently of zoom.
+- Enable save history for an individual document to keep earlier file contents locally. Open a revision in a new tab for comparison. History keeps up to 10 revisions for 7 days, within a shared 100 MiB limit.
+- Edit Markdown tables as cells, or insert a PNG into the document's folder. Review the preview and save the document to keep the changes.
+- Check local links, images and headings before sharing. Print the document or choose PDF in the print dialog. In the preview, select text and open the context menu to copy Markdown or formatted content. Plain-text paste destinations receive readable text.
+
 ## Security / Privacy
 
 - **No file uploads.** Markdown files are read and rendered locally in your browser or desktop WebView.
@@ -5518,6 +5525,13 @@ npm パッケージはブラウザ版だけを同梱した小さなランチャ�
 - **書いた量がひと目で分かります。** ステータスバーに文字数・単語数・推定読了時間を表示し、ツールバーの現在ファイル名とフルパスはそれぞれワンクリックでコピーできます。
 - **読みやすいデフォルト。** 見出し・表・引用・シンタックスハイライト付きコードブロックに調整したダーク/ブルー/ライトテーマ、文字サイズ変更にも対応。
 - **UI は 13 言語。** English / 日本語 / 简体中文 / 繁體中文 / Español / Deutsch / 한국어 / Português (Brasil) / Русский / Tiếng Việt / Français / Italiano / Bahasa Indonesia
+
+## Markdown フォルダでの作業
+
+- 開いたフォルダ全体を本文検索できます。結果の相対パスで同名ファイルを区別し、繰り返し読む節には見出しのしおりを付けられます。プレビューの読み幅・行間はペイン倍率と別に調整できます。
+- 保存履歴は文書ごとに有効にします。上書き前の版を新しいタブで開き、現在の原稿と見比べられます。履歴は直近10版、7日間、全体で100 MiBまで保持します。
+- Markdown の表をセル単位で編集したり、PNG を文書のフォルダへ挿入したりできます。プレビューで確認し、原稿を保存してください。
+- 渡す前にリンク・画像・見出しの参照先を点検できます。本文を印刷するときは印刷画面でPDFも選べます。プレビューで文字を選択し、右クリックすると Markdown と書式付きのコピーを選べます。プレーンテキスト欄には表示文字が貼り付きます。
 
 ## セキュリティ / プライバシー
 
@@ -10806,6 +10820,54 @@ Get-FileHash .\\offline-md-editor-viewer-desktop-vX.X.X-win-x64-portable.zip -Al
           return decodeURIComponent(value);
         } catch (err) {
           return value;
+        }
+      }
+
+      // Resolve Markdown references relative to the owning document, including folders
+      // that have not been expanded in the tree. Never request access during a scan.
+      async function inspectWorkspaceReference(rawReference, baseDisplayPath) {
+        const ref = String(rawReference || "").trim();
+        const result = { kind: "unverified", path: "", fragment: "" };
+        if (/^(https?:|mailto:|tel:|\/\/)/i.test(ref)) return { ...result, kind: "external" };
+        if (/^[a-z][a-z0-9+.-]*:/i.test(ref) || /^[\\/]/.test(ref)) return { ...result, kind: "outside" };
+        const hash = ref.indexOf("#");
+        let relative;
+        try {
+          result.fragment = hash < 0 ? "" : decodeURIComponent(ref.slice(hash + 1));
+          relative = decodeURIComponent((hash < 0 ? ref : ref.slice(0, hash)).split("?")[0]);
+        } catch {
+          return result;
+        }
+        if (!relative) return ref.startsWith("#") ? { ...result, kind: "anchor" } : result;
+        if (/^[\\/]|[:\u0000-\u001f]/.test(relative)) return { ...result, kind: "outside" };
+        const owner = getDocumentState();
+        if (!baseDisplayPath || !documentBelongsToCurrentDirectory(owner)) return result;
+        const root = dirState.handle;
+        const parts = baseDisplayPath.split(/[\\/]/).slice(0, -1);
+        for (const part of relative.split(/[\\/]/)) {
+          if (!part || part === ".") continue;
+          if (part === "..") {
+            if (!parts.length) return { ...result, kind: "outside" };
+            parts.pop();
+          } else {
+            parts.push(part);
+          }
+        }
+        if (!parts.length) return result;
+        result.path = parts.join("/");
+        const entry = { kind: "file", path: result.path, name: parts[parts.length - 1] };
+        try {
+          if (isTauri) {
+            const exists = await invokeTauri("desktop_workspace_file_exists", { root, relativePath: result.path });
+            if (!exists) return { ...result, kind: "missing" };
+            entry.tauriPath = String(root).replace(/[\\/]+$/, "") + "\\" + parts.join("\\");
+          } else {
+            entry.fileHandle = await getNestedFileHandle(root, result.path);
+          }
+          return { ...result, kind: "file", entry };
+        } catch (error) {
+          if (error && error.name === "NotFoundError") result.kind = "missing";
+          return result;
         }
       }
 

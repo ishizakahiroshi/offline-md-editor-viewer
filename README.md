@@ -64,6 +64,13 @@ The npm package is a small launcher that bundles the browser edition only. The W
 - **Readable defaults.** Dark/blue/light themes tuned for headings, tables, quotes, and syntax-highlighted code blocks. Adjustable font size.
 - **UI in 13 languages.** English, 日本語, 简体中文, 繁體中文, Español, Deutsch, 한국어, Português (Brasil), Русский, Tiếng Việt, Français, Italiano, Bahasa Indonesia.
 
+## Working with a Markdown folder
+
+- Search the text of files in the open folder. Results show their relative paths. Use heading bookmarks to return to a section. Reading settings adjust preview width and line spacing independently of zoom.
+- Enable save history for an individual document to keep earlier file contents locally. Open a revision in a new tab for comparison. History keeps up to 10 revisions for 7 days, within a shared 100 MiB limit.
+- Edit Markdown tables as cells, or insert a PNG into the document's folder. Review the preview and save the document to keep the changes.
+- Check local links, images and headings before sharing. Print the document or choose PDF in the print dialog. In the preview, select text and open the context menu to copy Markdown or formatted content. Plain-text paste destinations receive readable text.
+
 ## Security / Privacy
 
 - **No file uploads.** Markdown files are read and rendered locally in your browser or desktop WebView.

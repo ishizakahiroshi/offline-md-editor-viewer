@@ -584,6 +584,41 @@ fn desktop_read_file_bytes(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+// Inspect a relative file without reading it or granting access. Keep permission
+// errors distinct from a missing file and reject indirect filesystem entries.
+#[tauri::command]
+fn desktop_workspace_file_exists(
+    allowlist: tauri::State<'_, WorkspaceAllowlist>,
+    root: String,
+    relative_path: String,
+) -> Result<bool, String> {
+    reject_nul_in_path(&root)?;
+    reject_nul_in_path(&relative_path)?;
+    let root = allowlist.ensure_within_allowed_roots(Path::new(&root))?;
+    let mut target = root.clone();
+    for part in relative_path.split('/') {
+        if part.is_empty()
+            || part.contains([':', '\\'])
+            || !matches!(
+                Path::new(part).components().collect::<Vec<_>>().as_slice(),
+                [std::path::Component::Normal(_)]
+            )
+        {
+            return Err("Invalid relative file reference.".into());
+        }
+        target.push(part);
+        reject_symlink_or_reparse(&path_to_string(&target))?;
+    }
+    match fs::metadata(&target) {
+        Ok(metadata) => {
+            let canonical = allowlist.ensure_within_allowed_roots(&target)?;
+            Ok(metadata.is_file() && is_path_within_root(&canonical, &root))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 fn atomic_write(path: &Path, data: &[u8]) -> Result<(), String> {
     let parent = path
         .parent()
@@ -1732,6 +1767,7 @@ pub fn run() {
             desktop_take_pending_launch_paths,
             desktop_force_close_window,
             desktop_frontend_ready,
+            desktop_workspace_file_exists,
             desktop_get_file_directory,
             desktop_list_shallow_entries
         ])
